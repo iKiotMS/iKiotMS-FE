@@ -146,7 +146,9 @@ export function ChartAreaInteractive() {
 
   React.useEffect(() => {
     if (isMobile) {
-      setTimeRange("7d")
+      Promise.resolve().then(() => {
+        setTimeRange("7d")
+      })
     }
   }, [isMobile])
 

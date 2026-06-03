@@ -8,7 +8,6 @@ import {
   CheckSquare,
   MessageCircle,
   Calendar,
-  Shield,
   AlertTriangle,
   Settings,
   HelpCircle,
@@ -16,7 +15,6 @@ import {
   LayoutTemplate,
   Users,
 } from "lucide-react";
-import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { BranchSwitcher } from "@/components/branch-switcher";
 import { SidebarNotification } from "@/components/sidebar-notification";
@@ -28,9 +26,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
 const data = {
