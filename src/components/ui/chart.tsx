@@ -116,8 +116,17 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<"div"> & {
+}: Omit<
+  RechartsPrimitive.TooltipContentProps<any, any>,
+  "active" | "payload" | "coordinate" | "label" | "accessibilityLayer" | "activeIndex"
+> & {
+  active?: boolean
+  payload?: any[]
+  coordinate?: { x: number; y: number }
+  label?: any
+  accessibilityLayer?: boolean
+  activeIndex?: number
+} & React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
     indicator?: "line" | "dot" | "dashed"
@@ -255,7 +264,7 @@ function ChartLegendContent({
   verticalAlign = "bottom",
   nameKey,
 }: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+  Pick<RechartsPrimitive.DefaultLegendContentProps, "payload" | "verticalAlign"> & {
     hideIcon?: boolean
     nameKey?: string
   }) {
