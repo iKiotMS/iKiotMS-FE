@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import type { Row } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
+import type { Row } from "@tanstack/react-table";
+import { MoreHorizontal } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,19 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-
-import { taskSchema } from "../data/schema"
+} from "@/components/ui/dropdown-menu";
 
 interface DataTableRowActionsProps<TData> {
-  row: Row<TData>
+  row: Row<TData>;
 }
 
-export function DataTableRowActions<TData>({
-  row,
-}: DataTableRowActionsProps<TData>) {
-  const task = taskSchema.parse(row.original)
-
+export function DataTableRowActions<
+  TData,
+>({}: DataTableRowActionsProps<TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -36,17 +32,27 @@ export function DataTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem className="cursor-pointer">View Task</DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer">Edit Task</DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer">
+          View Task
+        </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer">
+          Edit Task
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer">Duplicate</DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer">Mark as Favorite</DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer">
+          Duplicate
+        </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer">
+          Mark as Favorite
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer" variant="destructive">
           Delete
-          <DropdownMenuShortcut className="text-destructive">⌘⌫</DropdownMenuShortcut>
+          <DropdownMenuShortcut className="text-destructive">
+            ⌘⌫
+          </DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

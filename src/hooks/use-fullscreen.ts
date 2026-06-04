@@ -12,8 +12,10 @@ export function useFullscreen() {
 
     document.addEventListener("fullscreenchange", handleFullscreenChange)
     
-    // Initial check
-    setIsFullscreen(!!document.fullscreenElement)
+    // Defer check to avoid synchronous state updates during react's render phase
+    Promise.resolve().then(() => {
+      setIsFullscreen(!!document.fullscreenElement)
+    })
 
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange)

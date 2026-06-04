@@ -13,11 +13,13 @@ interface ColorPickerProps {
 }
 
 export function ColorPicker({ label, cssVar, value, onChange }: ColorPickerProps) {
+  const [prevValue, setPrevValue] = React.useState(value)
   const [localValue, setLocalValue] = React.useState(value)
 
-  React.useEffect(() => {
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
-  }, [value])
+  }
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value
