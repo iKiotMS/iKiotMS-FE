@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+import { logout } from "@/lib/auth"
 import { Logo } from "@/components/logo"
 import {
   DropdownMenu,
@@ -36,6 +37,12 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await logout();
+    window.location.href = "/sign-in";
+  };
 
   return (
     <SidebarMenu>
@@ -99,11 +106,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/sign-in">
-                <LogOut />
-                Log out
-              </Link>
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Đăng xuất</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

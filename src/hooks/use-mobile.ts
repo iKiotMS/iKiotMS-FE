@@ -14,7 +14,11 @@ export function useIsMobile() {
     if (mql) {
       mql.addEventListener("change", onChange)
     }
-    setIsMobile(typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false)
+    
+    // Defer check to avoid synchronous state updates during react's render phase
+    Promise.resolve().then(() => {
+      setIsMobile(typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false)
+    })
 
     return () => {
       if (mql) {

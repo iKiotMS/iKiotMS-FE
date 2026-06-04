@@ -1,73 +1,234 @@
 "use client";
 
+import React, { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { signupSchema, SignupInput } from "@/lib/validation";
+import { registerUser } from "@/lib/api/auth";
+
 
 export function SignupForm2({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<SignupInput>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+      password: "",
+      confirmPassword: "",
+      tenantName: "",
+      terms: false,
+    },
+  });
+
+  const onSubmit = async (data: SignupInput) => {
+    setIsLoading(true);
+    try {
+      await registerUser(data);
+
+      toast.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+      router.push("/sign-in");
+    } catch (error) {
+      console.error("Signup error:", error);
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <form
+      className={cn("flex flex-col gap-6", className)}
+      onSubmit={handleSubmit(onSubmit)}
+      {...props}
+    >
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Create your account</h1>
+        <h1 className="text-2xl font-bold">Đăng ký tài khoản iKiot</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Enter your information to create a new account
+          Tạo tài khoản quản lý chuỗi cửa hàng của bạn ngay hôm nay
         </p>
       </div>
-      <div className="grid gap-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-3">
-            <Label htmlFor="firstName">First Name</Label>
-            <Input id="firstName" placeholder="John" required />
+
+      <div className="grid gap-5">
+        {/* SECTION 1: Personal Info */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground border-b pb-1">1. Thông tin cá nhân</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="firstName">Họ</Label>
+              <Input
+                id="firstName"
+                placeholder="Nguyễn"
+                disabled={isLoading}
+                {...register("firstName")}
+              />
+              {errors.firstName && (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.firstName.message}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lastName">Tên</Label>
+              <Input
+                id="lastName"
+                placeholder="Văn A"
+                disabled={isLoading}
+                {...register("lastName")}
+              />
+              {errors.lastName && (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.lastName.message}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="grid gap-3">
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input id="lastName" placeholder="Doe" required />
+          <div className="grid gap-1.5">
+            <Label htmlFor="phoneNumber">Số điện thoại đăng nhập</Label>
+            <Input
+              id="phoneNumber"
+              type="tel"
+              placeholder="+84xxxxxxxx hoặc 0xxxxxxxxx"
+              disabled={isLoading}
+              {...register("phoneNumber")}
+            />
+            {errors.phoneNumber && (
+              <p className="text-xs font-medium text-destructive">
+                {errors.phoneNumber.message}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="password">Mật khẩu</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Nhập mật khẩu"
+                disabled={isLoading}
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Nhập lại mật khẩu"
+                disabled={isLoading}
+                {...register("confirmPassword")}
+              />
+              {errors.confirmPassword && (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
           </div>
         </div>
-        <div className="grid gap-3">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="m@example.com" required />
+
+        {/* SECTION 2: Shop/Tenant Info */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground border-b pb-1">2. Thông tin cửa hàng / doanh nghiệp</h2>
+          <div className="grid gap-1.5">
+            <Label htmlFor="tenantName">Tên cửa hàng</Label>
+            <Input
+              id="tenantName"
+              placeholder="iKiot Store"
+              disabled={isLoading}
+              {...register("tenantName")}
+            />
+            {errors.tenantName && (
+              <p className="text-xs font-medium text-destructive">
+                {errors.tenantName.message}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="grid gap-3">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" required />
+
+        <div className="flex flex-col gap-1 mt-1">
+          <div className="flex items-center space-x-2">
+            <Controller
+              control={control}
+              name="terms"
+              render={({ field }) => (
+                <Checkbox
+                  id="terms"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isLoading}
+                />
+              )}
+            />
+            <Label htmlFor="terms" className="text-sm cursor-pointer select-none">
+              Tôi đồng ý với{" "}
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toast.info("Điều khoản dịch vụ đang được cập nhật.");
+                }}
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Điều khoản Dịch vụ
+              </a>{" "}
+              và{" "}
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toast.info("Chính sách bảo mật đang được cập nhật.");
+                }}
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Chính sách Bảo mật
+              </a>
+            </Label>
+          </div>
+          {errors.terms && (
+            <p className="text-xs font-medium text-destructive mt-1">
+              {errors.terms.message}
+            </p>
+          )}
         </div>
-        <div className="grid gap-3">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input id="confirmPassword" type="password" required />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox id="terms" required />
-          <Label htmlFor="terms" className="text-sm">
-            I agree to the{" "}
-            <a
-              href="#"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a
-              href="#"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Privacy Policy
-            </a>
-          </Label>
-        </div>
-        <Button type="submit" className="w-full cursor-pointer">
-          Create Account
+
+        <Button type="submit" className="w-full cursor-pointer mt-1" disabled={isLoading}>
+          {isLoading ? "Đang xử lý..." : "Đăng ký cửa hàng"}
         </Button>
       </div>
+
       <div className="text-center text-sm">
-        Already have an account?{" "}
-        <a href="/auth/sign-in-2" className="underline underline-offset-4">
-          Sign in
+        Đã có tài khoản?{" "}
+        <a href="/sign-in" className="underline underline-offset-4">
+          Đăng nhập ngay
         </a>
       </div>
     </form>

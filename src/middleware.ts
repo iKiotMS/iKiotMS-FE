@@ -6,14 +6,14 @@ export function middleware(request: NextRequest) {
   // Add custom middleware logic here
   // For example: authentication, redirects, etc.
   
-  // Example: Redirect /login to /auth/sign-in
+  // Example: Redirect /login to /sign-in
   if (request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/auth/sign-in', request.url))
+    return NextResponse.redirect(new URL('/sign-in', request.url))
   }
   
-  // Example: Redirect /register to /auth/sign-up
+  // Example: Redirect /register to /sign-up
   if (request.nextUrl.pathname === '/register') {
-    return NextResponse.redirect(new URL('/auth/sign-up', request.url))
+    return NextResponse.redirect(new URL('/sign-up', request.url))
   }
   
   return NextResponse.next()

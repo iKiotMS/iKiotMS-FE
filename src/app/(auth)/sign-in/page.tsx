@@ -23,11 +23,14 @@ export default function LoginPage() {
       </div>
       <div className="bg-muted relative hidden lg:block">
         <Image
-          src="https://ui.shadcn.com/placeholder.svg"
+          src="/login-pic.png"
           alt="Image"
           fill
           className="object-cover dark:brightness-[0.95] dark:invert"
         />
+        <div className="absolute bottom-20 right-12 z-10 text-white font-extrabold text-6xl tracking-tight drop-shadow-lg select-none">
+          Welcome to iKiot.
+        </div>
       </div>
     </div>
   );
