@@ -1,5 +1,6 @@
 import client from "./client";
 import { LoginInput, SignupInput } from "../validation";
+import { clearCachedUser, clearTokens, getRefreshToken } from "../auth";
 
 /**
  * Log in a user and retrieve session tokens and profile
@@ -45,4 +46,31 @@ export async function registerUser(data: SignupInput) {
     tenantTaxNumber: null,
   });
   return response.data;
+}
+
+/**
+ * Log out user by calling API and clearing local storage
+ */
+export async function logout(): Promise<void> {
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    try {
+      await client.post(
+        `/auth/logout`,
+        { refreshToken },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        },
+      );
+    } catch (error) {
+      console.error("Logout API error:", error);
+    }
+  }
+
+  // Always clear credentials locally even if the API call fails
+  clearTokens();
+  clearCachedUser();
 }

@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signupSchema, SignupInput } from "@/lib/validation";
-import { registerUser } from "@/lib/api/auth";
-
+import { registerUser, loginUser } from "@/lib/api/auth";
+import { setTokens, setCachedUser } from "@/lib/auth";
+import { assignFreeTrial } from "@/lib/api/subscription";
 
 export function SignupForm2({
   className,
@@ -42,13 +43,44 @@ export function SignupForm2({
   const onSubmit = async (data: SignupInput) => {
     setIsLoading(true);
     try {
+      // 1. Register the tenant and user account
       await registerUser(data);
 
-      toast.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
-      router.push("/sign-in");
+      // 2. Programmatically login to obtain access/refresh tokens
+      const { accessToken, refreshToken, user } = await loginUser({
+        phone: data.phoneNumber,
+        password: data.password,
+      });
+
+      if (accessToken) {
+        setTokens({ accessToken, refreshToken });
+        setCachedUser(user);
+
+        // 3. Post to the subscription free trial endpoint
+        try {
+          await assignFreeTrial();
+          toast.success(
+            "Đăng ký tài khoản và kích hoạt dùng thử 7 ngày thành công!",
+          );
+        } catch (subError) {
+          console.error("Failed to assign free trial:", subError);
+          toast.warning(
+            "Đăng ký thành công nhưng không thể kích hoạt dùng thử tự động.",
+          );
+        }
+
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        toast.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+        router.push("/sign-in");
+      }
     } catch (error) {
       console.error("Signup error:", error);
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
       const message =
         err.response?.data?.message ||
         err.message ||
@@ -75,7 +107,9 @@ export function SignupForm2({
       <div className="grid gap-5">
         {/* SECTION 1: Personal Info */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground border-b pb-1">1. Thông tin cá nhân</h2>
+          <h2 className="text-sm font-semibold text-foreground border-b pb-1">
+            1. Thông tin cá nhân
+          </h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="firstName">Họ</Label>
@@ -111,7 +145,7 @@ export function SignupForm2({
             <Input
               id="phoneNumber"
               type="tel"
-              placeholder="+84xxxxxxxx hoặc 0xxxxxxxxx"
+              placeholder="0912345678"
               disabled={isLoading}
               {...register("phoneNumber")}
             />
@@ -157,7 +191,9 @@ export function SignupForm2({
 
         {/* SECTION 2: Shop/Tenant Info */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground border-b pb-1">2. Thông tin cửa hàng / doanh nghiệp</h2>
+          <h2 className="text-sm font-semibold text-foreground border-b pb-1">
+            2. Thông tin cửa hàng / doanh nghiệp
+          </h2>
           <div className="grid gap-1.5">
             <Label htmlFor="tenantName">Tên cửa hàng</Label>
             <Input
@@ -188,7 +224,10 @@ export function SignupForm2({
                 />
               )}
             />
-            <Label htmlFor="terms" className="text-sm cursor-pointer select-none">
+            <Label
+              htmlFor="terms"
+              className="text-sm cursor-pointer select-none"
+            >
               Tôi đồng ý với{" "}
               <a
                 href="#"
@@ -220,7 +259,11 @@ export function SignupForm2({
           )}
         </div>
 
-        <Button type="submit" className="w-full cursor-pointer mt-1" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full cursor-pointer mt-1"
+          disabled={isLoading}
+        >
           {isLoading ? "Đang xử lý..." : "Đăng ký cửa hàng"}
         </Button>
       </div>
