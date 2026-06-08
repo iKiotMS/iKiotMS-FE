@@ -1,14 +1,20 @@
-"use client"
+"use client";
 
-import { Plus, Settings, FileText, Download } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Plus, Settings, FileText, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function QuickActions() {
   return (
     <div className="flex items-center space-x-2">
       <Button className="cursor-pointer">
-        <Plus className="h-4 w-4 mr-2" />
+        <Plus />
         New Sale
       </Button>
       <DropdownMenu>
@@ -35,5 +41,5 @@ export function QuickActions() {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  )
+  );
 }
