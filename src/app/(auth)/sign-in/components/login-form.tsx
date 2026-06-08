@@ -48,7 +48,10 @@ export function LoginForm2({
       }
     } catch (error) {
       console.error("Login error:", error);
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
       const message =
         err.response?.data?.message ||
         err.message ||
@@ -105,6 +108,7 @@ export function LoginForm2({
             id="password"
             type="password"
             disabled={isLoading}
+            placeholder="Nhập mật khẩu"
             {...register("password")}
           />
           {errors.password && (

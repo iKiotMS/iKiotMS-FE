@@ -22,8 +22,28 @@ export function SidebarConfigProvider({ children }: { children: React.ReactNode 
     side: "left"
   })
 
+  // Load from local storage
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar-layout-config")
+      if (saved) {
+        setConfig(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
   const updateConfig = React.useCallback((newConfig: Partial<SidebarConfig>) => {
-    setConfig(prev => ({ ...prev, ...newConfig }))
+    setConfig(prev => {
+      const updated = { ...prev, ...newConfig }
+      try {
+        localStorage.setItem("sidebar-layout-config", JSON.stringify(updated))
+      } catch (e) {
+        console.error(e)
+      }
+      return updated
+    })
   }, [])
 
   return (
