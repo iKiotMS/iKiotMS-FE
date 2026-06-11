@@ -113,17 +113,6 @@ export const productsColumns: ColumnDef<Product>[] = [
     },
   },
   {
-    accessorKey: "branchName",
-    header: "Chi nhánh",
-    cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">
-        {row.getValue("branchName")}
-      </span>
-    ),
-    filterFn: (row, columnId, value: string) =>
-      row.getValue(columnId) === value,
-  },
-  {
     accessorKey: "categoryName",
     header: "Danh mục",
     cell: ({ row }) => (
