@@ -44,13 +44,6 @@ export const CATEGORIES = [
   'Khác',
 ]
 
-export const BRANCHES = [
-  'CN Quận 1',
-  'CN Quận 7',
-  'CN Bình Thạnh',
-  'CN Thủ Đức',
-]
-
 const productFormSchema = z.object({
   name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
   productCode: z.string().min(1, 'Mã hàng là bắt buộc'),
@@ -58,7 +51,6 @@ const productFormSchema = z.object({
   barcode: z.string().optional(),
   categoryName: z.string().min(1, 'Vui lòng chọn danh mục'),
   brandName: z.string().optional(),
-  branchName: z.string().min(1, 'Vui lòng chọn chi nhánh'),
   retailPrice: z.number().min(0, 'Giá bán không được âm'),
   costPrice: z.number().min(0, 'Giá vốn không được âm'),
   VAT: z.number().min(0).max(100).optional(),
@@ -76,7 +68,6 @@ const EMPTY_VALUES: ProductFormValues = {
   barcode: '',
   categoryName: '',
   brandName: '',
-  branchName: '',
   retailPrice: 0,
   costPrice: 0,
   VAT: 0,
@@ -110,7 +101,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
         barcode: currentRow.barcode,
         categoryName: currentRow.categoryName,
         brandName: currentRow.brandName,
-        branchName: currentRow.branchName,
         retailPrice: currentRow.retailPrice,
         costPrice: currentRow.costPrice,
         VAT: currentRow.VAT,
@@ -228,29 +218,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="branchName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Chi nhánh <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full">
-                        <SelectValue placeholder="Chọn chi nhánh" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {BRANCHES.map((branch) => (
-                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="grid grid-cols-3 gap-4">
               <FormField

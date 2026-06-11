@@ -12,7 +12,6 @@ export interface Product {
   name: string
   categoryName: string
   brandName: string
-  branchName: string
   retailPrice: number
   costPrice: number
   VAT: number
@@ -52,7 +51,6 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       name: data.name,
       categoryName: data.categoryName,
       brandName: data.brandName ?? '',
-      branchName: data.branchName ?? '',
       retailPrice: data.retailPrice,
       costPrice: data.costPrice,
       VAT: data.VAT ?? 0,
@@ -77,7 +75,6 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
               barcode: data.barcode ?? p.barcode,
               categoryName: data.categoryName,
               brandName: data.brandName ?? p.brandName,
-              branchName: data.branchName ?? p.branchName,
               retailPrice: data.retailPrice,
               costPrice: data.costPrice,
               VAT: data.VAT ?? p.VAT,

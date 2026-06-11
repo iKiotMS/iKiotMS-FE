@@ -40,13 +40,12 @@ import {
 import { useProducts } from "./products-provider";
 import { productsColumns as columns } from "./products-columns";
 import { ProductsEmpty } from "./products-empty";
-import { BRANCHES, CATEGORIES } from "./products-mutate-dialog";
+import { CATEGORIES } from "./products-mutate-dialog";
 
 const COLUMN_LABELS: Record<string, string> = {
   productCode: "Mã hàng",
   name: "Tên hàng hóa",
   categoryName: "Danh mục",
-  branchName: "Chi nhánh",
   costPrice: "Giá vốn",
   retailPrice: "Giá bán",
   stock: "Tồn kho",
@@ -87,9 +86,6 @@ export function ProductsTable() {
     .getColumn("categoryName")
     ?.getFilterValue() as string;
   const statusFilter = table.getColumn("status")?.getFilterValue() as string;
-  const branchFilter = table
-    .getColumn("branchName")
-    ?.getFilterValue() as string;
 
   return (
     <div className="space-y-4">
@@ -105,27 +101,6 @@ export function ProductsTable() {
               className="pl-9 h-9"
             />
           </div>
-
-          <Select
-            value={branchFilter || ""}
-            onValueChange={(value) =>
-              table
-                .getColumn("branchName")
-                ?.setFilterValue(value === "all" ? "" : value)
-            }
-          >
-            <SelectTrigger className="cursor-pointer w-36 h-9 text-sm">
-              <SelectValue placeholder="Chi nhánh" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả chi nhánh</SelectItem>
-              {BRANCHES.map((branch) => (
-                <SelectItem key={branch} value={branch}>
-                  {branch}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           <Select
             value={categoryFilter || ""}
