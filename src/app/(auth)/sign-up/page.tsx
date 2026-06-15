@@ -16,18 +16,21 @@ export default function SignUp2Page() {
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-lg">
             <SignupForm2 />
           </div>
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
         <Image
-          src="https://ui.shadcn.com/placeholder.svg"
+          src="/login-pic.png"
           alt="Image"
           fill
           className="object-cover dark:brightness-[0.95] dark:invert"
         />
+        <div className="absolute bottom-20 right-12 z-10 text-white font-extrabold text-6xl tracking-tight drop-shadow-lg select-none">
+          Join iKiot now.
+        </div>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CommandSearch, SearchTrigger } from "@/components/command-search";
 import { ModeToggle } from "@/components/mode-toggle";
+import { ShoppingCart } from "lucide-react";
 
 export function SiteHeader() {
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -36,33 +37,19 @@ export function SiteHeader() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="default"
               asChild
               size="sm"
               className="hidden sm:flex"
             >
               <a
-                href="https://ikiot.com/blocks"
+                href="/check-out"
                 rel="noopener noreferrer"
                 target="_blank"
-                className="dark:text-foreground"
+                className="dark:text-foreground flex items-center"
               >
-                Blocks
-              </a>
-            </Button>
-            <Button
-              variant="ghost"
-              asChild
-              size="sm"
-              className="hidden sm:flex"
-            >
-              <a
-                href="/landing"
-                rel="noopener noreferrer"
-                target="_blank"
-                className="dark:text-foreground"
-              >
-                Landing Page
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Bán hàng
               </a>
             </Button>
             <ModeToggle />

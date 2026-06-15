@@ -3,11 +3,13 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarConfigProvider } from "@/contexts/sidebar-context";
+import { ThemePresetInitializer } from "@/components/theme-preset-initializer";
 import { inter } from "@/lib/fonts";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "Shadcn Dashboard",
-  description: "A dashboard built with Next.js and shadcn/ui",
+  title: "iKiot",
+  description: "Ứng dụng quản lý cửa hàng iKiot",
 };
 
 export default function RootLayout({
@@ -16,13 +18,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} antialiased`}>
+    <html lang="vi" className={`${inter.variable} antialiased`}>
       <body className={inter.className}>
         <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
           <SidebarConfigProvider>
+            <ThemePresetInitializer />
             {children}
           </SidebarConfigProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );
