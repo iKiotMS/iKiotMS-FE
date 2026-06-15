@@ -14,17 +14,31 @@ import { useProducts, type Product } from './products-provider'
 
 type ProductsDeleteDialogProps = {
   open: boolean
+  mode: 'delete' | 'deleteMany'
   onOpenChange: (open: boolean) => void
   currentRow: Product | null
+  selectedIds: string[]
 }
 
-export function ProductsDeleteDialog({ open, onOpenChange, currentRow }: ProductsDeleteDialogProps) {
-  const { handleDelete } = useProducts()
+export function ProductsDeleteDialog({
+  open,
+  mode,
+  onOpenChange,
+  currentRow,
+  selectedIds,
+}: ProductsDeleteDialogProps) {
+  const { handleDelete, handleDeleteMany } = useProducts()
 
   function onConfirm() {
-    if (currentRow) handleDelete(currentRow.id)
+    if (mode === 'deleteMany') {
+      handleDeleteMany(selectedIds)
+    } else {
+      if (currentRow) handleDelete(currentRow.id)
+    }
     onOpenChange(false)
   }
+
+  const isBulk = mode === 'deleteMany'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,9 +46,19 @@ export function ProductsDeleteDialog({ open, onOpenChange, currentRow }: Product
         <DialogHeader>
           <DialogTitle>Xóa hàng hóa</DialogTitle>
           <DialogDescription>
-            Bạn có chắc muốn xóa{' '}
-            <strong className="text-foreground">{currentRow?.name ?? ''}</strong>?{' '}
-            Hành động này không thể hoàn tác.
+            {isBulk ? (
+              <>
+                Bạn có chắc muốn xóa{' '}
+                <strong className="text-foreground">{selectedIds.length} hàng hóa</strong> đã chọn?{' '}
+                Hành động này không thể hoàn tác.
+              </>
+            ) : (
+              <>
+                Bạn có chắc muốn xóa{' '}
+                <strong className="text-foreground">{currentRow?.name ?? ''}</strong>?{' '}
+                Hành động này không thể hoàn tác.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
@@ -43,7 +67,7 @@ export function ProductsDeleteDialog({ open, onOpenChange, currentRow }: Product
           </Button>
           <Button variant="destructive" onClick={onConfirm} className="cursor-pointer">
             <Trash2 className="mr-2 size-4" />
-            Xóa
+            {isBulk ? `Xóa ${selectedIds.length} mục` : 'Xóa'}
           </Button>
         </DialogFooter>
       </DialogContent>
