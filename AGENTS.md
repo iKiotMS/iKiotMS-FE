@@ -1,30 +1,30 @@
-<!-- BEGIN:nextjs-agent-rules -->
+﻿<!-- BEGIN:nextjs-agent-rules -->
 
-# Florlen Frontend Agent Guidelines
+# iKiot Management System ΓÇö Frontend Project Memory
 
-> **Mục đích file này:** Bộ nhớ dự án dùng chung cho tất cả AI agent (Cursor, Claude Code CLI).
-> Đọc file này trước khi bắt đầu code bất kỳ tính năng nào.
+> **Mß╗Ñc ─æ├¡ch file n├áy:** Bß╗Ö nhß╗¢ dß╗▒ ├ín d├╣ng chung cho tß║Ñt cß║ú AI agent (Cursor, Claude Code CLI).
+> ─Éß╗ìc file n├áy tr╞░ß╗¢c khi bß║»t ─æß║ºu code bß║Ñt kß╗│ t├¡nh n─âng n├áo.
 
 ---
 
-## 1. Tổng quan dự án
+## 1. Tß╗òng quan dß╗▒ ├ín
 
-**iKiot** là hệ thống quản lý bán hàng multi-tenant (SaaS), dành cho các chuỗi cửa hàng bán lẻ.
+**iKiot** l├á hß╗ç thß╗æng quß║ún l├╜ b├ín h├áng multi-tenant (SaaS), d├ánh cho c├íc chuß╗ùi cß╗¡a h├áng b├ín lß║╗.
 
-### Roles trong hệ thống
-| Role | Mô tả |
+### Roles trong hß╗ç thß╗æng
+| Role | M├┤ tß║ú |
 |---|---|
-| **System Admin** | Quản trị toàn bộ nền tảng iKiot (super admin) |
-| **Tenant Owner** | Chủ doanh nghiệp, quản lý tenant |
-| **Branch Manager** | Quản lý chi nhánh |
-| **Warehouse Manager** | Quản lý kho |
-| **Sale Staff** | Nhân viên bán hàng |
+| **System Admin** | Quß║ún trß╗ï to├án bß╗Ö nß╗ün tß║úng iKiot (super admin) |
+| **Tenant Owner** | Chß╗º doanh nghiß╗çp, quß║ún l├╜ tenant |
+| **Branch Manager** | Quß║ún l├╜ chi nh├ính |
+| **Warehouse Manager** | Quß║ún l├╜ kho |
+| **Sale Staff** | Nh├ón vi├¬n b├ín h├áng |
 
 ### Backend
-- **Framework:** Express.js (không phải NestJS)
+- **Framework:** Express.js (kh├┤ng phß║úi NestJS)
 - **Database:** MongoDB
-- **Base URL:** `http://localhost:3800` (dev) — env var: `NEXT_PUBLIC_API_URL`
-- **Auth:** JWT Access Token + Refresh Token (lưu ở localStorage)
+- **Base URL:** `http://localhost:3800` (dev) ΓÇö env var: `NEXT_PUBLIC_API_URL`
+- **Auth:** JWT Access Token + Refresh Token (l╞░u ß╗ƒ localStorage)
 
 ---
 
@@ -36,9 +36,9 @@ TypeScript          strict mode
 Tailwind CSS v4     utility classes, no inline styles
 shadcn/ui           base component library (Radix UI)
 react-hook-form     form state management
-zod v4              validation — dùng { error: '...' } thay vì invalid_type_error
+zod v4              validation ΓÇö d├╣ng { error: '...' } thay v├¼ invalid_type_error
 @tanstack/react-table  data tables
-recharts            biểu đồ/charts
+recharts            biß╗âu ─æß╗ô/charts
 next-intl v4        i18n (EN + VI), default: Vietnamese
 zustand             global state
 axios               HTTP client qua src/lib/api/client.ts
@@ -47,107 +47,107 @@ lucide-react        icons
 date-fns            date formatting (vi locale)
 ```
 
-**Lưu ý Zod v4:** Dùng `z.number({ error: 'msg' })` — KHÔNG dùng `invalid_type_error`.
+**L╞░u ├╜ Zod v4:** D├╣ng `z.number({ error: 'msg' })` ΓÇö KH├öNG d├╣ng `invalid_type_error`.
 
 ---
 
-## 3. Team & Phân công modules
+## 3. Team & Ph├ón c├┤ng modules
 
-| Thành viên | Modules phụ trách |
+| Th├ánh vi├¬n | Modules phß╗Ñ tr├ích |
 |---|---|
-| **HoangNV** | Stock Movement (nhập hàng, chuyển kho), Staff Management, Working Schedule/Shift, Payslip, Super Admin portal |
-| **DangKH** | Products, Categories, Brands, Suppliers, Customers, Inventory (hiển thị), Statistics/Dashboard |
-| **PhuongNDP** | Authentication, Warehouse, Orders/POS (bán hàng), Promotion, Subscription (Tenant) |
+| **HoangNV** | Stock Movement (nhß║¡p h├áng, chuyß╗ân kho), Staff Management, Working Schedule/Shift, Payslip, Super Admin portal |
+| **DangKH** | Products, Categories, Brands, Suppliers, Customers, Inventory (hiß╗ân thß╗ï), Statistics/Dashboard |
+| **PhuongNDP** | Authentication, Warehouse, Orders/POS (b├ín h├áng), Promotion, Subscription (Tenant) |
 
 ---
 
-## 4. Trạng thái hoàn thành (cập nhật: 15/06/2026)
+## 4. Trß║íng th├íi ho├án th├ánh (cß║¡p nhß║¡t: 15/06/2026)
 
-### ✅ Đã hoàn thành
-| Module | Route | Người làm | Ghi chú |
+### Γ£à ─É├ú ho├án th├ánh
+| Module | Route | Ng╞░ß╗¥i l├ám | Ghi ch├║ |
 |---|---|---|---|
 | Authentication | `/sign-in`, `/sign-up` | PhuongNDP | Login, register, refresh token |
-| Products | `/products` | DangKH | CRUD, bảng dữ liệu, mock data |
-| Stock Movement — Nhập hàng | `/exchange/imports` | HoangNV | List, tạo đơn, duyệt/từ chối, mock+API |
-| Stock Movement — Chuyển kho | `/exchange/exports` | HoangNV | List, tạo yêu cầu, duyệt/từ chối, mock+API |
+| Products | `/products` | DangKH | CRUD, bß║úng dß╗» liß╗çu, mock data |
+| Stock Movement ΓÇö Nhß║¡p h├áng | `/exchange/imports` | HoangNV | List, tß║ío ─æ╞ín, duyß╗çt/tß╗½ chß╗æi, mock+API |
+| Stock Movement ΓÇö Chuyß╗ân kho | `/exchange/exports` | HoangNV | List, tß║ío y├¬u cß║ºu, duyß╗çt/tß╗½ chß╗æi, mock+API |
 
-### 🔲 Chưa làm (HoangNV)
-- Staff Management (`/staffs`) — Danh sách nhân viên, CRUD
-- Working Schedule (`/staffs/schedule`) — Lịch làm việc, phân ca
-- Payslip (`/staffs/payroll`) — Bảng lương
-- Super Admin portal — Quản lý tenant, plans, subscriptions
+### ≡ƒö▓ Ch╞░a l├ám (HoangNV)
+- Staff Management (`/staffs`) ΓÇö Danh s├ích nh├ón vi├¬n, CRUD
+- Working Schedule (`/staffs/schedule`) ΓÇö Lß╗ïch l├ám viß╗çc, ph├ón ca
+- Payslip (`/staffs/payroll`) ΓÇö Bß║úng l╞░╞íng
+- Super Admin portal ΓÇö Quß║ún l├╜ tenant, plans, subscriptions
 
-### 🔲 Chưa làm (DangKH)
+### ≡ƒö▓ Ch╞░a l├ám (DangKH)
 - Suppliers (`/exchange/suppliers`)
 - Customers (`/users`)
 - Inventory, Statistics
 
-### 🔲 Chưa làm (PhuongNDP)
+### ≡ƒö▓ Ch╞░a l├ám (PhuongNDP)
 - Warehouse management
 - Orders/POS
 - Promotions (`/promotions`)
 
 ---
 
-## 5. Cấu trúc thư mục
+## 5. Cß║Ñu tr├║c th╞░ mß╗Ñc
 
 ```
 src/
-├── app/
-│   ├── (auth)/              ← public routes (login, register)
-│   ├── (protected)/         ← requires auth
-│   │   ├── layout.tsx       ← AppSidebar + SiteHeader + AuthGuard
-│   │   ├── dashboard/
-│   │   ├── exchange/
-│   │   │   ├── imports/     ← Nhập hàng
-│   │   │   └── exports/     ← Chuyển kho
-│   │   ├── products/
-│   │   ├── staffs/          ← (chưa tạo)
-│   │   └── ...
-│   └── landing/
-├── components/
-│   ├── ui/                  ← shadcn/ui components
-│   ├── app-sidebar.tsx      ← Navigation sidebar
-│   ├── site-header.tsx
-│   └── ...
-├── lib/
-│   └── api/
-│       ├── client.ts        ← axios instance (auth interceptor + auto refresh)
-│       ├── auth.ts
-│       ├── stock-movement.ts
-│       └── ...
-└── types/
-    ├── stock-movement.ts
-    └── ...
+Γö£ΓöÇΓöÇ app/
+Γöé   Γö£ΓöÇΓöÇ (auth)/              ΓåÉ public routes (login, register)
+Γöé   Γö£ΓöÇΓöÇ (protected)/         ΓåÉ requires auth
+Γöé   Γöé   Γö£ΓöÇΓöÇ layout.tsx       ΓåÉ AppSidebar + SiteHeader + AuthGuard
+Γöé   Γöé   Γö£ΓöÇΓöÇ dashboard/
+Γöé   Γöé   Γö£ΓöÇΓöÇ exchange/
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ imports/     ΓåÉ Nhß║¡p h├áng
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ exports/     ΓåÉ Chuyß╗ân kho
+Γöé   Γöé   Γö£ΓöÇΓöÇ products/
+Γöé   Γöé   Γö£ΓöÇΓöÇ staffs/          ΓåÉ (ch╞░a tß║ío)
+Γöé   Γöé   ΓööΓöÇΓöÇ ...
+Γöé   ΓööΓöÇΓöÇ landing/
+Γö£ΓöÇΓöÇ components/
+Γöé   Γö£ΓöÇΓöÇ ui/                  ΓåÉ shadcn/ui components
+Γöé   Γö£ΓöÇΓöÇ app-sidebar.tsx      ΓåÉ Navigation sidebar
+Γöé   Γö£ΓöÇΓöÇ site-header.tsx
+Γöé   ΓööΓöÇΓöÇ ...
+Γö£ΓöÇΓöÇ lib/
+Γöé   ΓööΓöÇΓöÇ api/
+Γöé       Γö£ΓöÇΓöÇ client.ts        ΓåÉ axios instance (auth interceptor + auto refresh)
+Γöé       Γö£ΓöÇΓöÇ auth.ts
+Γöé       Γö£ΓöÇΓöÇ stock-movement.ts
+Γöé       ΓööΓöÇΓöÇ ...
+ΓööΓöÇΓöÇ types/
+    Γö£ΓöÇΓöÇ stock-movement.ts
+    ΓööΓöÇΓöÇ ...
 ```
 
 ---
 
-## 6. Pattern chuẩn — Tạo module mới
+## 6. Pattern chuß║⌐n ΓÇö Tß║ío module mß╗¢i
 
-Mỗi module mới theo pattern của `products` và `exchange/imports`:
+Mß╗ùi module mß╗¢i theo pattern cß╗ºa `products` v├á `exchange/imports`:
 
 ```
 (protected)/[module]/
-├── page.tsx               ← 'use client', dùng Provider + components
-├── loading.tsx            ← Skeleton UI
-└── components/
-    ├── [module]-provider.tsx   ← Context + API calls + mock data fallback
-    ├── [module]-table.tsx      ← Table với search, filter, pagination
-    ├── [module]-columns.tsx    ← ColumnDef + badge/formatter
-    ├── [module]-mutate-dialog.tsx  ← Create/Edit form (react-hook-form + zod)
-    ├── [module]-detail-sheet.tsx   ← Slide-in detail panel (nếu cần)
-    ├── [module]-dialogs.tsx        ← Orchestrator dialogs
-    ├── [module]-row-actions.tsx    ← Dropdown actions per row
-    ├── [module]-button-group.tsx   ← Top-right action buttons
-    └── [module]-empty.tsx          ← Empty state UI
+Γö£ΓöÇΓöÇ page.tsx               ΓåÉ 'use client', d├╣ng Provider + components
+Γö£ΓöÇΓöÇ loading.tsx            ΓåÉ Skeleton UI
+ΓööΓöÇΓöÇ components/
+    Γö£ΓöÇΓöÇ [module]-provider.tsx   ΓåÉ Context + API calls + mock data fallback
+    Γö£ΓöÇΓöÇ [module]-table.tsx      ΓåÉ Table vß╗¢i search, filter, pagination
+    Γö£ΓöÇΓöÇ [module]-columns.tsx    ΓåÉ ColumnDef + badge/formatter
+    Γö£ΓöÇΓöÇ [module]-mutate-dialog.tsx  ΓåÉ Create/Edit form (react-hook-form + zod)
+    Γö£ΓöÇΓöÇ [module]-detail-sheet.tsx   ΓåÉ Slide-in detail panel (nß║┐u cß║ºn)
+    Γö£ΓöÇΓöÇ [module]-dialogs.tsx        ΓåÉ Orchestrator dialogs
+    Γö£ΓöÇΓöÇ [module]-row-actions.tsx    ΓåÉ Dropdown actions per row
+    Γö£ΓöÇΓöÇ [module]-button-group.tsx   ΓåÉ Top-right action buttons
+    ΓööΓöÇΓöÇ [module]-empty.tsx          ΓåÉ Empty state UI
 ```
 
 ### Provider pattern
 ```typescript
 'use client'
 // 1. Define Context type
-// 2. Fetch data từ API trong useEffect (fallback mock khi API chưa sẵn sàng)
+// 2. Fetch data tß╗½ API trong useEffect (fallback mock khi API ch╞░a sß║╡n s├áng)
 // 3. Export useXxx() hook
 // 4. Export mock data const MOCK_XXX
 ```
@@ -170,9 +170,9 @@ export const moduleApi = {
 
 ## 7. Database Models (MongoDB)
 
-Key collections — dùng khi tạo types/forms:
+Key collections ΓÇö d├╣ng khi tß║ío types/forms:
 
-| Collection | Trường chính |
+| Collection | Tr╞░ß╗¥ng ch├¡nh |
 |---|---|
 | **Users** | _id, tenantId, branchId, role, firstName, lastName, phoneNumber, email, status |
 | **Branches** | _id, tenantId, name, address, phone, managerId, status |
@@ -195,7 +195,7 @@ Key collections — dùng khi tạo types/forms:
 
 ---
 
-## 8. API Endpoints đã biết
+## 8. API Endpoints ─æ├ú biß║┐t
 
 | Module | Method | Endpoint | Access |
 |---|---|---|---|
@@ -216,32 +216,32 @@ Key collections — dùng khi tạo types/forms:
 
 ## 9. Coding Rules
 
-- **Tất cả text hiển thị:** tiếng Việt (default), có thể thêm EN sau
-- **`'use client'`** chỉ khi dùng hooks/browser API
-- **Không dùng** `window`/`document` trong server components
-- **Components:** nhỏ, single responsibility, tách file riêng
-- **Không thêm thư viện mới** mà không có approval
-- **Không dùng inline styles** — dùng Tailwind utilities
+- **Tß║Ñt cß║ú text hiß╗ân thß╗ï:** tiß║┐ng Viß╗çt (default), c├│ thß╗â th├¬m EN sau
+- **`'use client'`** chß╗ë khi d├╣ng hooks/browser API
+- **Kh├┤ng d├╣ng** `window`/`document` trong server components
+- **Components:** nhß╗Å, single responsibility, t├ích file ri├¬ng
+- **Kh├┤ng th├¬m th╞░ viß╗çn mß╗¢i** m├á kh├┤ng c├│ approval
+- **Kh├┤ng d├╣ng inline styles** ΓÇö d├╣ng Tailwind utilities
 - **Form validation:** react-hook-form + Zod v4
-- **Icons:** chỉ dùng `lucide-react`
-- **Toasts:** chỉ dùng `sonner`
-- **Khi API chưa sẵn sàng:** dùng mock data trong provider, khi BE deploy sẽ tự hoạt động
+- **Icons:** chß╗ë d├╣ng `lucide-react`
+- **Toasts:** chß╗ë d├╣ng `sonner`
+- **Khi API ch╞░a sß║╡n s├áng:** d├╣ng mock data trong provider, khi BE deploy sß║╜ tß╗▒ hoß║ít ─æß╗Öng
 
 ---
 
 ## 10. Sidebar Navigation (app-sidebar.tsx)
 
-Routes đã có trong sidebar:
-- `/dashboard` — Tổng quan
-- `/staffs` — Nhân viên (list, schedule, payroll)
-- `/products` — Hàng hóa
-- `/exchange/suppliers` — Nhà cung cấp
-- `/exchange/imports` — Nhập hàng ✅
-- `/exchange/exports` — Chuyển kho ✅
-- `/sales/invoices` — Hoá đơn
-- `/sales/returns` — Trả hàng
-- `/sales/warranty-requests` — Yêu cầu bảo hành
-- `/users` — Khách hàng
-- `/promotions` — Khuyến mãi
+Routes ─æ├ú c├│ trong sidebar:
+- `/dashboard` ΓÇö Tß╗òng quan
+- `/staffs` ΓÇö Nh├ón vi├¬n (list, schedule, payroll)
+- `/products` ΓÇö H├áng h├│a
+- `/exchange/suppliers` ΓÇö Nh├á cung cß║Ñp
+- `/exchange/imports` ΓÇö Nhß║¡p h├áng Γ£à
+- `/exchange/exports` ΓÇö Chuyß╗ân kho Γ£à
+- `/sales/invoices` ΓÇö Ho├í ─æ╞ín
+- `/sales/returns` ΓÇö Trß║ú h├áng
+- `/sales/warranty-requests` ΓÇö Y├¬u cß║ºu bß║úo h├ánh
+- `/users` ΓÇö Kh├ích h├áng
+- `/promotions` ΓÇö Khuyß║┐n m├úi
 
 <!-- END:nextjs-agent-rules -->
