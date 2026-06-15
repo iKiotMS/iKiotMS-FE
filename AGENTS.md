@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# iKiot Management System — Frontend Project Memory
+# Florlen Frontend Agent Guidelines
 
 > **Mục đích file này:** Bộ nhớ dự án dùng chung cho tất cả AI agent (Cursor, Claude Code CLI).
 > Đọc file này trước khi bắt đầu code bất kỳ tính năng nào.
