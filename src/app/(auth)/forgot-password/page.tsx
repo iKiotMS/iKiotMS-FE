@@ -1,4 +1,4 @@
-import { ForgotPasswordForm2 } from "./components/forgot-password-form-2";
+import { ForgotPasswordForm2 } from "./components/forgot-password-form";
 import { Logo } from "@/components/logo";
 import Link from "next/link";
 import Image from "next/image";

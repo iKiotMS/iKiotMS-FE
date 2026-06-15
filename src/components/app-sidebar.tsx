@@ -8,15 +8,17 @@ import {
   CheckSquare,
   MessageCircle,
   Calendar,
-  Shield,
   AlertTriangle,
   Settings,
   HelpCircle,
   CreditCard,
   LayoutTemplate,
   Users,
+  Package,
+  ShoppingCart,
+  Shuffle,
+  Ticket,
 } from "lucide-react";
-import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { BranchSwitcher } from "@/components/switcher/branch-switcher";
 import { SidebarNotification } from "@/components/sidebar-notification";
@@ -28,9 +30,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
 const data = {
@@ -41,22 +40,99 @@ const data = {
   },
   navGroups: [
     {
-      label: "Dashboards",
+      label: "Quản lý",
       items: [
         {
-          title: "Dashboard 1",
+          title: "Tổng quan",
           url: "/dashboard",
           icon: LayoutDashboard,
         },
         {
-          title: "Dashboard 2",
-          url: "/dashboard-2",
-          icon: LayoutPanelLeft,
+          title: "Nhân viên",
+          url: "#",
+          icon: Users,
+          items: [
+            {
+              title: "Danh sách",
+              url: "/staffs",
+            },
+            {
+              title: "Lịch làm",
+              url: "/staffs/schedule",
+            },
+            {
+              title: "Bảng lương",
+              url: "/staffs/payroll",
+            },
+          ],
         },
       ],
     },
     {
-      label: "Apps",
+      label: "Quản lý bán hàng",
+      items: [
+        {
+          title: "Hàng hóa",
+          url: "/products",
+          icon: Package,
+        },
+        {
+          title: "Giao dịch",
+          url: "/#",
+          icon: Shuffle,
+          items: [
+            {
+              title: "Nhà cung cấp",
+              url: "/exchange/suppliers",
+            },
+            {
+              title: "Nhập hàng",
+              url: "/exchange/imports",
+            },
+            {
+              title: "Xuất hàng",
+              url: "/exchange/exports",
+            },
+          ],
+        },
+        {
+          title: "Đơn hàng",
+          url: "/#",
+          icon: ShoppingCart,
+          items: [
+            {
+              title: "Hoá đơn",
+              url: "/sales/invoices",
+            },
+            {
+              title: "Trả hàng",
+              url: "/sales/returns",
+            },
+            {
+              title: "Yêu cầu bảo hành",
+              url: "/sales/warranty-requests",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      label: "CRM",
+      items: [
+        {
+          title: "Khách hàng",
+          url: "/users",
+          icon: Users,
+        },
+        {
+          title: "Khuyến mãi",
+          url: "/promotions",
+          icon: Ticket,
+        },
+      ],
+    },
+    {
+      label: "(Tham khảo UI)",
       items: [
         {
           title: "Mail",
@@ -83,11 +159,6 @@ const data = {
           url: "/users",
           icon: Users,
         },
-      ],
-    },
-    {
-      label: "Pages",
-      items: [
         {
           title: "Landing",
           url: "/landing",

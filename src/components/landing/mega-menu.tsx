@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Shield,
@@ -6,97 +6,105 @@ import {
   Database,
   Building2,
   Rocket,
-  Settings,
   Zap,
   Package,
   Layout,
   Crown,
-  Palette
-} from 'lucide-react'
+  Palette,
+} from "lucide-react";
 
 const menuSections = [
   {
-    title: 'Tính năng cốt lõi',
+    title: "Tính năng cốt lõi",
     items: [
       {
-        title: 'Bán hàng & POS',
-        description: 'Tạo hóa đơn, tính tiền, áp dụng khuyến mãi & VAT tức thì tại quầy',
+        title: "Bán hàng & POS",
+        description:
+          "Tạo hóa đơn, tính tiền, áp dụng khuyến mãi & VAT tức thì tại quầy",
         icon: Package,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Quản lý tồn kho',
-        description: 'Theo dõi tồn kho chi nhánh & kho tổng real-time sau mỗi giao dịch',
+        title: "Quản lý tồn kho",
+        description:
+          "Theo dõi tồn kho chi nhánh & kho tổng real-time sau mỗi giao dịch",
         icon: Crown,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Quản lý sản phẩm',
-        description: 'Chi tiết thông số, giá bán/nhập, thương hiệu, bảo hành & VAT',
+        title: "Quản lý sản phẩm",
+        description:
+          "Chi tiết thông số, giá bán/nhập, thương hiệu, bảo hành & VAT",
         icon: BarChart3,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Nhập xuất kho',
-        description: 'Theo dõi đơn nhập nhà cung cấp, luân chuyển kho chi nhánh chặt chẽ',
+        title: "Nhập xuất kho",
+        description:
+          "Theo dõi đơn nhập nhà cung cấp, luân chuyển kho chi nhánh chặt chẽ",
         icon: Layout,
-        href: '#features'
-      }
-    ]
+        href: "#features",
+      },
+    ],
   },
   {
-    title: 'Quản trị chuỗi',
+    title: "Quản trị chuỗi",
     items: [
       {
-        title: 'Khách hàng',
-        description: 'Hồ sơ khách hàng, lịch sử mua sắm và chăm sóc cá nhân hóa',
+        title: "Khách hàng",
+        description:
+          "Hồ sơ khách hàng, lịch sử mua sắm và chăm sóc cá nhân hóa",
         icon: Building2,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Nhân viên & Ca làm',
-        description: 'Phân ca làm việc, chấm công và phân công chi nhánh tiện lợi',
+        title: "Nhân viên & Ca làm",
+        description:
+          "Phân ca làm việc, chấm công và phân công chi nhánh tiện lợi",
         icon: Rocket,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Quản lý khuyến mãi',
-        description: 'Tự động áp dụng chiến dịch giảm giá theo sản phẩm/chi nhánh',
+        title: "Quản lý khuyến mãi",
+        description:
+          "Tự động áp dụng chiến dịch giảm giá theo sản phẩm/chi nhánh",
         icon: BarChart3,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Gói dịch vụ',
-        description: 'Đăng ký subscription linh hoạt theo tháng/năm tối ưu chi phí',
+        title: "Gói dịch vụ",
+        description:
+          "Đăng ký subscription linh hoạt theo tháng/năm tối ưu chi phí",
         icon: Shield,
-        href: '#features'
-      }
-    ]
+        href: "#features",
+      },
+    ],
   },
   {
-    title: 'Dữ liệu & AI thông minh',
+    title: "Dữ liệu & AI thông minh",
     items: [
       {
-        title: 'Báo cáo thống kê',
-        description: 'Dashboard doanh thu, lãi lỗ tức thì & xuất báo cáo Excel',
+        title: "Báo cáo thống kê",
+        description: "Dashboard doanh thu, lãi lỗ tức thì & xuất báo cáo Excel",
         icon: Database,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'Tổng hợp dữ liệu',
-        description: 'Hợp nhất dữ liệu từ nhiều nguồn vận hành và API đối tác',
+        title: "Tổng hợp dữ liệu",
+        description: "Hợp nhất dữ liệu từ nhiều nguồn vận hành và API đối tác",
         icon: Palette,
-        href: '#features'
+        href: "#features",
       },
       {
-        title: 'AI dự báo xu hướng',
-        description: 'Phân tích sản phẩm trend, xu hướng mua sắm, đưa ra lời khuyên nhập hàng',
+        title: "AI dự báo xu hướng",
+        description:
+          "Phân tích sản phẩm trend, xu hướng mua sắm, đưa ra lời khuyên nhập hàng",
         icon: Zap,
-        href: '#features'
-      }
-    ]
-  }
-]
+        href: "#features",
+      },
+    ],
+  },
+];
 
 export function MegaMenu() {
   return (
@@ -133,5 +141,5 @@ export function MegaMenu() {
         ))}
       </div>
     </div>
-  )
+  );
 }
