@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent,CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -90,7 +91,16 @@ export default function UserSettingsPage() {
   }
 
   return (
-    <div className="px-4 lg:px-6">
+    <div className="space-y-6 px-4 lg:px-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Cài đặt' },
+            { label: 'Hồ sơ' },
+          ]}
+          title="Hồ sơ cá nhân"
+          description="Cập nhật thông tin và tùy chọn hồ sơ của bạn"
+        />
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Card>

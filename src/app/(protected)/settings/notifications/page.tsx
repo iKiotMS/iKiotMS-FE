@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -90,12 +91,15 @@ export default function NotificationSettings() {
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
-        <div>
-          <h1 className="text-3xl font-bold">Notifications</h1>
-          <p className="text-muted-foreground">
-            Configure how you receive notifications.
-          </p>
-        </div>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Cài đặt' },
+            { label: 'Thông báo' },
+          ]}
+          title="Thông báo"
+          description="Cấu hình cách bạn nhận thông báo"
+        />
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
