@@ -5,7 +5,7 @@ import { ProductsMutateDialog } from './products-mutate-dialog'
 import { ProductsDeleteDialog } from './products-delete-dialog'
 
 export function ProductsDialogs() {
-  const { open, setOpen, currentRow, setCurrentRow } = useProducts()
+  const { open, setOpen, currentRow, setCurrentRow, selectedIds } = useProducts()
 
   return (
     <>
@@ -30,7 +30,8 @@ export function ProductsDialogs() {
         />
       )}
       <ProductsDeleteDialog
-        open={open === 'delete'}
+        open={open === 'delete' || open === 'deleteMany'}
+        mode={open === 'deleteMany' ? 'deleteMany' : 'delete'}
         onOpenChange={(v) => {
           if (!v) {
             setOpen(null)
@@ -38,6 +39,7 @@ export function ProductsDialogs() {
           }
         }}
         currentRow={currentRow}
+        selectedIds={selectedIds}
       />
     </>
   )
