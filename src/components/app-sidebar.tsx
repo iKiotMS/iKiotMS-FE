@@ -75,6 +75,20 @@ const data = {
           title: "Hàng hóa",
           url: "/products",
           icon: Package,
+          items: [
+            {
+              title: "Danh sách",
+              url: "/products",
+            },
+            {
+              title: "Danh mục",
+              url: "/categories",
+            },
+            {
+              title: "Thương hiệu",
+              url: "/brands",
+            },
+          ],
         },
         {
           title: "Giao dịch",
