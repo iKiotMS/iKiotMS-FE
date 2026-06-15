@@ -1,6 +1,16 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# Florlen Frontend Agent Guidelines
+Before performing any task:
+
+1. Read this AGENTS.md completely.
+2. Check available skills in .agent/skills.
+3. Determine whether one or more skills are applicable.
+4. Load and follow the matching SKILL.md files.
+5. If multiple skills apply, combine them.
+
+Skills location: WDP301/skills/\*
+
+# Frontend Agent Guidelines
 
 - At very first, check the components folder, prioritize use components from this folder.
 - If not found, use shadcn/ui components, as they are the base of the components folder. check https://ui.shadcn.com/docs/components, if it is available and suitable, must use it.
