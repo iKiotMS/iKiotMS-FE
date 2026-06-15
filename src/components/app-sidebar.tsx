@@ -61,6 +61,10 @@ const data = {
               url: "/staffs/schedule",
             },
             {
+              title: "Nghỉ phép",
+              url: "/staffs/schedule/leave-requests",
+            },
+            {
               title: "Bảng lương",
               url: "/staffs/payroll",
             },
