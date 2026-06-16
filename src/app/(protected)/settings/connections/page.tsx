@@ -1,11 +1,12 @@
 "use client"
+import { useState } from "react"
+import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Github, Slack, Twitter, Zap, Globe, Database, Apple, Chrome, Facebook, Instagram, Dribbble } from "lucide-react"
-import { useState } from "react"
 export default function ConnectionSettings() {
   // Controlled state for switches
   const [appleConnected, setAppleConnected] = useState(true)
@@ -18,12 +19,15 @@ export default function ConnectionSettings() {
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
-        <div>
-          <h1 className="text-3xl font-bold">Connections</h1>
-          <p className="text-muted-foreground">
-            Connect your account with third-party services and integrations.
-          </p>
-        </div>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Cài đặt' },
+            { label: 'Kết nối' },
+          ]}
+          title="Kết nối"
+          description="Kết nối tài khoản với các dịch vụ và ứng dụng bên thứ ba"
+        />
 
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
           <Card>

@@ -1,9 +1,9 @@
 import { type ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import { type Product } from "./products-provider";
-import { ProductsRowActions } from "./products-row-actions";
 
 const formatVND = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
@@ -87,6 +87,20 @@ export const productsColumns: ColumnDef<Product>[] = [
     size: 50,
   },
   {
+    id: "image",
+    header: "",
+    cell: ({ row }) => (
+      <img
+        src={row.original.imageUrl || "https://placehold.co/40x40/e2e8f0/94a3b8?text=IMG"}
+        alt={row.original.name}
+        className="size-10 rounded-md object-cover border"
+      />
+    ),
+    size: 56,
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     accessorKey: "productCode",
     header: ({ column }) => <SortableHeader label="Mã hàng" column={column} />,
     cell: ({ row }) => (
@@ -105,9 +119,7 @@ export const productsColumns: ColumnDef<Product>[] = [
       return (
         <div className="flex flex-col">
           <span className="font-medium">{product.name}</span>
-          <span className="text-xs text-muted-foreground">
-            {product.brandName}
-          </span>
+          <span className="text-xs text-muted-foreground">{product.brandName}</span>
         </div>
       );
     },
@@ -177,9 +189,17 @@ export const productsColumns: ColumnDef<Product>[] = [
       row.getValue(columnId) === value,
   },
   {
-    id: "actions",
-    header: "Thao tác",
-    cell: ({ row }) => <ProductsRowActions row={row} />,
+    id: "expand",
+    header: "",
+    cell: ({ row }) => (
+      <ChevronRight
+        className={cn(
+          "size-4 text-muted-foreground transition-transform duration-200",
+          row.getIsExpanded() && "rotate-90",
+        )}
+      />
+    ),
+    size: 40,
     enableSorting: false,
     enableHiding: false,
   },

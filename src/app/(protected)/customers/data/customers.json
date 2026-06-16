@@ -1,0 +1,583 @@
+[
+  {
+    "id": "1",
+    "customerCode": "KH-001",
+    "name": "Nguyễn Văn An",
+    "phone": "0901234567",
+    "gender": "MALE",
+    "address": "123 Nguyễn Trãi, Q1, TP.HCM",
+    "dob": "1990-05-15",
+    "createdAt": "2025-01-10",
+    "orders": [
+      {
+        "id": "ORD-001",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "CASH",
+        "grandTotal": 250000,
+        "items": [
+          { "productName": "Nước suối Lavie 500ml", "quantity": 20, "unitPrice": 6000 },
+          { "productName": "Coca-Cola lon 330ml", "quantity": 10, "unitPrice": 12000 }
+        ],
+        "createdAt": "2025-01-15"
+      },
+      {
+        "id": "ORD-002",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 480000,
+        "items": [
+          { "productName": "Mì tôm Hảo Hảo", "quantity": 50, "unitPrice": 4500 },
+          { "productName": "Dầu ăn Neptune 1L", "quantity": 3, "unitPrice": 55000 }
+        ],
+        "createdAt": "2025-02-20"
+      },
+      {
+        "id": "ORD-003",
+        "branchName": "Chi nhánh B",
+        "status": "CANCELLED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "MOMO",
+        "grandTotal": 120000,
+        "items": [
+          { "productName": "Bánh Oreo", "quantity": 5, "unitPrice": 24000 }
+        ],
+        "createdAt": "2025-03-05"
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "customerCode": "KH-002",
+    "name": "Trần Thị Bảo",
+    "phone": "0912345678",
+    "gender": "FEMALE",
+    "address": "456 Lê Lợi, Q3, TP.HCM",
+    "dob": "1995-08-22",
+    "createdAt": "2025-01-15",
+    "orders": [
+      {
+        "id": "ORD-004",
+        "branchName": "Chi nhánh B",
+        "status": "COMPLETED",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "MOMO",
+        "grandTotal": 350000,
+        "items": [
+          { "productName": "Sữa Vinamilk 1L", "quantity": 5, "unitPrice": 35000 },
+          { "productName": "Bánh mì sandwich", "quantity": 10, "unitPrice": 22500 }
+        ],
+        "createdAt": "2025-01-20"
+      },
+      {
+        "id": "ORD-005",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "CASH",
+        "grandTotal": 675000,
+        "items": [
+          { "productName": "Cáp sạc Type-C 2m", "quantity": 3, "unitPrice": 85000 },
+          { "productName": "Pin dự phòng 10000mAh", "quantity": 1, "unitPrice": 420000 }
+        ],
+        "createdAt": "2025-03-10"
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "customerCode": "KH-003",
+    "name": "Lê Hoàng Cường",
+    "phone": "0923456789",
+    "gender": "MALE",
+    "address": "789 Hai Bà Trưng, Q3, TP.HCM",
+    "dob": "1988-12-03",
+    "createdAt": "2025-01-20",
+    "orders": [
+      {
+        "id": "ORD-006",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "VNPAY",
+        "grandTotal": 1200000,
+        "items": [
+          { "productName": "Tai nghe Xiaomi Redmi Buds", "quantity": 1, "unitPrice": 750000 },
+          { "productName": "Ốp lưng iPhone 15", "quantity": 2, "unitPrice": 225000 }
+        ],
+        "createdAt": "2025-02-05"
+      },
+      {
+        "id": "ORD-007",
+        "branchName": "Chi nhánh C",
+        "status": "RETURNED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "VNPAY",
+        "grandTotal": 350000,
+        "items": [
+          { "productName": "Chuột không dây Logitech", "quantity": 1, "unitPrice": 350000 }
+        ],
+        "createdAt": "2025-02-18"
+      },
+      {
+        "id": "ORD-008",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 890000,
+        "items": [
+          { "productName": "Bàn phím cơ Keychron K2", "quantity": 1, "unitPrice": 890000 }
+        ],
+        "createdAt": "2025-04-12"
+      }
+    ]
+  },
+  {
+    "id": "4",
+    "customerCode": "KH-004",
+    "name": "Phạm Thị Duyên",
+    "phone": "0934567890",
+    "gender": "FEMALE",
+    "address": "321 Điện Biên Phủ, Q10, TP.HCM",
+    "dob": "1993-03-17",
+    "createdAt": "2025-02-01",
+    "orders": [
+      {
+        "id": "ORD-009",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "CASH",
+        "grandTotal": 185000,
+        "items": [
+          { "productName": "Sữa rửa mặt Cetaphil", "quantity": 1, "unitPrice": 185000 }
+        ],
+        "createdAt": "2025-02-10"
+      },
+      {
+        "id": "ORD-010",
+        "branchName": "Chi nhánh B",
+        "status": "COMPLETED",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "MOMO",
+        "grandTotal": 425000,
+        "items": [
+          { "productName": "Kem dưỡng da Pond's", "quantity": 2, "unitPrice": 95000 },
+          { "productName": "Serum vitamin C The Ordinary", "quantity": 1, "unitPrice": 235000 }
+        ],
+        "createdAt": "2025-03-25"
+      },
+      {
+        "id": "ORD-011",
+        "branchName": "Chi nhánh A",
+        "status": "PENDING",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "VNPAY",
+        "grandTotal": 320000,
+        "items": [
+          { "productName": "Toner Innisfree", "quantity": 1, "unitPrice": 320000 }
+        ],
+        "createdAt": "2025-05-30"
+      }
+    ]
+  },
+  {
+    "id": "5",
+    "customerCode": "KH-005",
+    "name": "Võ Minh Đức",
+    "phone": "0945678901",
+    "gender": "MALE",
+    "address": "654 Cộng Hòa, Tân Bình, TP.HCM",
+    "dob": "1985-07-28",
+    "createdAt": "2025-02-10",
+    "orders": [
+      {
+        "id": "ORD-012",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 2450000,
+        "items": [
+          { "productName": "Samsung Galaxy A35 5G", "quantity": 1, "unitPrice": 2450000 }
+        ],
+        "createdAt": "2025-02-20"
+      },
+      {
+        "id": "ORD-013",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "CASH",
+        "grandTotal": 550000,
+        "items": [
+          { "productName": "Cáp sạc Anker 100W", "quantity": 1, "unitPrice": 280000 },
+          { "productName": "Kính cường lực iPhone 15", "quantity": 2, "unitPrice": 135000 }
+        ],
+        "createdAt": "2025-04-05"
+      }
+    ]
+  },
+  {
+    "id": "6",
+    "customerCode": "KH-006",
+    "name": "Nguyễn Thị Hương",
+    "phone": "0956789012",
+    "gender": "FEMALE",
+    "address": "987 Phan Đình Phùng, Phú Nhuận, TP.HCM",
+    "dob": "1998-11-09",
+    "createdAt": "2025-02-15",
+    "orders": [
+      {
+        "id": "ORD-014",
+        "branchName": "Chi nhánh B",
+        "status": "COMPLETED",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "MOMO",
+        "grandTotal": 78000,
+        "items": [
+          { "productName": "Kẹo cao su Orbit", "quantity": 3, "unitPrice": 18000 },
+          { "productName": "Nước suối Lavie 330ml", "quantity": 4, "unitPrice": 6000 }
+        ],
+        "createdAt": "2025-02-20"
+      },
+      {
+        "id": "ORD-015",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "CASH",
+        "grandTotal": 145000,
+        "items": [
+          { "productName": "Vitamin C 1000mg Kirkland", "quantity": 1, "unitPrice": 145000 }
+        ],
+        "createdAt": "2025-03-15"
+      },
+      {
+        "id": "ORD-016",
+        "branchName": "Chi nhánh B",
+        "status": "COMPLETED",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 260000,
+        "items": [
+          { "productName": "Khẩu trang y tế hộp 50c", "quantity": 2, "unitPrice": 65000 },
+          { "productName": "Gel rửa tay Lifebuoy", "quantity": 2, "unitPrice": 65000 }
+        ],
+        "createdAt": "2025-04-22"
+      }
+    ]
+  },
+  {
+    "id": "7",
+    "customerCode": "KH-007",
+    "name": "Đặng Quốc Hùng",
+    "phone": "0967890123",
+    "gender": "MALE",
+    "address": "147 Nguyễn Thị Minh Khai, Q3, TP.HCM",
+    "dob": "1982-02-14",
+    "createdAt": "2025-03-01",
+    "orders": [
+      {
+        "id": "ORD-017",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "CASH",
+        "grandTotal": 3200000,
+        "items": [
+          { "productName": "Xiaomi Redmi Note 13", "quantity": 1, "unitPrice": 3200000 }
+        ],
+        "createdAt": "2025-03-10"
+      }
+    ]
+  },
+  {
+    "id": "8",
+    "customerCode": "KH-008",
+    "name": "Bùi Thị Lan",
+    "phone": "0978901234",
+    "gender": "FEMALE",
+    "address": "258 Trường Chinh, Tân Bình, TP.HCM",
+    "dob": "2000-06-30",
+    "createdAt": "2025-03-05",
+    "orders": [
+      {
+        "id": "ORD-018",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "MOMO",
+        "grandTotal": 120000,
+        "items": [
+          { "productName": "Bút bi Thiên Long", "quantity": 10, "unitPrice": 5000 },
+          { "productName": "Tập 200 trang Bến Nghé", "quantity": 5, "unitPrice": 14000 }
+        ],
+        "createdAt": "2025-03-12"
+      },
+      {
+        "id": "ORD-019",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "CASH",
+        "grandTotal": 95000,
+        "items": [
+          { "productName": "Bút dạ quang Stabilo", "quantity": 5, "unitPrice": 19000 }
+        ],
+        "createdAt": "2025-04-18"
+      },
+      {
+        "id": "ORD-020",
+        "branchName": "Chi nhánh B",
+        "status": "PENDING",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "VNPAY",
+        "grandTotal": 450000,
+        "items": [
+          { "productName": "Ba lô học sinh Herschel", "quantity": 1, "unitPrice": 450000 }
+        ],
+        "createdAt": "2025-06-10"
+      }
+    ]
+  },
+  {
+    "id": "9",
+    "customerCode": "KH-009",
+    "name": "Hồ Văn Minh",
+    "phone": "0989012345",
+    "gender": "MALE",
+    "address": "369 Nguyễn Văn Cừ, Q5, TP.HCM",
+    "dob": "1975-09-12",
+    "createdAt": "2025-03-10",
+    "orders": [
+      {
+        "id": "ORD-021",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 850000,
+        "items": [
+          { "productName": "Nồi cơm điện Sunhouse 1.8L", "quantity": 1, "unitPrice": 850000 }
+        ],
+        "createdAt": "2025-03-18"
+      },
+      {
+        "id": "ORD-022",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "CASH",
+        "grandTotal": 320000,
+        "items": [
+          { "productName": "Bình đun nước Sunhouse 2L", "quantity": 1, "unitPrice": 320000 }
+        ],
+        "createdAt": "2025-04-30"
+      }
+    ]
+  },
+  {
+    "id": "10",
+    "customerCode": "KH-010",
+    "name": "Vũ Thị Nga",
+    "phone": "0990123456",
+    "gender": "FEMALE",
+    "address": "741 Lý Thường Kiệt, Q10, TP.HCM",
+    "dob": "1992-01-25",
+    "createdAt": "2025-03-20",
+    "orders": [
+      {
+        "id": "ORD-023",
+        "branchName": "Chi nhánh B",
+        "status": "COMPLETED",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "MOMO",
+        "grandTotal": 560000,
+        "items": [
+          { "productName": "Dầu gội Sunsilk 650ml", "quantity": 2, "unitPrice": 95000 },
+          { "productName": "Sữa tắm Dove 530ml", "quantity": 2, "unitPrice": 82000 },
+          { "productName": "Kem đánh răng Colgate 230g", "quantity": 3, "unitPrice": 42000 }
+        ],
+        "createdAt": "2025-04-01"
+      }
+    ]
+  },
+  {
+    "id": "11",
+    "customerCode": "KH-011",
+    "name": "Trương Thanh Phong",
+    "phone": "0901112233",
+    "gender": "MALE",
+    "address": "852 Đinh Tiên Hoàng, Bình Thạnh, TP.HCM",
+    "dob": "1987-04-08",
+    "createdAt": "2025-04-01",
+    "orders": [
+      {
+        "id": "ORD-024",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "VNPAY",
+        "grandTotal": 4500000,
+        "items": [
+          { "productName": "Samsung Galaxy Tab A9", "quantity": 1, "unitPrice": 4500000 }
+        ],
+        "createdAt": "2025-04-10"
+      },
+      {
+        "id": "ORD-025",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "CASH",
+        "grandTotal": 650000,
+        "items": [
+          { "productName": "Bao da Samsung Tab A9", "quantity": 1, "unitPrice": 350000 },
+          { "productName": "Cường lực Tab A9", "quantity": 1, "unitPrice": 120000 },
+          { "productName": "Bàn phím bluetooth Tab", "quantity": 1, "unitPrice": 180000 }
+        ],
+        "createdAt": "2025-04-11"
+      }
+    ]
+  },
+  {
+    "id": "12",
+    "customerCode": "KH-012",
+    "name": "Mai Thị Quỳnh",
+    "phone": "0912223344",
+    "gender": "FEMALE",
+    "address": "963 Nguyễn Hữu Cảnh, Bình Thạnh, TP.HCM",
+    "dob": "2002-10-19",
+    "createdAt": "2025-04-15",
+    "orders": [
+      {
+        "id": "ORD-026",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "MOMO",
+        "grandTotal": 215000,
+        "items": [
+          { "productName": "Khăn giấy Bless You hộp 100c", "quantity": 3, "unitPrice": 35000 },
+          { "productName": "Nước tẩy rửa Sunlight 1L", "quantity": 2, "unitPrice": 45000 }
+        ],
+        "createdAt": "2025-04-20"
+      },
+      {
+        "id": "ORD-027",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "CASH",
+        "grandTotal": 380000,
+        "items": [
+          { "productName": "Nước xả vải Downy 1.5L", "quantity": 2, "unitPrice": 95000 },
+          { "productName": "Bột giặt Omo 3kg", "quantity": 1, "unitPrice": 190000 }
+        ],
+        "createdAt": "2025-05-15"
+      }
+    ]
+  },
+  {
+    "id": "13",
+    "customerCode": "KH-013",
+    "name": "Lý Văn Sơn",
+    "phone": "0923334455",
+    "gender": "MALE",
+    "address": "135 Nguyễn Xí, Bình Thạnh, TP.HCM",
+    "dob": "1979-06-22",
+    "createdAt": "2025-05-01",
+    "orders": [
+      {
+        "id": "ORD-028",
+        "branchName": "Chi nhánh B",
+        "status": "COMPLETED",
+        "staffName": "Lê Văn Bình",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 1750000,
+        "items": [
+          { "productName": "Nồi chiên không dầu Philips 4.1L", "quantity": 1, "unitPrice": 1750000 }
+        ],
+        "createdAt": "2025-05-08"
+      }
+    ]
+  },
+  {
+    "id": "14",
+    "customerCode": "KH-014",
+    "name": "Ngô Thị Tuyết",
+    "phone": "0934445566",
+    "gender": "FEMALE",
+    "address": "246 Bạch Đằng, Bình Thạnh, TP.HCM",
+    "dob": "1996-03-04",
+    "createdAt": "2025-05-10",
+    "orders": [
+      {
+        "id": "ORD-029",
+        "branchName": "Chi nhánh C",
+        "status": "COMPLETED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "MOMO",
+        "grandTotal": 145000,
+        "items": [
+          { "productName": "Bánh quy Cosy hộp 300g", "quantity": 2, "unitPrice": 42000 },
+          { "productName": "Kẹo dẻo Haribo", "quantity": 3, "unitPrice": 20333 }
+        ],
+        "createdAt": "2025-05-18"
+      },
+      {
+        "id": "ORD-030",
+        "branchName": "Chi nhánh C",
+        "status": "CANCELLED",
+        "staffName": "Phạm Thu Hà",
+        "paymentMethod": "VNPAY",
+        "grandTotal": 89000,
+        "items": [
+          { "productName": "Trà sữa Tiger Sugar lon", "quantity": 4, "unitPrice": 22250 }
+        ],
+        "createdAt": "2025-05-25"
+      }
+    ]
+  },
+  {
+    "id": "15",
+    "customerCode": "KH-015",
+    "name": "Phan Đình Uy",
+    "phone": "0945556677",
+    "gender": "OTHER",
+    "address": "357 Hoàng Văn Thụ, Phú Nhuận, TP.HCM",
+    "dob": "1991-12-31",
+    "createdAt": "2025-06-01",
+    "orders": [
+      {
+        "id": "ORD-031",
+        "branchName": "Chi nhánh A",
+        "status": "COMPLETED",
+        "staffName": "Trần Thị Mai",
+        "paymentMethod": "CASH",
+        "grandTotal": 960000,
+        "items": [
+          { "productName": "Máy xay sinh tố Philips 1.5L", "quantity": 1, "unitPrice": 960000 }
+        ],
+        "createdAt": "2025-06-05"
+      },
+      {
+        "id": "ORD-032",
+        "branchName": "Chi nhánh A",
+        "status": "PENDING",
+        "staffName": "Nguyễn Minh Tuấn",
+        "paymentMethod": "BANK_TRANSFER",
+        "grandTotal": 1280000,
+        "items": [
+          { "productName": "Máy lọc không khí Sharp", "quantity": 1, "unitPrice": 1280000 }
+        ],
+        "createdAt": "2025-06-14"
+      }
+    ]
+  }
+]
