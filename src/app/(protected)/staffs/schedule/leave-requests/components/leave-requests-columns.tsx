@@ -1,43 +1,20 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import {
+  LEAVE_STATUS_MAP,
+  LEAVE_TYPE_MAP,
+} from "@/app/(protected)/staffs/shared/leave-request-status";
 import type { LeaveRequest } from "@/types/leave-request";
-import { LeaveRequestsRowActions } from "./leave-requests-row-actions";
-
-export const TYPE_LABELS: Record<LeaveRequest["type"], string> = {
-  SICK: "Ốm đau",
-  PERSONAL: "Việc cá nhân",
-  ANNUAL: "Nghỉ phép năm",
-  OTHER: "Khác",
-};
-
-export const STATUS_MAP: Record<
-  LeaveRequest["status"],
-  { label: string; className: string }
-> = {
-  PENDING: {
-    label: "Chờ duyệt",
-    className:
-      "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20",
-  },
-  APPROVED: {
-    label: "Đã duyệt",
-    className:
-      "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20",
-  },
-  REJECTED: {
-    label: "Từ chối",
-    className: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20",
-  },
-  CANCELLED: {
-    label: "Đã hủy",
-    className:
-      "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20",
-  },
-};
 
 function SortableHeader({
   label,
@@ -112,9 +89,10 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
   {
     accessorKey: "type",
     header: "Loại nghỉ",
-    cell: ({ row }) => (
-      <Badge variant="secondary">{TYPE_LABELS[row.original.type]}</Badge>
-    ),
+    cell: ({ row }) => {
+      const config = LEAVE_TYPE_MAP[row.original.type];
+      return <Badge variant={config.variant}>{config.label}</Badge>;
+    },
     filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
@@ -123,7 +101,8 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     cell: ({ row }) => (
       <div className="flex flex-col text-sm">
         <span>
-          {format(new Date(row.original.fromDate), "dd/MM/yyyy", { locale: vi })} -{" "}
+          {format(new Date(row.original.fromDate), "dd/MM/yyyy", { locale: vi })}{" "}
+          -{" "}
           {format(new Date(row.original.toDate), "dd/MM/yyyy", { locale: vi })}
         </span>
         <span className="text-muted-foreground">
@@ -145,20 +124,26 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const { label, className } = STATUS_MAP[row.original.status];
-      return (
-        <Badge variant="secondary" className={className}>
-          {label}
-        </Badge>
-      );
+      const config = LEAVE_STATUS_MAP[row.original.status];
+      return <Badge variant={config.variant}>{config.label}</Badge>;
     },
     filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
-    id: "actions",
-    header: "Thao tác",
-    cell: ({ row }) => <LeaveRequestsRowActions row={row} />,
+    id: "expand",
+    header: "",
+    cell: ({ row }) => (
+      <ChevronRight
+        className={cn(
+          "size-4 text-muted-foreground transition-transform duration-200",
+          row.getIsExpanded() && "rotate-90",
+        )}
+      />
+    ),
+    size: 40,
     enableSorting: false,
     enableHiding: false,
   },
 ];
+
+export { LEAVE_TYPE_MAP as TYPE_LABELS, LEAVE_STATUS_MAP as STATUS_MAP };

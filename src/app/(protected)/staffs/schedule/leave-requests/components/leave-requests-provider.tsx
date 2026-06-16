@@ -10,15 +10,13 @@ import type {
   ReviewLeaveRequestPayload,
 } from "@/types/leave-request";
 
-export type LeaveRequestsDialogType = "create" | "review";
+export type LeaveRequestsDialogType = "create";
 
 type LeaveRequestsContextType = {
   leaveRequests: LeaveRequest[];
   isLoading: boolean;
   open: LeaveRequestsDialogType | null;
   setOpen: (value: LeaveRequestsDialogType | null) => void;
-  currentRow: LeaveRequest | null;
-  setCurrentRow: React.Dispatch<React.SetStateAction<LeaveRequest | null>>;
   fetchLeaveRequests: () => Promise<void>;
   handleCreate: (payload: CreateLeaveRequestPayload) => Promise<void>;
   handleReview: (
@@ -39,7 +37,6 @@ export function LeaveRequestsProvider({
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState<LeaveRequestsDialogType | null>(null);
-  const [currentRow, setCurrentRow] = useState<LeaveRequest | null>(null);
   const mockData = useMemo(() => MOCK_LEAVE_REQUESTS, []);
 
   const fetchLeaveRequests = useCallback(async () => {
@@ -128,8 +125,6 @@ export function LeaveRequestsProvider({
         isLoading,
         open,
         setOpen,
-        currentRow,
-        setCurrentRow,
         fetchLeaveRequests,
         handleCreate,
         handleReview,
