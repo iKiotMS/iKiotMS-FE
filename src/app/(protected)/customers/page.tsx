@@ -4,7 +4,6 @@ import { PageHeader } from '@/components/page-header'
 import { CustomersProvider } from './components/customers-provider'
 import { CustomersButtonGroup } from './components/customers-button-group'
 import { CustomersTable } from './components/customers-table'
-import { CustomersDialogs } from './components/customers-dialogs'
 
 export default function CustomersPage() {
   return (
@@ -21,8 +20,6 @@ export default function CustomersPage() {
         />
         <CustomersTable />
       </div>
-
-      <CustomersDialogs />
     </CustomersProvider>
   )
 }
