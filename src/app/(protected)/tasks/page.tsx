@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { z } from "zod"
 import { ArrowUp, BarChart3, CheckCircle2, Clock, ListTodo } from "lucide-react"
 
+import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { columns } from "./components/columns"
 import { DataTable } from "./components/data-table"
@@ -56,12 +57,15 @@ export default function TaskPage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="flex flex-col gap-2 px-4 md:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
-        <p className="text-muted-foreground">
-          A powerful task and issue tracker built with Tanstack Table.
-        </p>
+      <div className="px-4 md:px-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Công việc' },
+          ]}
+          title="Công việc"
+          description="Theo dõi và quản lý toàn bộ công việc của nhóm"
+        />
       </div>
 
       {/* Mobile view placeholder - shows message instead of images */}
