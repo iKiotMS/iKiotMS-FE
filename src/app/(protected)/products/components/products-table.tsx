@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -75,7 +75,7 @@ function ProductExpandedPanel({
   const [loading, setLoading] = useState(false);
   const wasExpandedRef = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isExpanded && !wasExpandedRef.current) {
       wasExpandedRef.current = true;
       setLoading(true);
@@ -92,7 +92,7 @@ function ProductExpandedPanel({
 
   if (loading) {
     return (
-      <div className="bg-primary/5 border-b px-6 py-4 space-y-4">
+      <div className="bg-background border-b px-6 py-4 space-y-4">
         <div className="flex gap-6">
           <Skeleton className="size-20 rounded-lg shrink-0" />
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
@@ -114,7 +114,7 @@ function ProductExpandedPanel({
   }
 
   return (
-    <div className="bg-primary/5 border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
       <div className="flex gap-6">
         <img
           src={
