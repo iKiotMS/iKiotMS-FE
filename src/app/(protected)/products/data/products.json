@@ -14,7 +14,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Nước suối khoáng thiên nhiên đóng chai 500ml",
-    "createdAt": "2025-01-10"
+    "createdAt": "2025-01-10",
+    "imageUrl": "https://picsum.photos/seed/lavie/80/80"
   },
   {
     "id": "2",
@@ -31,7 +32,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Nước ngọt có gas Coca-Cola 330ml",
-    "createdAt": "2025-01-12"
+    "createdAt": "2025-01-12",
+    "imageUrl": "https://picsum.photos/seed/cocacola/80/80"
   },
   {
     "id": "3",
@@ -48,7 +50,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Mì ăn liền Hảo Hảo vị tôm chua cay",
-    "createdAt": "2025-01-15"
+    "createdAt": "2025-01-15",
+    "imageUrl": "https://picsum.photos/seed/mitom/80/80"
   },
   {
     "id": "4",
@@ -65,7 +68,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Trà xanh không đường 450ml",
-    "createdAt": "2025-01-18"
+    "createdAt": "2025-01-18",
+    "imageUrl": "https://picsum.photos/seed/traxanh/80/80"
   },
   {
     "id": "5",
@@ -82,7 +86,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Sữa tươi tiệt trùng TH True Milk hộp nhỏ 180ml",
-    "createdAt": "2025-01-20"
+    "createdAt": "2025-01-20",
+    "imageUrl": "https://picsum.photos/seed/sua/80/80"
   },
   {
     "id": "6",
@@ -99,7 +104,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "6 tháng",
     "description": "Bút bi mực xanh ngòi 0.8mm",
-    "createdAt": "2025-01-22"
+    "createdAt": "2025-01-22",
+    "imageUrl": "https://picsum.photos/seed/butbi/80/80"
   },
   {
     "id": "7",
@@ -116,7 +122,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Sổ tay kẻ ngang bìa cứng Oxford A5 80 trang",
-    "createdAt": "2025-02-01"
+    "createdAt": "2025-02-01",
+    "imageUrl": "https://picsum.photos/seed/sotay/80/80"
   },
   {
     "id": "8",
@@ -133,7 +140,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "18 tháng",
     "description": "Cáp sạc USB-C to USB-A dài 1m, hỗ trợ sạc nhanh",
-    "createdAt": "2025-02-05"
+    "createdAt": "2025-02-05",
+    "imageUrl": "https://picsum.photos/seed/capusb/80/80"
   },
   {
     "id": "9",
@@ -150,7 +158,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "5 năm",
     "description": "Pin AA Energizer Max vỉ 4 viên",
-    "createdAt": "2025-02-08"
+    "createdAt": "2025-02-08",
+    "imageUrl": "https://picsum.photos/seed/pin/80/80"
   },
   {
     "id": "10",
@@ -167,7 +176,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Khẩu trang y tế 3 lớp kháng khuẩn hộp 50 cái",
-    "createdAt": "2025-02-10"
+    "createdAt": "2025-02-10",
+    "imageUrl": "https://picsum.photos/seed/khaitung/80/80"
   },
   {
     "id": "11",
@@ -184,7 +194,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Nước rửa tay diệt khuẩn Lifebuoy 250ml",
-    "createdAt": "2025-02-12"
+    "createdAt": "2025-02-12",
+    "imageUrl": "https://picsum.photos/seed/nuocrua/80/80"
   },
   {
     "id": "12",
@@ -201,7 +212,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Snack khoai tây vị tôm Poca gói 90g",
-    "createdAt": "2025-02-15"
+    "createdAt": "2025-02-15",
+    "imageUrl": "https://picsum.photos/seed/snack/80/80"
   },
   {
     "id": "13",
@@ -218,7 +230,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Kem đánh răng PS ngừa sâu răng vị bạc hà 150g",
-    "createdAt": "2025-02-18"
+    "createdAt": "2025-02-18",
+    "imageUrl": "https://picsum.photos/seed/kem-danh-rang/80/80"
   },
   {
     "id": "14",
@@ -235,7 +248,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Dầu gội Sunsilk mềm mượt bồng bềnh 170ml",
-    "createdAt": "2025-02-20"
+    "createdAt": "2025-02-20",
+    "imageUrl": "https://picsum.photos/seed/daugoi/80/80"
   },
   {
     "id": "15",
@@ -252,7 +266,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "12 tháng",
     "description": "Tai nghe có dây JBL T110 cổng 3.5mm",
-    "createdAt": "2025-03-01"
+    "createdAt": "2025-03-01",
+    "imageUrl": "https://picsum.photos/seed/tai-nghe/80/80"
   },
   {
     "id": "16",
@@ -269,7 +284,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "",
     "description": "Kẹo cao su Doublemint hương bạc hà 10 viên",
-    "createdAt": "2025-03-05"
+    "createdAt": "2025-03-05",
+    "imageUrl": "https://picsum.photos/seed/keoiengum/80/80"
   },
   {
     "id": "17",
@@ -286,7 +302,8 @@
     "status": "INACTIVE",
     "warrantyPeriod": "6 tháng",
     "description": "Cốc sứ cao cấp dung tích 350ml",
-    "createdAt": "2025-03-08"
+    "createdAt": "2025-03-08",
+    "imageUrl": "https://picsum.photos/seed/cocsu/80/80"
   },
   {
     "id": "18",
@@ -303,7 +320,8 @@
     "status": "INACTIVE",
     "warrantyPeriod": "",
     "description": "Túi giấy kraft nâu size M pack 50 chiếc",
-    "createdAt": "2025-03-10"
+    "createdAt": "2025-03-10",
+    "imageUrl": "https://picsum.photos/seed/tuigiay/80/80"
   },
   {
     "id": "19",
@@ -320,7 +338,8 @@
     "status": "ACTIVE",
     "warrantyPeriod": "3 tháng",
     "description": "Ốp lưng silicon dẻo chống sốc cho Samsung A55",
-    "createdAt": "2025-03-12"
+    "createdAt": "2025-03-12",
+    "imageUrl": "https://picsum.photos/seed/ophone/80/80"
   },
   {
     "id": "20",
@@ -337,6 +356,7 @@
     "status": "DISCONTINUED",
     "warrantyPeriod": "",
     "description": "Nước tăng lực Red Bull lon 250ml",
-    "createdAt": "2024-12-01"
+    "createdAt": "2024-12-01",
+    "imageUrl": "https://picsum.photos/seed/redbull/80/80"
   }
 ]
