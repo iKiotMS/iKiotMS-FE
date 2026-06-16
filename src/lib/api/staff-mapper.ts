@@ -51,6 +51,7 @@ function resolveRefName(
 
 function mapStatus(status: string): StaffStatus {
   if (status === "ACTIVE") return "ACTIVE";
+  if (status === "SUSPENDED") return "SUSPENDED";
   return "INACTIVE";
 }
 
@@ -71,6 +72,9 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     branchId: resolveRefId(user.branchId),
     branchName: resolveRefName(user.branchId),
     warehouseId: resolveRefId(user.warehouseId) || undefined,
+    warehouseName: user.warehouseId
+      ? resolveRefName(user.warehouseId)
+      : undefined,
     firstName,
     lastName,
     fullName: `${lastName} ${firstName}`.trim() || user.phoneNumber,
@@ -88,7 +92,28 @@ export function extractBranchOptions(staffs: Staff[]): { value: string; label: s
   const map = new Map<string, string>();
   for (const staff of staffs) {
     if (staff.branchId) {
-      map.set(staff.branchId, staff.branchName || staff.branchId);
+      const label =
+        staff.branchName && staff.branchName !== "—"
+          ? staff.branchName
+          : "Chi nhánh";
+      map.set(staff.branchId, label);
+    }
+  }
+  return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+}
+
+export function extractWarehouseOptions(
+  staffs: Staff[],
+): { value: string; label: string }[] {
+  const map = new Map<string, string>();
+  for (const staff of staffs) {
+    if (staff.warehouseId) {
+      map.set(
+        staff.warehouseId,
+        staff.warehouseName && staff.warehouseName !== "—"
+          ? staff.warehouseName
+          : "Kho",
+      );
     }
   }
   return Array.from(map.entries()).map(([value, label]) => ({ value, label }));

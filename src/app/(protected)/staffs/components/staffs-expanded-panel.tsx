@@ -1,24 +1,26 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
   Building2,
   CalendarDays,
+  KeyRound,
+  Lock,
   Mail,
   Pencil,
   Phone,
   Trash2,
   User,
+  UserCheck,
+  Warehouse,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   STAFF_ROLE_MAP,
-  STAFF_STATUS_MAP,
+  getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
@@ -51,43 +53,14 @@ export function StaffsExpandedPanel({
   isExpanded: boolean;
 }) {
   const { setOpen, setCurrentRow } = useStaffs();
-  const [loading, setLoading] = useState(false);
-  const wasExpandedRef = useRef(false);
 
-  useLayoutEffect(() => {
-    if (isExpanded && !wasExpandedRef.current) {
-      wasExpandedRef.current = true;
-      setLoading(true);
-      const t = setTimeout(() => setLoading(false), 350);
-      return () => clearTimeout(t);
-    }
-    if (!isExpanded) {
-      wasExpandedRef.current = false;
-    }
-  }, [isExpanded]);
+  if (!isExpanded) return null;
 
-  const status = STAFF_STATUS_MAP[staff.status];
+  const status = getStaffStatusDisplay(staff.status);
   const role = STAFF_ROLE_MAP[staff.role];
-
-  if (loading) {
-    return (
-      <div className="bg-background border-b px-6 py-4 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-4 w-28" />
-            </div>
-          ))}
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-24 rounded-md" />
-          <Skeleton className="h-8 w-28 rounded-md" />
-        </div>
-      </div>
-    );
-  }
+  const canActivate = staff.status !== "ACTIVE";
+  const canDeactivate = staff.status === "ACTIVE";
+  const canChangePassword = staff.status === "ACTIVE";
 
   return (
     <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
@@ -117,6 +90,17 @@ export function StaffsExpandedPanel({
           label="Chi nhánh"
           value={staff.branchName}
         />
+        {staff.warehouseId && (
+          <InfoItem
+            icon={<Warehouse className="size-4" />}
+            label="Kho"
+            value={
+              staff.warehouseName && staff.warehouseName !== "—"
+                ? staff.warehouseName
+                : "Kho hàng"
+            }
+          />
+        )}
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày vào làm"
@@ -144,7 +128,7 @@ export function StaffsExpandedPanel({
       </div>
 
       <Separator className="mt-4" />
-      <div className="flex items-center justify-between mt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
         <Button
           variant="destructive"
           size="sm"
@@ -158,18 +142,66 @@ export function StaffsExpandedPanel({
           <Trash2 className="mr-2 size-4" />
           Xóa nhân viên
         </Button>
-        <Button
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(staff);
-            setOpen("edit");
-          }}
-        >
-          <Pencil className="mr-2 size-4" />
-          Chỉnh sửa
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {canActivate && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("activate");
+              }}
+            >
+              <UserCheck className="mr-2 size-4" />
+              Kích hoạt tài khoản
+            </Button>
+          )}
+          {canDeactivate && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("deactivate");
+              }}
+            >
+              <Lock className="mr-2 size-4" />
+              Khóa tài khoản
+            </Button>
+          )}
+          {canChangePassword && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("password");
+              }}
+            >
+              <KeyRound className="mr-2 size-4" />
+              Đổi mật khẩu
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(staff);
+              setOpen("edit");
+            }}
+          >
+            <Pencil className="mr-2 size-4" />
+            Chỉnh sửa
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
   STAFF_ROLE_MAP,
-  STAFF_STATUS_MAP,
+  getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
 import type { Staff } from "@/types/staff";
 
@@ -100,7 +100,6 @@ export const staffsColumns: ColumnDef<Staff>[] = [
       const config = STAFF_ROLE_MAP[row.original.role];
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     accessorKey: "branchName",
@@ -122,10 +121,9 @@ export const staffsColumns: ColumnDef<Staff>[] = [
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const config = STAFF_STATUS_MAP[row.original.status];
+      const config = getStaffStatusDisplay(row.original.status);
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: "expand",
@@ -144,4 +142,4 @@ export const staffsColumns: ColumnDef<Staff>[] = [
   },
 ];
 
-export { STAFF_ROLE_MAP as ROLE_LABELS, STAFF_STATUS_MAP as STATUS_MAP };
+export { STAFF_ROLE_MAP as ROLE_LABELS };

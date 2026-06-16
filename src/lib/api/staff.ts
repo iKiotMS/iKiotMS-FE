@@ -31,6 +31,7 @@ function buildCreateBody(payload: CreateStaffPayload) {
     role: payload.role,
     branchId: payload.branchId || undefined,
     warehouseId: payload.warehouseId || undefined,
+    hireDate: payload.hireDate || undefined,
     firstName: payload.firstName,
     lastName: payload.lastName,
     profile: {
@@ -47,6 +48,7 @@ function buildUpdateBody(payload: UpdateStaffPayload) {
   if (payload.role !== undefined) data.role = payload.role;
   if (payload.branchId !== undefined) data.branchId = payload.branchId;
   if (payload.warehouseId !== undefined) data.warehouseId = payload.warehouseId;
+  if (payload.hireDate !== undefined) data.hireDate = payload.hireDate;
 
   const profile: Record<string, string> = {};
   if (payload.firstName !== undefined) profile.firstName = payload.firstName;
@@ -61,29 +63,31 @@ export const staffApi = {
     const response = await client.get<StaffListApiResponse>("/staff", {
       params: {
         page: params?.page ?? 1,
-        recordPerPage: params?.recordPerPage ?? 50,
+        recordPerPage: params?.recordPerPage ?? 10,
         role: params?.role,
         status: params?.status,
         branchId: params?.branchId,
+        warehouseId: params?.warehouseId,
         keyword: params?.keyword,
       },
     });
 
     const items = response.data?.data ?? [];
     const pagination = response.data?.pagination;
+    const recordPerPage = pagination?.recordPerPage ?? items.length;
+    const total = pagination?.total ?? items.length;
 
     return {
       data: items.map(mapStaffFromApi),
-      total: pagination?.total ?? items.length,
+      total,
       page: pagination?.page ?? 1,
-      limit: pagination?.recordPerPage ?? items.length,
+      limit: recordPerPage,
+      totalPages:
+        pagination?.totalPages ??
+        Math.max(1, Math.ceil(total / (recordPerPage || 1))),
     };
   },
 
-  getById: async (id: string): Promise<Staff> => {
-    const response = await client.get<ApiStaffUser>(`/staff/${id}`);
-    return mapStaffFromApi(response.data);
-  },
   create: async (payload: CreateStaffPayload): Promise<Staff> => {
     const response = await client.post<ApiStaffUser>(
       "/staff",
@@ -101,6 +105,17 @@ export const staffApi = {
 
   update: async (id: string, payload: UpdateStaffPayload): Promise<void> => {
     await client.patch(`/staff/${id}`, buildUpdateBody(payload));
+  },
+
+  updatePassword: async (
+    id: string,
+    payload: CreateStaffAccountPayload,
+  ): Promise<void> => {
+    await client.patch(`/staff/${id}/account/password`, payload);
+  },
+
+  deactivateAccount: async (id: string): Promise<void> => {
+    await client.patch(`/staff/${id}/account/deactivate`);
   },
 
   remove: async (id: string): Promise<void> => {
