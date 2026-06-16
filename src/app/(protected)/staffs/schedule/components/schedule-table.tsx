@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   type ColumnFiltersState,
+  type ExpandedState,
   type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -38,8 +40,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { scheduleColumns as columns } from "./schedule-columns";
 import { ScheduleEmpty } from "./schedule-empty";
+import { ScheduleExpandedPanel } from "./schedule-expanded-panel";
 import { useSchedule } from "./schedule-provider";
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -58,6 +62,7 @@ export function ScheduleTable() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useReactTable({
     data: schedules,
@@ -68,15 +73,18 @@ export function ScheduleTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+    onExpandedChange: setExpanded,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
       globalFilter,
+      expanded,
     },
   });
 
@@ -85,7 +93,7 @@ export function ScheduleTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -148,6 +156,7 @@ export function ScheduleTable() {
               .map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column.id}
+                  className="capitalize"
                   checked={column.getIsVisible()}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
                 >
@@ -189,19 +198,61 @@ export function ScheduleTable() {
               ))
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+                <Fragment key={row.id}>
+                  <TableRow
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    onClick={() => row.toggleExpanded()}
+                    className={cn(
+                      "cursor-pointer",
+                      row.getIsExpanded() &&
+                        "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        onClick={
+                          cell.column.id === "select"
+                            ? (e) => e.stopPropagation()
+                            : undefined
+                        }
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow
+                    className={cn(
+                      "border-transparent transition-colors duration-300 hover:bg-transparent",
+                      row.getIsExpanded() &&
+                        "shadow-[inset_0_-1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
+                    )}
+                  >
+                    <TableCell
+                      colSpan={row.getVisibleCells().length}
+                      className="p-0"
+                    >
+                      <div
+                        className={cn(
+                          "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                          row.getIsExpanded()
+                            ? "grid-rows-[1fr]"
+                            : "grid-rows-[0fr]",
+                        )}
+                      >
+                        <div className="overflow-hidden">
+                          <ScheduleExpandedPanel
+                            schedule={row.original}
+                            isExpanded={row.getIsExpanded()}
+                          />
+                        </div>
+                      </div>
                     </TableCell>
-                  ))}
-                </TableRow>
+                  </TableRow>
+                </Fragment>
               ))
             ) : (
               <TableRow>
@@ -241,7 +292,8 @@ export function ScheduleTable() {
           <span className="hidden sm:block text-sm font-medium">
             Trang{" "}
             <strong>
-              {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              {table.getState().pagination.pageIndex + 1} /{" "}
+              {table.getPageCount() || 1}
             </strong>
           </span>
           <Button

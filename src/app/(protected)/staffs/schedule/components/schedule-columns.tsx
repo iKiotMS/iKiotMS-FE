@@ -1,42 +1,20 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import {
+  SCHEDULE_STATUS_MAP,
+  SHIFT_TYPE_MAP,
+} from "@/app/(protected)/staffs/shared/schedule-status";
 import type { WorkingSchedule } from "@/types/working-schedule";
-import { ScheduleRowActions } from "./schedule-row-actions";
-
-export const STATUS_MAP: Record<
-  WorkingSchedule["status"],
-  { label: string; className: string }
-> = {
-  ASSIGNED: {
-    label: "Đã phân ca",
-    className:
-      "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20",
-  },
-  COMPLETED: {
-    label: "Hoàn thành",
-    className:
-      "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20",
-  },
-  ABSENT: {
-    label: "Vắng mặt",
-    className: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20",
-  },
-  CANCELLED: {
-    label: "Đã hủy",
-    className:
-      "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20",
-  },
-};
-
-export const SHIFT_LABELS: Record<WorkingSchedule["shiftType"], string> = {
-  MORNING: "Ca sáng",
-  AFTERNOON: "Ca chiều",
-  EVENING: "Ca tối",
-};
 
 function SortableHeader({
   label,
@@ -111,16 +89,19 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
     cell: ({ row }) => (
       <div className="flex flex-col">
         <span className="font-medium">{row.original.staffName}</span>
-        <span className="text-xs text-muted-foreground">{row.original.branchName}</span>
+        <span className="text-xs text-muted-foreground">
+          {row.original.branchName}
+        </span>
       </div>
     ),
   },
   {
     accessorKey: "shiftType",
     header: "Ca làm",
-    cell: ({ row }) => (
-      <Badge variant="secondary">{SHIFT_LABELS[row.original.shiftType]}</Badge>
-    ),
+    cell: ({ row }) => {
+      const config = SHIFT_TYPE_MAP[row.original.shiftType];
+      return <Badge variant={config.variant}>{config.label}</Badge>;
+    },
     filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
@@ -136,12 +117,8 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const { label, className } = STATUS_MAP[row.original.status];
-      return (
-        <Badge variant="secondary" className={className}>
-          {label}
-        </Badge>
-      );
+      const config = SCHEDULE_STATUS_MAP[row.original.status];
+      return <Badge variant={config.variant}>{config.label}</Badge>;
     },
     filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
@@ -155,10 +132,20 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
     ),
   },
   {
-    id: "actions",
-    header: "Thao tác",
-    cell: ({ row }) => <ScheduleRowActions row={row} />,
+    id: "expand",
+    header: "",
+    cell: ({ row }) => (
+      <ChevronRight
+        className={cn(
+          "size-4 text-muted-foreground transition-transform duration-200",
+          row.getIsExpanded() && "rotate-90",
+        )}
+      />
+    ),
+    size: 40,
     enableSorting: false,
     enableHiding: false,
   },
 ];
+
+export { SHIFT_TYPE_MAP as SHIFT_LABELS, SCHEDULE_STATUS_MAP as STATUS_MAP };
