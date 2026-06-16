@@ -1,18 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import {
   type ColumnFiltersState,
+  type ExpandedState,
   type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { Funnel, Search } from 'lucide-react'
+import { Funnel, Pencil, Search, Trash2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -29,6 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -37,8 +42,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useBrands } from './brands-provider'
-import { brandsColumns as columns } from './brands-columns'
+import { cn } from '@/lib/utils'
+import { useBrands, type Brand } from './brands-provider'
+import { brandsColumns as columns, STATUS_MAP } from './brands-columns'
 import { BrandsEmpty } from './brands-empty'
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -50,6 +56,114 @@ const COLUMN_LABELS: Record<string, string> = {
   status: 'Trạng thái',
 }
 
+function BrandExpandedPanel({ brand, isExpanded }: { brand: Brand; isExpanded: boolean }) {
+  const { setOpen, setCurrentRow } = useBrands()
+  const [loading, setLoading] = useState(false)
+  const wasExpandedRef = useRef(false)
+
+  useLayoutEffect(() => {
+    if (isExpanded && !wasExpandedRef.current) {
+      wasExpandedRef.current = true
+      setLoading(true)
+      const t = setTimeout(() => setLoading(false), 350)
+      return () => clearTimeout(t)
+    }
+    if (!isExpanded) {
+      wasExpandedRef.current = false
+    }
+  }, [isExpanded])
+
+  if (loading) {
+    return (
+      <div className="bg-background border-b px-6 py-4 space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </div>
+        <Separator />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-16 rounded-md" />
+          <Skeleton className="h-8 w-32 rounded-md" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Mã thương hiệu</span>
+          <span className="font-mono font-medium">{brand.brandCode}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Tên thương hiệu</span>
+          <span className="font-medium">{brand.name}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Xuất xứ</span>
+          <span>{brand.country || '—'}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Trạng thái</span>
+          <Badge
+            variant="secondary"
+            className={cn('w-fit text-xs', STATUS_MAP[brand.status].className)}
+          >
+            {STATUS_MAP[brand.status].label}
+          </Badge>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Số hàng hóa</span>
+          <span className="tabular-nums font-medium">{brand.productCount.toLocaleString('vi-VN')}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-muted-foreground">Ngày tạo</span>
+          <span>{brand.createdAt}</span>
+        </div>
+        {brand.description && (
+          <div className="flex flex-col gap-0.5 col-span-2 md:col-span-4">
+            <span className="text-xs text-muted-foreground">Mô tả</span>
+            <span className="text-muted-foreground">{brand.description}</span>
+          </div>
+        )}
+      </div>
+      <Separator className="mt-4" />
+      <div className="flex items-center justify-between mt-3">
+        <Button
+          variant="destructive"
+          size="sm"
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation()
+            setCurrentRow(brand)
+            setOpen('delete')
+          }}
+        >
+          <Trash2 className="mr-2 size-4" />
+          Xóa
+        </Button>
+        <Button
+          size="sm"
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation()
+            setCurrentRow(brand)
+            setOpen('edit')
+          }}
+        >
+          <Pencil className="mr-2 size-4" />
+          Chỉnh sửa
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function BrandsTable() {
   const { brands } = useBrands()
 
@@ -58,6 +172,7 @@ export function BrandsTable() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
   const [globalFilter, setGlobalFilter] = useState('')
+  const [expanded, setExpanded] = useState<ExpandedState>({})
 
   const table = useReactTable({
     data: brands,
@@ -68,20 +183,22 @@ export function BrandsTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+    onExpandedChange: setExpanded,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
       globalFilter,
+      expanded,
     },
   })
 
   const statusFilter = table.getColumn('status')?.getFilterValue() as string
-
   const countries = [...new Set(brands.map((b) => b.country).filter(Boolean))]
 
   return (
@@ -176,13 +293,50 @@ export function BrandsTable() {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                <Fragment key={row.id}>
+                  <TableRow
+                    data-state={row.getIsSelected() ? 'selected' : undefined}
+                    onClick={() => row.toggleExpanded()}
+                    className={cn(
+                      'cursor-pointer',
+                      row.getIsExpanded() &&
+                        'bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        onClick={
+                          cell.column.id === 'select'
+                            ? (e) => e.stopPropagation()
+                            : undefined
+                        }
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  <TableRow
+                    className={cn(
+                      'hover:bg-transparent transition-colors duration-300 border-transparent',
+                      row.getIsExpanded() &&
+                        'shadow-[inset_0_-1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
+                    )}
+                  >
+                    <TableCell colSpan={row.getVisibleCells().length} className="p-0">
+                      <div
+                        className={cn(
+                          'grid transition-[grid-template-rows] duration-300 ease-in-out',
+                          row.getIsExpanded() ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                        )}
+                      >
+                        <div className="overflow-hidden">
+                          <BrandExpandedPanel brand={row.original} isExpanded={row.getIsExpanded()} />
+                        </div>
+                      </div>
                     </TableCell>
-                  ))}
-                </TableRow>
+                  </TableRow>
+                </Fragment>
               ))
             ) : (
               <TableRow>
