@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,22 +13,22 @@ import {
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
 
-type StaffsDeleteDialogProps = {
+type StaffsDeactivateDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentRow: Staff | null;
 };
 
-export function StaffsDeleteDialog({
+export function StaffsDeactivateDialog({
   open,
   onOpenChange,
   currentRow,
-}: StaffsDeleteDialogProps) {
-  const { handleDelete } = useStaffs();
+}: StaffsDeactivateDialogProps) {
+  const { handleDeactivate } = useStaffs();
 
   async function onConfirm() {
     if (currentRow) {
-      await handleDelete(currentRow._id);
+      await handleDeactivate(currentRow._id);
     }
     onOpenChange(false);
   }
@@ -37,13 +37,13 @@ export function StaffsDeleteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Xóa nhân viên</DialogTitle>
+          <DialogTitle>Khóa tài khoản</DialogTitle>
           <DialogDescription>
-            Bạn có chắc muốn xóa{" "}
+            Bạn có chắc muốn khóa tài khoản của{" "}
             <strong className="text-foreground">
               {currentRow?.fullName ?? ""}
             </strong>
-            ? Hồ sơ nhân viên sẽ bị đánh dấu xóa và không còn hiển thị trong danh sách.
+            ? Nhân viên sẽ không thể đăng nhập cho đến khi được kích hoạt lại.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
@@ -59,8 +59,8 @@ export function StaffsDeleteDialog({
             className="cursor-pointer"
             onClick={onConfirm}
           >
-            <Trash2 className="mr-2 size-4" />
-            Xóa
+            <Lock className="mr-2 size-4" />
+            Khóa tài khoản
           </Button>
         </DialogFooter>
       </DialogContent>

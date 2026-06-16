@@ -10,6 +10,7 @@ export const STAFF_STATUS_MAP: Record<
 > = {
   ACTIVE: { label: "Đang làm việc", variant: "success" },
   INACTIVE: { label: "Ngừng làm việc", variant: "warning" },
+  SUSPENDED: { label: "Tạm khóa", variant: "destructive" },
 };
 
 export const STAFF_ROLE_MAP: Record<StaffRole, { label: string; variant: BadgeVariant }> =
@@ -18,3 +19,12 @@ export const STAFF_ROLE_MAP: Record<StaffRole, { label: string; variant: BadgeVa
     WAREHOUSE_MANAGER: { label: "Quản lý kho", variant: "secondary" },
     STAFF: { label: "Nhân viên bán hàng", variant: "outline" },
   };
+
+export function getStaffStatusDisplay(status: StaffStatus) {
+  return (
+    STAFF_STATUS_MAP[status] ?? {
+      label: status,
+      variant: "outline" as BadgeVariant,
+    }
+  );
+}
