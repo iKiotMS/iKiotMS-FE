@@ -1,5 +1,6 @@
 "use client"
 
+import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PricingPlans } from "@/components/pricing-plans"
 import { CurrentPlanCard } from "./components/current-plan-card"
@@ -17,12 +18,15 @@ export default function BillingSettings() {
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
-        <div>
-          <h1 className="text-3xl font-bold">Plans & Billing</h1>
-          <p className="text-muted-foreground">
-            Manage your subscription and billing information.
-          </p>
-        </div>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Cài đặt' },
+            { label: 'Thanh toán' },
+          ]}
+          title="Gói & Thanh toán"
+          description="Quản lý gói đăng ký và thông tin thanh toán"
+        />
 
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
           <CurrentPlanCard plan={currentPlanData} />
