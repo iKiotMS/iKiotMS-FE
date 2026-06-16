@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 
+import { PageHeader } from "@/components/page-header"
 import { Chat } from "./components/chat"
 import { type Conversation, type Message, type User } from "./use-chat"
 
@@ -42,7 +43,15 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="px-4 md:px-6">
+    <div className="flex flex-col gap-6 px-4 py-6 md:px-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Trang chủ', href: '/dashboard' },
+          { label: 'Tin nhắn' },
+        ]}
+        title="Tin nhắn"
+        description="Nhắn tin và trao đổi với các thành viên trong nhóm"
+      />
       <Chat
         conversations={conversations}
         messages={messages}
