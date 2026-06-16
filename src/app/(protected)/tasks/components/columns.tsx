@@ -140,10 +140,13 @@ export const columns: ColumnDef<Task>[] = [
           <Badge
             variant="outline"
             className={cn(
-              "pl-2",
+              "pl-2 flex items-center gap-1.5",
               priorityColors[priority.value as keyof typeof priorityColors]
             )}
           >
+            {priority.icon && (
+              <priority.icon className="h-3.5 w-3.5" />
+            )}
             <span className="text-sm">{priority.label}</span>
           </Badge>
         </div>

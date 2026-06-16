@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -44,12 +45,15 @@ export default function AppearanceSettings() {
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
-        <div>
-          <h1 className="text-3xl font-bold">Appearance</h1>
-          <p className="text-muted-foreground">
-            Customize the appearance of the application.
-          </p>
-        </div>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Cài đặt' },
+            { label: 'Giao diện' },
+          ]}
+          title="Giao diện"
+          description="Tùy chỉnh giao diện hiển thị của ứng dụng"
+        />
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
