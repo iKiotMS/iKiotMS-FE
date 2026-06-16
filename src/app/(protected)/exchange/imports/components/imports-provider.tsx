@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
-export type ImportsDialogType = 'create' | 'detail' | 'approve' | 'reject'
+export type ImportsDialogType = 'create'
 
 interface ImportsContextType {
   imports: StockMovement[]

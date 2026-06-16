@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
-export type TransfersDialogType = 'create' | 'detail'
+export type TransfersDialogType = 'create'
 
 interface TransfersContextType {
   transfers: StockMovement[]
