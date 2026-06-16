@@ -1,34 +1,116 @@
 import client from "./client";
+import {
+  mapStaffFromApi,
+  type ApiStaffUser,
+} from "./staff-mapper";
 import type {
+  CreateStaffAccountPayload,
   CreateStaffPayload,
   Staff,
   StaffListResponse,
   StaffQueryParams,
+  StaffRoleOption,
   UpdateStaffPayload,
 } from "@/types/staff";
 
+interface StaffListApiResponse {
+  success?: boolean;
+  data: ApiStaffUser[];
+  pagination?: {
+    total: number;
+    page: number;
+    recordPerPage: number;
+    totalPages: number;
+  };
+}
+
+function buildCreateBody(payload: CreateStaffPayload) {
+  return {
+    phoneNumber: payload.phoneNumber,
+    email: payload.email,
+    role: payload.role,
+    branchId: payload.branchId || undefined,
+    warehouseId: payload.warehouseId || undefined,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    profile: {
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+    },
+  };
+}
+
+function buildUpdateBody(payload: UpdateStaffPayload) {
+  const data: Record<string, unknown> = {};
+
+  if (payload.email !== undefined) data.email = payload.email;
+  if (payload.role !== undefined) data.role = payload.role;
+  if (payload.branchId !== undefined) data.branchId = payload.branchId;
+  if (payload.warehouseId !== undefined) data.warehouseId = payload.warehouseId;
+
+  const profile: Record<string, string> = {};
+  if (payload.firstName !== undefined) profile.firstName = payload.firstName;
+  if (payload.lastName !== undefined) profile.lastName = payload.lastName;
+  if (Object.keys(profile).length > 0) data.profile = profile;
+
+  return { data };
+}
+
 export const staffApi = {
   getList: async (params?: StaffQueryParams): Promise<StaffListResponse> => {
-    const response = await client.get("/staffs", { params });
-    return response.data;
+    const response = await client.get<StaffListApiResponse>("/staff", {
+      params: {
+        page: params?.page ?? 1,
+        recordPerPage: params?.recordPerPage ?? 50,
+        role: params?.role,
+        status: params?.status,
+        branchId: params?.branchId,
+        keyword: params?.keyword,
+      },
+    });
+
+    const items = response.data?.data ?? [];
+    const pagination = response.data?.pagination;
+
+    return {
+      data: items.map(mapStaffFromApi),
+      total: pagination?.total ?? items.length,
+      page: pagination?.page ?? 1,
+      limit: pagination?.recordPerPage ?? items.length,
+    };
   },
 
   getById: async (id: string): Promise<Staff> => {
-    const response = await client.get(`/staffs/${id}`);
-    return response.data;
+    const response = await client.get<ApiStaffUser>(`/staff/${id}`);
+    return mapStaffFromApi(response.data);
   },
-
   create: async (payload: CreateStaffPayload): Promise<Staff> => {
-    const response = await client.post("/staffs", payload);
-    return response.data;
+    const response = await client.post<ApiStaffUser>(
+      "/staff",
+      buildCreateBody(payload),
+    );
+    return mapStaffFromApi(response.data);
   },
 
-  update: async (id: string, payload: UpdateStaffPayload): Promise<Staff> => {
-    const response = await client.patch(`/staffs/${id}`, payload);
-    return response.data;
+  createAccount: async (
+    id: string,
+    payload: CreateStaffAccountPayload,
+  ): Promise<void> => {
+    await client.post(`/staff/${id}/account`, payload);
+  },
+
+  update: async (id: string, payload: UpdateStaffPayload): Promise<void> => {
+    await client.patch(`/staff/${id}`, buildUpdateBody(payload));
   },
 
   remove: async (id: string): Promise<void> => {
-    await client.delete(`/staffs/${id}`);
+    await client.delete(`/staff/${id}`);
+  },
+
+  getRoles: async (): Promise<StaffRoleOption[]> => {
+    const response = await client.get<{ data: StaffRoleOption[] }>(
+      "/staff/roles",
+    );
+    return response.data?.data ?? [];
   },
 };

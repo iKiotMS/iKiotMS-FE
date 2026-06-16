@@ -16,5 +16,5 @@ export const STAFF_ROLE_MAP: Record<StaffRole, { label: string; variant: BadgeVa
   {
     BRANCH_MANAGER: { label: "Quản lý chi nhánh", variant: "info" },
     WAREHOUSE_MANAGER: { label: "Quản lý kho", variant: "secondary" },
-    SALE_STAFF: { label: "Nhân viên bán hàng", variant: "outline" },
+    STAFF: { label: "Nhân viên bán hàng", variant: "outline" },
   };

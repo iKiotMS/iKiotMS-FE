@@ -116,7 +116,7 @@ export function StaffsTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả vai trò</SelectItem>
-              <SelectItem value="SALE_STAFF">Nhân viên bán hàng</SelectItem>
+              <SelectItem value="STAFF">Nhân viên bán hàng</SelectItem>
               <SelectItem value="WAREHOUSE_MANAGER">Quản lý kho</SelectItem>
               <SelectItem value="BRANCH_MANAGER">Quản lý chi nhánh</SelectItem>
             </SelectContent>

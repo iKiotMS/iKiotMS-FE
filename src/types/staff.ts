@@ -1,7 +1,7 @@
 export type StaffRole =
   | "BRANCH_MANAGER"
   | "WAREHOUSE_MANAGER"
-  | "SALE_STAFF";
+  | "STAFF";
 
 export type StaffStatus = "ACTIVE" | "INACTIVE";
 
@@ -10,6 +10,7 @@ export interface Staff {
   tenantId: string;
   branchId: string;
   branchName: string;
+  warehouseId?: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -31,7 +32,7 @@ export interface StaffListResponse {
 
 export interface StaffQueryParams {
   page?: number;
-  limit?: number;
+  recordPerPage?: number;
   role?: StaffRole;
   status?: StaffStatus;
   branchId?: string;
@@ -44,16 +45,28 @@ export interface CreateStaffPayload {
   phoneNumber: string;
   email?: string;
   role: StaffRole;
-  branchId: string;
-  status?: StaffStatus;
+  branchId?: string;
+  warehouseId?: string;
+  newPassword?: string;
+  reEnterPassword?: string;
 }
 
 export interface UpdateStaffPayload {
   firstName?: string;
   lastName?: string;
-  phoneNumber?: string;
   email?: string;
   role?: StaffRole;
   branchId?: string;
+  warehouseId?: string;
   status?: StaffStatus;
+}
+
+export interface CreateStaffAccountPayload {
+  newPassword: string;
+  reEnterPassword: string;
+}
+
+export interface StaffRoleOption {
+  value: StaffRole;
+  label: string;
 }
