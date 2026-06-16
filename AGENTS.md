@@ -5,10 +5,7 @@ Before performing any task:
 1. Read this AGENTS.md completely.
 2. Check available skills in .agent/skills.
 3. Determine whether one or more skills are applicable.
-4. Load and follow the matching SKILL.md files.
-5. If multiple skills apply, combine them.
-
-Skills location: WDP301/skills/\*
+   Skills location: D:\FPT\2026.SU8\WDP301\skills
 
 # Frontend Agent Guidelines
 
