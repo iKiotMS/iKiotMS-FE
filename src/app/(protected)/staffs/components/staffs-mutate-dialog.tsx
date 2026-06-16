@@ -17,6 +17,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,43 +34,63 @@ import {
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
 
-export const ROLE_OPTIONS = [
-  { value: "SALE_STAFF", label: "Nhân viên bán hàng" },
-  { value: "WAREHOUSE_MANAGER", label: "Quản lý kho" },
-  { value: "BRANCH_MANAGER", label: "Quản lý chi nhánh" },
-] as const;
+const createFormSchema = z
+  .object({
+    firstName: z.string().min(1, "Tên là bắt buộc"),
+    lastName: z.string().min(1, "Họ là bắt buộc"),
+    phoneNumber: z
+      .string()
+      .regex(/^(0|\+84)(\d{9})$/, "Số điện thoại không hợp lệ"),
+    email: z.string().email("Email không hợp lệ").or(z.literal("")),
+    role: z.enum(["STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
+    branchId: z.string().optional(),
+    warehouseId: z.string().optional(),
+    newPassword: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
+    reEnterPassword: z.string().min(6, "Xác nhận mật khẩu tối thiểu 6 ký tự"),
+  })
+  .refine((data) => data.newPassword === data.reEnterPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["reEnterPassword"],
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "WAREHOUSE_MANAGER" && !data.warehouseId?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Quản lý kho cần chọn kho (warehouseId)",
+        path: ["warehouseId"],
+      });
+    }
+    if (data.role === "BRANCH_MANAGER" && !data.branchId?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Quản lý chi nhánh cần chọn chi nhánh",
+        path: ["branchId"],
+      });
+    }
+  });
 
-export const BRANCH_OPTIONS = [
-  { value: "branch-1", label: "Chi nhánh Quận 1" },
-  { value: "branch-2", label: "Chi nhánh Quận 3" },
-  { value: "branch-3", label: "Chi nhánh Gò Vấp" },
-] as const;
-
-const staffFormSchema = z.object({
+const editFormSchema = z.object({
   firstName: z.string().min(1, "Tên là bắt buộc"),
   lastName: z.string().min(1, "Họ là bắt buộc"),
-  phoneNumber: z
-    .string()
-    .regex(/^(0|\+84)(\d{9})$/, "Số điện thoại không hợp lệ"),
-  email: z
-    .string()
-    .email("Email không hợp lệ")
-    .or(z.literal("")),
-  role: z.enum(["SALE_STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
-  branchId: z.string().min(1, "Vui lòng chọn chi nhánh"),
-  status: z.enum(["ACTIVE", "INACTIVE"]),
+  email: z.string().email("Email không hợp lệ").or(z.literal("")),
+  role: z.enum(["STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
+  branchId: z.string().optional(),
+  warehouseId: z.string().optional(),
 });
 
-export type StaffFormValues = z.infer<typeof staffFormSchema>;
+type CreateFormValues = z.infer<typeof createFormSchema>;
+type EditFormValues = z.infer<typeof editFormSchema>;
 
-const EMPTY_VALUES: StaffFormValues = {
+const EMPTY_CREATE_VALUES: CreateFormValues = {
   firstName: "",
   lastName: "",
   phoneNumber: "",
   email: "",
-  role: "SALE_STAFF",
-  branchId: "branch-1",
-  status: "ACTIVE",
+  role: "STAFF",
+  branchId: "",
+  warehouseId: "",
+  newPassword: "",
+  reEnterPassword: "",
 };
 
 type StaffsMutateDialogProps = {
@@ -84,12 +105,14 @@ export function StaffsMutateDialog({
   currentRow,
 }: StaffsMutateDialogProps) {
   const isEdit = !!currentRow;
-  const { handleAdd, handleEdit } = useStaffs();
+  const { handleAdd, handleEdit, roleOptions, branchOptions } = useStaffs();
 
-  const form = useForm<StaffFormValues>({
-    resolver: zodResolver(staffFormSchema),
-    defaultValues: EMPTY_VALUES,
+  const form = useForm<CreateFormValues | EditFormValues>({
+    resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
+    defaultValues: EMPTY_CREATE_VALUES,
   });
+
+  const selectedRole = form.watch("role");
 
   useEffect(() => {
     if (!open) return;
@@ -97,33 +120,46 @@ export function StaffsMutateDialog({
       form.reset({
         firstName: currentRow.firstName,
         lastName: currentRow.lastName,
-        phoneNumber: currentRow.phoneNumber,
         email: currentRow.email ?? "",
         role: currentRow.role,
         branchId: currentRow.branchId,
-        status: currentRow.status,
+        warehouseId: currentRow.warehouseId ?? "",
       });
     } else {
-      form.reset(EMPTY_VALUES);
+      form.reset(EMPTY_CREATE_VALUES);
     }
   }, [open, isEdit, currentRow, form]);
 
-  async function onSubmit(data: StaffFormValues) {
-    const payload = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phoneNumber: data.phoneNumber,
-      email: data.email || undefined,
-      role: data.role,
-      branchId: data.branchId,
-      status: data.status,
-    };
-    if (isEdit && currentRow) {
-      await handleEdit(currentRow._id, payload);
-    } else {
-      await handleAdd(payload);
+  async function onSubmit(data: CreateFormValues | EditFormValues) {
+    try {
+      if (isEdit && currentRow) {
+        const editData = data as EditFormValues;
+        await handleEdit(currentRow._id, {
+          firstName: editData.firstName,
+          lastName: editData.lastName,
+          email: editData.email || undefined,
+          role: editData.role,
+          branchId: editData.branchId || undefined,
+          warehouseId: editData.warehouseId || undefined,
+        });
+      } else {
+        const createData = data as CreateFormValues;
+        await handleAdd({
+          firstName: createData.firstName,
+          lastName: createData.lastName,
+          phoneNumber: createData.phoneNumber,
+          email: createData.email || undefined,
+          role: createData.role,
+          branchId: createData.branchId || undefined,
+          warehouseId: createData.warehouseId || undefined,
+          newPassword: createData.newPassword,
+          reEnterPassword: createData.reEnterPassword,
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      // Error toast handled in provider
     }
-    onOpenChange(false);
   }
 
   return (
@@ -135,8 +171,8 @@ export function StaffsMutateDialog({
           </DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Cập nhật thông tin nhân viên và nhấn Lưu để hoàn tất."
-              : "Điền thông tin nhân viên mới và nhấn Lưu để hoàn tất."}
+              ? "Cập nhật thông tin nhân viên. Số điện thoại không thể đổi qua form này."
+              : "Tạo hồ sơ nhân viên và tài khoản đăng nhập trên hệ thống."}
           </DialogDescription>
         </DialogHeader>
 
@@ -171,13 +207,13 @@ export function StaffsMutateDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {!isEdit && (
               <FormField
                 control={form.control}
                 name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Số điện thoại</FormLabel>
+                    <FormLabel>Số điện thoại (dùng để đăng nhập)</FormLabel>
                     <FormControl>
                       <Input placeholder="0901234567" {...field} />
                     </FormControl>
@@ -185,20 +221,21 @@ export function StaffsMutateDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="name@ikiot.vn" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            )}
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="name@ikiot.vn" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -207,17 +244,14 @@ export function StaffsMutateDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vai trò</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
                           <SelectValue placeholder="Chọn vai trò" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {ROLE_OPTIONS.map((option) => (
+                        {roleOptions.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -228,59 +262,94 @@ export function StaffsMutateDialog({
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="branchId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Chi nhánh</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    {branchOptions.length > 0 ? (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="cursor-pointer w-full">
+                            <SelectValue placeholder="Chọn chi nhánh" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {branchOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
                       <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn chi nhánh" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="Nhập ID chi nhánh"
+                          {...field}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {BRANCH_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Trạng thái</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+            {selectedRole === "WAREHOUSE_MANAGER" && (
+              <FormField
+                control={form.control}
+                name="warehouseId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ID kho (warehouseId)</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full">
-                        <SelectValue placeholder="Chọn trạng thái" />
-                      </SelectTrigger>
+                      <Input
+                        placeholder="ObjectId kho từ MongoDB"
+                        {...field}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="ACTIVE">Đang làm việc</SelectItem>
-                      <SelectItem value="INACTIVE">Ngừng làm việc</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {!isEdit && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mật khẩu</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="reEnterPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Xác nhận mật khẩu</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             <DialogFooter>
               <Button
