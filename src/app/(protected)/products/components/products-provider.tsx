@@ -20,9 +20,10 @@ export interface Product {
   warrantyPeriod: string
   description: string
   createdAt: string
+  imageUrl?: string
 }
 
-type ProductsDialogType = 'add' | 'edit' | 'delete'
+type ProductsDialogType = 'add' | 'edit' | 'delete' | 'deleteMany'
 
 type ProductsContextType = {
   products: Product[]
@@ -33,6 +34,10 @@ type ProductsContextType = {
   handleAdd: (data: ProductFormValues) => void
   handleEdit: (id: string, data: ProductFormValues) => void
   handleDelete: (id: string) => void
+  selectedIds: string[]
+  setSelectedIds: (ids: string[]) => void
+  handleDeleteMany: (ids: string[]) => void
+  selectionVersion: number
 }
 
 const ProductsContext = React.createContext<ProductsContextType | null>(null)
@@ -41,6 +46,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProductsData as Product[])
   const [open, setOpen] = useState<ProductsDialogType | null>(null)
   const [currentRow, setCurrentRow] = useState<Product | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectionVersion, setSelectionVersion] = useState(0)
 
   function handleAdd(data: ProductFormValues) {
     const newProduct: Product = {
@@ -59,6 +66,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       warrantyPeriod: data.warrantyPeriod ?? '',
       description: data.description ?? '',
       createdAt: new Date().toISOString().split('T')[0],
+      imageUrl: '',
     }
     setProducts((prev) => [newProduct, ...prev])
   }
@@ -91,9 +99,28 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }
 
+  function handleDeleteMany(ids: string[]) {
+    setProducts((prev) => prev.filter((p) => !ids.includes(p.id)))
+    setSelectedIds([])
+    setSelectionVersion((v) => v + 1)
+  }
+
   return (
     <ProductsContext.Provider
-      value={{ products, open, setOpen, currentRow, setCurrentRow, handleAdd, handleEdit, handleDelete }}
+      value={{
+        products,
+        open,
+        setOpen,
+        currentRow,
+        setCurrentRow,
+        handleAdd,
+        handleEdit,
+        handleDelete,
+        selectedIds,
+        setSelectedIds,
+        handleDeleteMany,
+        selectionVersion,
+      }}
     >
       {children}
     </ProductsContext.Provider>
