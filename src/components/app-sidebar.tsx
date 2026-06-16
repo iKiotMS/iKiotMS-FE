@@ -135,7 +135,7 @@ const data = {
       items: [
         {
           title: "Khách hàng",
-          url: "/users",
+          url: "/customers",
           icon: Users,
         },
         {

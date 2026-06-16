@@ -3,16 +3,23 @@ import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-rea
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { type Brand } from './brands-provider'
+import { type Customer } from './customers-provider'
 
-export const STATUS_MAP: Record<Brand['status'], { label: string; className: string }> = {
-  ACTIVE: {
-    label: 'Đang sử dụng',
-    className: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20',
+const formatVND = (value: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+
+export const GENDER_MAP: Record<Customer['gender'], { label: string; className: string }> = {
+  MALE: {
+    label: 'Nam',
+    className: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20',
   },
-  INACTIVE: {
-    label: 'Ngừng sử dụng',
-    className: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20',
+  FEMALE: {
+    label: 'Nữ',
+    className: 'text-pink-600 bg-pink-50 dark:text-pink-400 dark:bg-pink-900/20',
+  },
+  OTHER: {
+    label: 'Khác',
+    className: 'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20',
   },
 }
 
@@ -44,7 +51,7 @@ function SortableHeader({
   )
 }
 
-export const brandsColumns: ColumnDef<Brand>[] = [
+export const customersColumns: ColumnDef<Customer>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -73,54 +80,67 @@ export const brandsColumns: ColumnDef<Brand>[] = [
     size: 50,
   },
   {
-    accessorKey: 'brandCode',
-    header: ({ column }) => <SortableHeader label="Mã thương hiệu" column={column} />,
+    accessorKey: 'customerCode',
+    header: ({ column }) => <SortableHeader label="Mã KH" column={column} />,
     cell: ({ row }) => (
-      <span className="font-mono text-sm font-medium">{row.getValue('brandCode')}</span>
+      <span className="font-mono text-sm font-medium">{row.getValue('customerCode')}</span>
     ),
   },
   {
     accessorKey: 'name',
-    header: ({ column }) => <SortableHeader label="Tên thương hiệu" column={column} />,
-    cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
-  },
-  {
-    accessorKey: 'country',
-    header: 'Xuất xứ',
-    cell: ({ row }) => (
-      <span className="text-sm">{row.getValue('country') || '—'}</span>
-    ),
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
-  },
-  {
-    accessorKey: 'description',
-    header: 'Mô tả',
-    cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground line-clamp-1 max-w-xs">
-        {row.getValue('description') || '—'}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'productCount',
-    header: ({ column }) => <SortableHeader label="Số hàng hóa" column={column} />,
-    cell: ({ row }) => (
-      <span className="tabular-nums">{(row.getValue('productCount') as number).toLocaleString('vi-VN')}</span>
-    ),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Trạng thái',
+    header: ({ column }) => <SortableHeader label="Tên khách hàng" column={column} />,
     cell: ({ row }) => {
-      const status = row.getValue('status') as Brand['status']
-      const { label, className } = STATUS_MAP[status]
+      const customer = row.original
       return (
-        <Badge variant="secondary" className={className}>
+        <div className="flex flex-col">
+          <span className="font-medium">{customer.name}</span>
+          <span className="text-xs text-muted-foreground">{customer.phone || '—'}</span>
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: 'gender',
+    header: 'Giới tính',
+    cell: ({ row }) => {
+      const gender = row.getValue('gender') as Customer['gender']
+      const { label, className } = GENDER_MAP[gender]
+      return (
+        <Badge variant="secondary" className={cn('text-xs', className)}>
           {label}
         </Badge>
       )
     },
     filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
+  },
+  {
+    accessorKey: 'address',
+    header: 'Địa chỉ',
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground line-clamp-1 max-w-xs">
+        {row.getValue('address') || '—'}
+      </span>
+    ),
+  },
+  {
+    id: 'totalSpending',
+    header: ({ column }) => <SortableHeader label="Tổng chi tiêu" column={column} />,
+    accessorFn: (row) =>
+      row.orders
+        .filter((o) => o.status === 'COMPLETED')
+        .reduce((sum, o) => sum + o.grandTotal, 0),
+    cell: ({ getValue }) => (
+      <span className="tabular-nums font-medium text-primary">
+        {formatVND(getValue() as number)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'createdAt',
+    header: ({ column }) => <SortableHeader label="Ngày tạo" column={column} />,
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">{row.getValue('createdAt')}</span>
+    ),
   },
   {
     id: 'expand',
