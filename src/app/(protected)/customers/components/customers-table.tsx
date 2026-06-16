@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { CalendarIcon, Funnel, Pencil, Search, Trash2 } from 'lucide-react'
+import { CalendarIcon, Funnel, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -96,7 +96,6 @@ function CustomerExpandedPanel({
   customer: Customer
   isExpanded: boolean
 }) {
-  const { setOpen, setCurrentRow } = useCustomers()
   const [loading, setLoading] = useState(false)
   const wasExpandedRef = useRef(false)
 
@@ -130,11 +129,6 @@ function CustomerExpandedPanel({
               <Skeleton className="h-4 w-24" />
             </div>
           ))}
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-16 rounded-md" />
-          <Skeleton className="h-8 w-32 rounded-md" />
         </div>
       </div>
     )
@@ -265,34 +259,6 @@ function CustomerExpandedPanel({
         </TabsContent>
       </Tabs>
 
-      <Separator className="mt-4" />
-      <div className="flex items-center justify-between mt-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation()
-            setCurrentRow(customer)
-            setOpen('delete')
-          }}
-        >
-          <Trash2 className="mr-2 size-4" />
-          Xóa
-        </Button>
-        <Button
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation()
-            setCurrentRow(customer)
-            setOpen('edit')
-          }}
-        >
-          <Pencil className="mr-2 size-4" />
-          Chỉnh sửa
-        </Button>
-      </div>
     </div>
   )
 }
