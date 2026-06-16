@@ -1,9 +1,9 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import { type Category } from './categories-provider'
-import { CategoriesRowActions } from './categories-row-actions'
 
 export const STATUS_MAP: Record<Category['status'], { label: string; className: string }> = {
   ACTIVE: {
@@ -115,9 +115,17 @@ export const categoriesColumns: ColumnDef<Category>[] = [
     filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
-    id: 'actions',
-    header: 'Thao tác',
-    cell: ({ row }) => <CategoriesRowActions row={row} />,
+    id: 'expand',
+    header: '',
+    cell: ({ row }) => (
+      <ChevronRight
+        className={cn(
+          'size-4 text-muted-foreground transition-transform duration-200',
+          row.getIsExpanded() && 'rotate-90',
+        )}
+      />
+    ),
+    size: 40,
     enableSorting: false,
     enableHiding: false,
   },
