@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { PageHeader } from "@/components/page-header"
 import { StatCards } from "./components/stat-cards"
 import { DataTable } from "./components/data-table"
 
@@ -67,6 +68,16 @@ export default function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="@container/main px-4 lg:px-6 pt-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Trang chủ', href: '/dashboard' },
+            { label: 'Người dùng' },
+          ]}
+          title="Người dùng"
+          description="Quản lý tài khoản và phân quyền người dùng"
+        />
+      </div>
       <div className="@container/main px-4 lg:px-6">
         <StatCards />
       </div>

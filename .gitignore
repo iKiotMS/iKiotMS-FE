@@ -43,3 +43,6 @@ next-env.d.ts
 # Claude Code
 **/.claude/
 iKiotMS-FE/.claude/
+
+# Cursor (personal IDE config)
+.cursor/
