@@ -41,7 +41,9 @@ export function LoginForm2({
         setTokens({ accessToken, refreshToken });
         setCachedUser(user);
         toast.success("Đăng nhập thành công!");
-        router.push("/dashboard");
+        const destination =
+          user?.role === "SUPER_ADMIN" ? "/admin/dashboard" : "/dashboard";
+        router.push(destination);
         router.refresh();
       } else {
         throw new Error("Không nhận được mã xác thực từ hệ thống.");
