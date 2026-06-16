@@ -1,15 +1,15 @@
-'use client'
+"use client";
 
-import { useTransfers } from './transfers-provider'
-import { TransfersCreateDialog } from './transfers-create-dialog'
-import { TransfersDetailSheet } from './transfers-detail-sheet'
+import { useTransfers } from "./transfers-provider";
+import { TransfersCreateDialog } from "./transfers-create-dialog";
 
 export function TransfersDialogs() {
-  const { open, setOpen, currentRow } = useTransfers()
+  const { open, setOpen } = useTransfers();
+
   return (
-    <>
-      <TransfersCreateDialog open={open === 'create'} onOpenChange={(v) => !v && setOpen(null)} />
-      <TransfersDetailSheet open={open === 'detail'} onOpenChange={(v) => !v && setOpen(null)} request={currentRow} />
-    </>
-  )
+    <TransfersCreateDialog
+      open={open === "create"}
+      onOpenChange={(value) => !value && setOpen(null)}
+    />
+  );
 }

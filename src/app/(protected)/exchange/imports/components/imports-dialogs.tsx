@@ -1,23 +1,15 @@
-'use client'
+"use client";
 
-import { useImports } from './imports-provider'
-import { ImportsCreateDialog } from './imports-create-dialog'
-import { ImportsDetailSheet } from './imports-detail-sheet'
+import { useImports } from "./imports-provider";
+import { ImportsCreateDialog } from "./imports-create-dialog";
 
 export function ImportsDialogs() {
-  const { open, setOpen, currentRow } = useImports()
+  const { open, setOpen } = useImports();
 
   return (
-    <>
-      <ImportsCreateDialog
-        open={open === 'create'}
-        onOpenChange={(v) => !v && setOpen(null)}
-      />
-      <ImportsDetailSheet
-        open={open === 'detail'}
-        onOpenChange={(v) => !v && setOpen(null)}
-        request={currentRow}
-      />
-    </>
-  )
+    <ImportsCreateDialog
+      open={open === "create"}
+      onOpenChange={(value) => !value && setOpen(null)}
+    />
+  );
 }
