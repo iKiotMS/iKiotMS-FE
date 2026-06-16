@@ -20,7 +20,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { BranchSwitcher } from "@/components/branch-switcher";
+import { BranchSwitcher } from "@/components/switcher/branch-switcher";
 import { SidebarNotification } from "@/components/sidebar-notification";
 
 import { NavMain } from "@/components/nav-main";
@@ -75,6 +75,20 @@ const data = {
           title: "Hàng hóa",
           url: "/products",
           icon: Package,
+          items: [
+            {
+              title: "Danh sách",
+              url: "/products",
+            },
+            {
+              title: "Danh mục",
+              url: "/categories",
+            },
+            {
+              title: "Thương hiệu",
+              url: "/brands",
+            },
+          ],
         },
         {
           title: "Giao dịch",
@@ -121,7 +135,7 @@ const data = {
       items: [
         {
           title: "Khách hàng",
-          url: "/users",
+          url: "/customers",
           icon: Users,
         },
         {
@@ -239,15 +253,23 @@ const data = {
 };
 
 const branches = [
-  { name: "Main", logo: Logo, plan: "main" },
-  { name: "Develop", logo: Logo, plan: "develop" },
+  { name: "Tổng", logo: Logo, address: "all" },
+  { name: "Chi nhánh A", logo: Logo, address: "123 Nguyễn Trãi, Q1, TP.HCM" },
+  { name: "Chi nhánh B", logo: Logo, address: "456 Lê Lợi, Q1, TP.HCM" },
+  { name: "Chi nhánh C", logo: Logo, address: "789 Hai Bà Trưng, Q1, TP.HCM" },
+];
+
+const warehouses = [
+  { name: "Tổng", logo: Logo, address: "all" },
+  { name: "Kho 1", logo: Logo, address: "123 Nguyễn Trãi, Q1, TP.HCM" },
+  { name: "Kho 2", logo: Logo, address: "456 Lê Lợi, Q1, TP.HCM" },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        <BranchSwitcher branches={branches} />
+        <BranchSwitcher branches={branches} warehouses={warehouses} />
       </SidebarHeader>
 
       <SidebarContent>
