@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,35 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useProducts, type Product } from './products-provider'
-
-export const CATEGORIES = [
-  'Đồ uống',
-  'Thực phẩm',
-  'Văn phòng phẩm',
-  'Phụ kiện điện tử',
-  'Y tế & Vệ sinh',
-  'Chăm sóc cá nhân',
-  'Gia dụng',
-  'Khác',
-]
-
-const productFormSchema = z.object({
-  name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
-  productCode: z.string().min(1, 'Mã hàng là bắt buộc'),
-  sku: z.string().min(1, 'SKU là bắt buộc'),
-  barcode: z.string().optional(),
-  categoryName: z.string().min(1, 'Vui lòng chọn danh mục'),
-  brandName: z.string().optional(),
-  retailPrice: z.number().min(0, 'Giá bán không được âm'),
-  costPrice: z.number().min(0, 'Giá vốn không được âm'),
-  VAT: z.number().min(0).max(100).optional(),
-  warrantyPeriod: z.string().optional(),
-  description: z.string().optional(),
-  status: z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']),
-})
-
-export type ProductFormValues = z.infer<typeof productFormSchema>
+import { useProducts } from '../../_context/products-provider'
+import { productFormSchema } from '../../_types/product.types'
+import { CATEGORIES } from '../../_constants/product.constants'
+import type { Product, ProductFormValues } from '../../_types/product.types'
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
@@ -126,9 +100,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? 'Chỉnh sửa hàng hóa' : 'Thêm hàng hóa mới'}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? 'Chỉnh sửa hàng hóa' : 'Thêm hàng hóa mới'}</DialogTitle>
           <DialogDescription>
             {isEdit
               ? 'Cập nhật thông tin hàng hóa. Nhấn Lưu khi hoàn tất.'
@@ -143,7 +115,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tên hàng hóa <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>
+                    Tên hàng hóa <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="Nhập tên hàng hóa" {...field} />
                   </FormControl>
@@ -158,7 +132,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 name="productCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mã hàng <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Mã hàng <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder="VD: HH-001" {...field} />
                     </FormControl>
@@ -171,7 +147,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 name="sku"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>SKU <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      SKU <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder="VD: SKU-HH001-001" {...field} />
                     </FormControl>
@@ -187,7 +165,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 name="categoryName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Danh mục <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Danh mục <span className="text-destructive">*</span>
+                    </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
@@ -196,7 +176,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                       </FormControl>
                       <SelectContent>
                         {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -225,7 +207,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 name="costPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Giá vốn (đ) <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Giá vốn (đ) <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -244,7 +228,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 name="retailPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Giá bán (đ) <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Giá bán (đ) <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -272,7 +258,9 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                         placeholder="0"
                         value={field.value ?? ''}
                         onChange={(e) =>
-                          field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)
+                          field.onChange(
+                            e.target.value === '' ? undefined : e.target.valueAsNumber,
+                          )
                         }
                       />
                     </FormControl>
@@ -364,9 +352,15 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
               </Button>
               <Button type="submit" className="cursor-pointer">
                 {isEdit ? (
-                  <><Pencil className="mr-2 h-4 w-4" />Lưu thay đổi</>
+                  <>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Lưu thay đổi
+                  </>
                 ) : (
-                  <><Plus className="mr-2 h-4 w-4" />Thêm hàng hóa</>
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Thêm hàng hóa
+                  </>
                 )}
               </Button>
             </DialogFooter>

@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useProducts, type Product } from './products-provider'
+import { useProducts } from '../../_context/products-provider'
+import type { Product } from '../../_types/product.types'
 
 type ProductsDeleteDialogProps = {
   open: boolean
@@ -55,14 +56,18 @@ export function ProductsDeleteDialog({
             ) : (
               <>
                 Bạn có chắc muốn xóa{' '}
-                <strong className="text-foreground">{currentRow?.name ?? ''}</strong>?{' '}
-                Hành động này không thể hoàn tác.
+                <strong className="text-foreground">{currentRow?.name ?? ''}</strong>? Hành động
+                này không thể hoàn tác.
               </>
             )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="cursor-pointer"
+          >
             Hủy
           </Button>
           <Button variant="destructive" onClick={onConfirm} className="cursor-pointer">
