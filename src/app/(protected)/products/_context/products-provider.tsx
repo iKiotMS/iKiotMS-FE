@@ -1,29 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
+import type { Product, ProductsDialogType, ProductFormValues } from '../_types/product.types'
 import initialProductsData from '../data/products.json'
-import type { ProductFormValues } from './products-mutate-dialog'
-
-export interface Product {
-  id: string
-  productCode: string
-  sku: string
-  barcode: string
-  name: string
-  categoryName: string
-  brandName: string
-  retailPrice: number
-  costPrice: number
-  VAT: number
-  stock: number
-  status: 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED'
-  warrantyPeriod: string
-  description: string
-  createdAt: string
-  imageUrl?: string
-}
-
-type ProductsDialogType = 'add' | 'edit' | 'delete' | 'deleteMany'
 
 type ProductsContextType = {
   products: Product[]

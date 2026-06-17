@@ -2,7 +2,7 @@
 
 import { Download, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useProducts } from './products-provider'
+import { useProducts } from '../_context/products-provider'
 
 export function ProductsButtonGroup() {
   const { setOpen, selectedIds } = useProducts()

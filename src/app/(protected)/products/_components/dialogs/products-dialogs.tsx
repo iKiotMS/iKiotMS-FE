@@ -1,6 +1,6 @@
 'use client'
 
-import { useProducts } from './products-provider'
+import { useProducts } from '../../_context/products-provider'
 import { ProductsMutateDialog } from './products-mutate-dialog'
 import { ProductsDeleteDialog } from './products-delete-dialog'
 
