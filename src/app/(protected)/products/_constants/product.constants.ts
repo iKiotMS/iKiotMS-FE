@@ -1,4 +1,5 @@
-import type { ProductStatus } from '../_types/product.types'
+// [Constants – Product]
+import type { ProductStatus } from '@/types/product'
 
 export const STATUS_MAP: Record<ProductStatus, { label: string; className: string }> = {
   ACTIVE: {

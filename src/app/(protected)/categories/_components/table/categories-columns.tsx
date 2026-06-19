@@ -1,13 +1,11 @@
+// [Table – Columns Category]
 import { type ColumnDef } from '@tanstack/react-table'
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import type { Product } from '@/types/product'
-import { STATUS_MAP } from '../../_constants/product.constants'
-
-const formatVND = (value: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+import type { Category } from '@/types/category'
+import { STATUS_MAP } from '../../_constants/category.constants'
 
 function SortableHeader({
   label,
@@ -37,7 +35,7 @@ function SortableHeader({
   )
 }
 
-export const productsColumns: ColumnDef<Product>[] = [
+export const categoriesColumns: ColumnDef<Category>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -66,90 +64,40 @@ export const productsColumns: ColumnDef<Product>[] = [
     size: 50,
   },
   {
-    id: 'image',
-    header: '',
+    accessorKey: 'categoryCode',
+    header: ({ column }) => <SortableHeader label="Mã danh mục" column={column} />,
     cell: ({ row }) => (
-      <img
-        src={row.original.imageUrl || 'https://placehold.co/40x40/e2e8f0/94a3b8?text=IMG'}
-        alt={row.original.name}
-        className="size-10 rounded-md object-cover border"
-      />
-    ),
-    size: 56,
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'productCode',
-    header: ({ column }) => <SortableHeader label="Mã hàng" column={column} />,
-    cell: ({ row }) => (
-      <span className="font-mono text-sm font-medium">{row.getValue('productCode')}</span>
+      <span className="font-mono text-sm font-medium">{row.getValue('categoryCode')}</span>
     ),
   },
   {
     accessorKey: 'name',
-    header: ({ column }) => <SortableHeader label="Tên hàng hóa" column={column} />,
-    cell: ({ row }) => {
-      const product = row.original
-      return (
-        <div className="flex flex-col">
-          <span className="font-medium">{product.name}</span>
-          <span className="text-xs text-muted-foreground">{product.brandName}</span>
-        </div>
-      )
-    },
+    header: ({ column }) => <SortableHeader label="Tên danh mục" column={column} />,
+    cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
   },
   {
-    accessorKey: 'categoryName',
-    header: 'Danh mục',
+    accessorKey: 'description',
+    header: 'Mô tả',
     cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs">
-        {row.getValue('categoryName')}
-      </Badge>
-    ),
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
-  },
-  {
-    accessorKey: 'costPrice',
-    header: ({ column }) => <SortableHeader label="Giá vốn" column={column} />,
-    cell: ({ row }) => (
-      <span className="text-sm tabular-nums">{formatVND(row.getValue('costPrice'))}</span>
-    ),
-  },
-  {
-    accessorKey: 'retailPrice',
-    header: ({ column }) => <SortableHeader label="Giá bán" column={column} />,
-    cell: ({ row }) => (
-      <span className="text-sm font-medium tabular-nums">
-        {formatVND(row.getValue('retailPrice'))}
+      <span className="text-sm text-muted-foreground line-clamp-1 max-w-xs">
+        {row.getValue('description') || '—'}
       </span>
     ),
   },
   {
-    accessorKey: 'stock',
-    header: ({ column }) => <SortableHeader label="Tồn kho" column={column} />,
-    cell: ({ row }) => {
-      const stock = row.getValue('stock') as number
-      return (
-        <span
-          className={
-            stock === 0
-              ? 'text-red-600 dark:text-red-400 font-medium'
-              : stock < 10
-                ? 'text-orange-500 dark:text-orange-400 font-medium'
-                : ''
-          }
-        >
-          {stock.toLocaleString('vi-VN')}
-        </span>
-      )
-    },
+    accessorKey: 'productCount',
+    header: ({ column }) => <SortableHeader label="Số hàng hóa" column={column} />,
+    cell: ({ row }) => (
+      <span className="tabular-nums">
+        {(row.getValue('productCount') as number).toLocaleString('vi-VN')}
+      </span>
+    ),
   },
   {
     accessorKey: 'status',
     header: 'Trạng thái',
     cell: ({ row }) => {
-      const status = row.getValue('status') as Product['status']
+      const status = row.getValue('status') as Category['status']
       const { label, className } = STATUS_MAP[status]
       return (
         <Badge variant="secondary" className={className}>

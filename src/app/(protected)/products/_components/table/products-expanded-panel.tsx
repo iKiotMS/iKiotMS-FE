@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useProducts } from '../../_context/products-provider'
 import { STATUS_MAP } from '../../_constants/product.constants'
-import type { Product } from '../../_types/product.types'
+import type { Product } from '@/types/product'
 
 const formatVND = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)

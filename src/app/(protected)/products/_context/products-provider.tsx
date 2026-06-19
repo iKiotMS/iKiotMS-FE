@@ -1,93 +1,51 @@
+// [Context – UI State]
 'use client'
 
 import React, { useState } from 'react'
-import type { Product, ProductsDialogType, ProductFormValues } from '../_types/product.types'
-import initialProductsData from '../data/products.json'
+import type { Product } from '@/types/product'
+import type { ProductsDialogType, ProductFormValues } from '../_types/product.types'
+import { useProductsMutations } from '../_hooks/use-products-mutations'
 
 type ProductsContextType = {
   products: Product[]
+  isLoading: boolean
   open: ProductsDialogType | null
   setOpen: (str: ProductsDialogType | null) => void
   currentRow: Product | null
   setCurrentRow: React.Dispatch<React.SetStateAction<Product | null>>
-  handleAdd: (data: ProductFormValues) => void
-  handleEdit: (id: string, data: ProductFormValues) => void
-  handleDelete: (id: string) => void
+  handleAdd: (data: ProductFormValues) => Promise<boolean>
+  handleEdit: (id: string, data: ProductFormValues) => Promise<boolean>
+  handleDelete: (id: string) => Promise<boolean>
   selectedIds: string[]
   setSelectedIds: (ids: string[]) => void
-  handleDeleteMany: (ids: string[]) => void
+  handleDeleteMany: (ids: string[]) => Promise<boolean>
   selectionVersion: number
 }
 
 const ProductsContext = React.createContext<ProductsContextType | null>(null)
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(initialProductsData as Product[])
+  const { products, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany } =
+    useProductsMutations()
   const [open, setOpen] = useState<ProductsDialogType | null>(null)
   const [currentRow, setCurrentRow] = useState<Product | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectionVersion, setSelectionVersion] = useState(0)
 
-  function handleAdd(data: ProductFormValues) {
-    const newProduct: Product = {
-      id: Date.now().toString(),
-      productCode: data.productCode,
-      sku: data.sku,
-      barcode: data.barcode ?? '',
-      name: data.name,
-      categoryName: data.categoryName,
-      brandName: data.brandName ?? '',
-      retailPrice: data.retailPrice,
-      costPrice: data.costPrice,
-      VAT: data.VAT ?? 0,
-      stock: 0,
-      status: data.status,
-      warrantyPeriod: data.warrantyPeriod ?? '',
-      description: data.description ?? '',
-      createdAt: new Date().toISOString().split('T')[0],
-      imageUrl: '',
+  async function handleDeleteManyWrapper(ids: string[]): Promise<boolean> {
+    const success = await handleDeleteMany(ids)
+    if (success) {
+      setSelectedIds([])
+      setSelectionVersion((v) => v + 1)
     }
-    setProducts((prev) => [newProduct, ...prev])
-  }
-
-  function handleEdit(id: string, data: ProductFormValues) {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              name: data.name,
-              productCode: data.productCode,
-              sku: data.sku,
-              barcode: data.barcode ?? p.barcode,
-              categoryName: data.categoryName,
-              brandName: data.brandName ?? p.brandName,
-              retailPrice: data.retailPrice,
-              costPrice: data.costPrice,
-              VAT: data.VAT ?? p.VAT,
-              warrantyPeriod: data.warrantyPeriod ?? p.warrantyPeriod,
-              description: data.description ?? p.description,
-              status: data.status,
-            }
-          : p,
-      ),
-    )
-  }
-
-  function handleDelete(id: string) {
-    setProducts((prev) => prev.filter((p) => p.id !== id))
-  }
-
-  function handleDeleteMany(ids: string[]) {
-    setProducts((prev) => prev.filter((p) => !ids.includes(p.id)))
-    setSelectedIds([])
-    setSelectionVersion((v) => v + 1)
+    return success
   }
 
   return (
     <ProductsContext.Provider
       value={{
         products,
+        isLoading,
         open,
         setOpen,
         currentRow,
@@ -97,7 +55,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         handleDelete,
         selectedIds,
         setSelectedIds,
-        handleDeleteMany,
+        handleDeleteMany: handleDeleteManyWrapper,
         selectionVersion,
       }}
     >

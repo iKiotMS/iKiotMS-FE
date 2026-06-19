@@ -1,3 +1,4 @@
+// [Table – Pagination Customer]
 'use client'
 
 import { type Table } from '@tanstack/react-table'
@@ -10,13 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Product } from '@/types/product'
+import type { Customer } from '@/types/customer'
 
-type ProductsPaginationProps = {
-  table: Table<Product>
+type CustomersPaginationProps = {
+  table: Table<Customer>
 }
 
-export function ProductsPagination({ table }: ProductsPaginationProps) {
+export function CustomersPagination({ table }: CustomersPaginationProps) {
   return (
     <div className="flex items-center justify-between space-x-2 py-4">
       <div className="flex items-center space-x-2">
@@ -40,7 +41,7 @@ export function ProductsPagination({ table }: ProductsPaginationProps) {
 
       <div className="hidden sm:block text-sm text-muted-foreground">
         Đã chọn {table.getFilteredSelectedRowModel().rows.length} /{' '}
-        {table.getFilteredRowModel().rows.length} hàng hóa
+        {table.getFilteredRowModel().rows.length} khách hàng
       </div>
 
       <div className="flex items-center space-x-2">

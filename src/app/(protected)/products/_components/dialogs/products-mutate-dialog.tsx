@@ -1,3 +1,4 @@
+// [Dialog – Mutate Product]
 'use client'
 
 import { useEffect } from 'react'
@@ -30,10 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useProducts } from '../../_context/products-provider'
-import { productFormSchema } from '../../_types/product.types'
+import type { Product } from '@/types/product'
+import { productFormSchema, type ProductFormValues } from '../../_types/product.types'
 import { CATEGORIES } from '../../_constants/product.constants'
-import type { Product, ProductFormValues } from '../../_types/product.types'
+import { useProducts } from '../../_context/products-provider'
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
@@ -87,13 +88,11 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
     }
   }, [open, isEdit, currentRow, form])
 
-  function onSubmit(data: ProductFormValues) {
-    if (isEdit && currentRow) {
-      handleEdit(currentRow.id, data)
-    } else {
-      handleAdd(data)
-    }
-    onOpenChange(false)
+  async function onSubmit(data: ProductFormValues) {
+    const success = isEdit && currentRow
+      ? await handleEdit(currentRow.id, data)
+      : await handleAdd(data)
+    if (success) onOpenChange(false)
   }
 
   return (
