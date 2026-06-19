@@ -1,6 +1,6 @@
 import { PageHeader } from '@/components/page-header'
-import { ProductsButtonGroup } from './components/products-button-group'
-import { ProductsTable } from './components/products-table'
+import { ProductsButtonGroup } from './_components/products-button-group'
+import { ProductsTable } from './_components/table/products-table'
 
 export default function ProductsPage() {
   return (
