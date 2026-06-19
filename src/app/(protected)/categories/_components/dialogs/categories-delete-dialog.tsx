@@ -1,4 +1,4 @@
-// [Dialog – Delete Product]
+// [Dialog – Delete Category]
 'use client'
 
 import { Trash2 } from 'lucide-react'
@@ -11,25 +11,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { Product } from '@/types/product'
-import { useProducts } from '../../_context/products-provider'
+import type { Category } from '@/types/category'
+import { useCategories } from '../../_context/categories-provider'
 
-type ProductsDeleteDialogProps = {
+type CategoriesDeleteDialogProps = {
   open: boolean
   mode: 'delete' | 'deleteMany'
   onOpenChange: (open: boolean) => void
-  currentRow: Product | null
+  currentRow: Category | null
   selectedIds: string[]
 }
 
-export function ProductsDeleteDialog({
+export function CategoriesDeleteDialog({
   open,
   mode,
   onOpenChange,
   currentRow,
   selectedIds,
-}: ProductsDeleteDialogProps) {
-  const { handleDelete, handleDeleteMany } = useProducts()
+}: CategoriesDeleteDialogProps) {
+  const { handleDelete, handleDeleteMany } = useCategories()
 
   async function onConfirm() {
     const success =
@@ -47,17 +47,17 @@ export function ProductsDeleteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Xóa hàng hóa</DialogTitle>
+          <DialogTitle>Xóa danh mục</DialogTitle>
           <DialogDescription>
             {isBulk ? (
               <>
                 Bạn có chắc muốn xóa{' '}
-                <strong className="text-foreground">{selectedIds.length} hàng hóa</strong> đã chọn?{' '}
+                <strong className="text-foreground">{selectedIds.length} danh mục</strong> đã chọn?{' '}
                 Hành động này không thể hoàn tác.
               </>
             ) : (
               <>
-                Bạn có chắc muốn xóa{' '}
+                Bạn có chắc muốn xóa danh mục{' '}
                 <strong className="text-foreground">{currentRow?.name ?? ''}</strong>? Hành động
                 này không thể hoàn tác.
               </>

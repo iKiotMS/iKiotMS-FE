@@ -1,4 +1,4 @@
-// [Dialog – Delete Product]
+// [Dialog – Delete Customer]
 'use client'
 
 import { Trash2 } from 'lucide-react'
@@ -11,25 +11,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { Product } from '@/types/product'
-import { useProducts } from '../../_context/products-provider'
+import type { Customer } from '@/types/customer'
+import { useCustomers } from '../../_context/customers-provider'
 
-type ProductsDeleteDialogProps = {
+type CustomersDeleteDialogProps = {
   open: boolean
   mode: 'delete' | 'deleteMany'
   onOpenChange: (open: boolean) => void
-  currentRow: Product | null
+  currentRow: Customer | null
   selectedIds: string[]
 }
 
-export function ProductsDeleteDialog({
+export function CustomersDeleteDialog({
   open,
   mode,
   onOpenChange,
   currentRow,
   selectedIds,
-}: ProductsDeleteDialogProps) {
-  const { handleDelete, handleDeleteMany } = useProducts()
+}: CustomersDeleteDialogProps) {
+  const { handleDelete, handleDeleteMany } = useCustomers()
 
   async function onConfirm() {
     const success =
@@ -47,17 +47,17 @@ export function ProductsDeleteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Xóa hàng hóa</DialogTitle>
+          <DialogTitle>Xóa khách hàng</DialogTitle>
           <DialogDescription>
             {isBulk ? (
               <>
                 Bạn có chắc muốn xóa{' '}
-                <strong className="text-foreground">{selectedIds.length} hàng hóa</strong> đã chọn?{' '}
-                Hành động này không thể hoàn tác.
+                <strong className="text-foreground">{selectedIds.length} khách hàng</strong> đã
+                chọn? Hành động này không thể hoàn tác.
               </>
             ) : (
               <>
-                Bạn có chắc muốn xóa{' '}
+                Bạn có chắc muốn xóa khách hàng{' '}
                 <strong className="text-foreground">{currentRow?.name ?? ''}</strong>? Hành động
                 này không thể hoàn tác.
               </>

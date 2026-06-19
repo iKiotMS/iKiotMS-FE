@@ -1,6 +1,7 @@
+// [Table – Orchestrator Brand]
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -23,15 +24,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { useProducts } from '../../_context/products-provider'
-import { productsColumns } from './products-columns'
-import { ProductsToolbar } from './products-toolbar'
-import { ProductsPagination } from './products-pagination'
-import { ProductsExpandedPanel } from './products-expanded-panel'
-import { ProductsEmpty } from '../products-empty'
+import { useBrands } from '../../_context/brands-provider'
+import { brandsColumns } from './brands-columns'
+import { BrandsToolbar } from './brands-toolbar'
+import { BrandsPagination } from './brands-pagination'
+import { BrandsExpandedPanel } from './brands-expanded-panel'
+import { BrandsEmpty } from '../brands-empty'
 
-export function ProductsTable() {
-  const { products, setSelectedIds, selectionVersion } = useProducts()
+export function BrandsTable() {
+  const { brands, setSelectedIds, selectionVersion } = useBrands()
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -40,9 +41,14 @@ export function ProductsTable() {
   const [globalFilter, setGlobalFilter] = useState('')
   const [expanded, setExpanded] = useState<ExpandedState>({})
 
+  const countries = useMemo(
+    () => [...new Set(brands.map((b) => b.country).filter(Boolean))],
+    [brands],
+  )
+
   const table = useReactTable({
-    data: products,
-    columns: productsColumns,
+    data: brands,
+    columns: brandsColumns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -75,7 +81,7 @@ export function ProductsTable() {
 
   return (
     <div className="space-y-4">
-      <ProductsToolbar table={table} />
+      <BrandsToolbar table={table} countries={countries} />
 
       <div className="rounded-md border">
         <Table>
@@ -100,6 +106,7 @@ export function ProductsTable() {
                     data-state={row.getIsSelected() ? 'selected' : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
+                      'cursor-pointer',
                       row.getIsExpanded() &&
                         'bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
                     )}
@@ -130,8 +137,8 @@ export function ProductsTable() {
                         )}
                       >
                         <div className="overflow-hidden">
-                          <ProductsExpandedPanel
-                            product={row.original}
+                          <BrandsExpandedPanel
+                            brand={row.original}
                             isExpanded={row.getIsExpanded()}
                           />
                         </div>
@@ -142,8 +149,8 @@ export function ProductsTable() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={productsColumns.length}>
-                  <ProductsEmpty />
+                <TableCell colSpan={brandsColumns.length}>
+                  <BrandsEmpty />
                 </TableCell>
               </TableRow>
             )}
@@ -151,7 +158,7 @@ export function ProductsTable() {
         </Table>
       </div>
 
-      <ProductsPagination table={table} />
+      <BrandsPagination table={table} />
     </div>
   )
 }

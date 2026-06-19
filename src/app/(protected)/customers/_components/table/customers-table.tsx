@@ -1,6 +1,7 @@
+// [Table – Orchestrator Customer]
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -23,15 +24,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { useProducts } from '../../_context/products-provider'
-import { productsColumns } from './products-columns'
-import { ProductsToolbar } from './products-toolbar'
-import { ProductsPagination } from './products-pagination'
-import { ProductsExpandedPanel } from './products-expanded-panel'
-import { ProductsEmpty } from '../products-empty'
+import { useCustomers } from '../../_context/customers-provider'
+import { customersColumns } from './customers-columns'
+import { CustomersToolbar } from './customers-toolbar'
+import { CustomersPagination } from './customers-pagination'
+import { CustomersExpandedPanel } from './customers-expanded-panel'
+import { CustomersEmpty } from '../customers-empty'
 
-export function ProductsTable() {
-  const { products, setSelectedIds, selectionVersion } = useProducts()
+export function CustomersTable() {
+  const { customers, setSelectedIds, selectionVersion } = useCustomers()
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -39,10 +40,22 @@ export function ProductsTable() {
   const [rowSelection, setRowSelection] = useState({})
   const [globalFilter, setGlobalFilter] = useState('')
   const [expanded, setExpanded] = useState<ExpandedState>({})
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
+  const filteredCustomers = useMemo(
+    () =>
+      customers.filter((c) => {
+        if (dateFrom && c.createdAt < dateFrom) return false
+        if (dateTo && c.createdAt > dateTo) return false
+        return true
+      }),
+    [customers, dateFrom, dateTo],
+  )
 
   const table = useReactTable({
-    data: products,
-    columns: productsColumns,
+    data: filteredCustomers,
+    columns: customersColumns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -75,7 +88,13 @@ export function ProductsTable() {
 
   return (
     <div className="space-y-4">
-      <ProductsToolbar table={table} />
+      <CustomersToolbar
+        table={table}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+      />
 
       <div className="rounded-md border">
         <Table>
@@ -100,6 +119,7 @@ export function ProductsTable() {
                     data-state={row.getIsSelected() ? 'selected' : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
+                      'cursor-pointer',
                       row.getIsExpanded() &&
                         'bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
                     )}
@@ -130,8 +150,8 @@ export function ProductsTable() {
                         )}
                       >
                         <div className="overflow-hidden">
-                          <ProductsExpandedPanel
-                            product={row.original}
+                          <CustomersExpandedPanel
+                            customer={row.original}
                             isExpanded={row.getIsExpanded()}
                           />
                         </div>
@@ -142,8 +162,8 @@ export function ProductsTable() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={productsColumns.length}>
-                  <ProductsEmpty />
+                <TableCell colSpan={customersColumns.length}>
+                  <CustomersEmpty />
                 </TableCell>
               </TableRow>
             )}
@@ -151,7 +171,7 @@ export function ProductsTable() {
         </Table>
       </div>
 
-      <ProductsPagination table={table} />
+      <CustomersPagination table={table} />
     </div>
   )
 }

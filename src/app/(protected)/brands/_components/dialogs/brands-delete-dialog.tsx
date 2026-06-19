@@ -1,4 +1,4 @@
-// [Dialog – Delete Product]
+// [Dialog – Delete Brand]
 'use client'
 
 import { Trash2 } from 'lucide-react'
@@ -11,25 +11,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { Product } from '@/types/product'
-import { useProducts } from '../../_context/products-provider'
+import type { Brand } from '@/types/brand'
+import { useBrands } from '../../_context/brands-provider'
 
-type ProductsDeleteDialogProps = {
+type BrandsDeleteDialogProps = {
   open: boolean
   mode: 'delete' | 'deleteMany'
   onOpenChange: (open: boolean) => void
-  currentRow: Product | null
+  currentRow: Brand | null
   selectedIds: string[]
 }
 
-export function ProductsDeleteDialog({
+export function BrandsDeleteDialog({
   open,
   mode,
   onOpenChange,
   currentRow,
   selectedIds,
-}: ProductsDeleteDialogProps) {
-  const { handleDelete, handleDeleteMany } = useProducts()
+}: BrandsDeleteDialogProps) {
+  const { handleDelete, handleDeleteMany } = useBrands()
 
   async function onConfirm() {
     const success =
@@ -47,17 +47,17 @@ export function ProductsDeleteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Xóa hàng hóa</DialogTitle>
+          <DialogTitle>Xóa thương hiệu</DialogTitle>
           <DialogDescription>
             {isBulk ? (
               <>
                 Bạn có chắc muốn xóa{' '}
-                <strong className="text-foreground">{selectedIds.length} hàng hóa</strong> đã chọn?{' '}
-                Hành động này không thể hoàn tác.
+                <strong className="text-foreground">{selectedIds.length} thương hiệu</strong> đã
+                chọn? Hành động này không thể hoàn tác.
               </>
             ) : (
               <>
-                Bạn có chắc muốn xóa{' '}
+                Bạn có chắc muốn xóa thương hiệu{' '}
                 <strong className="text-foreground">{currentRow?.name ?? ''}</strong>? Hành động
                 này không thể hoàn tác.
               </>
