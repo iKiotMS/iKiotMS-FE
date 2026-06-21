@@ -5,9 +5,11 @@ import { vi } from "date-fns/locale";
 import {
   Building2,
   CalendarDays,
+  CreditCard,
   KeyRound,
   Lock,
   Mail,
+  MapPin,
   Pencil,
   Phone,
   Trash2,
@@ -24,6 +26,12 @@ import {
 } from "@/app/(protected)/staffs/shared/staff-status";
 import { canDeleteStaff } from "@/app/(protected)/staffs/shared/staff-permissions";
 import { getCachedUser } from "@/lib/auth";
+import {
+  getStaffGenderLabel,
+  getStaffSalaryTypeLabel,
+} from "@/lib/api/staff-mapper";
+import { formatVndLabel } from "@/app/(protected)/staffs/shared/salary-format";
+import { formatIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
 
@@ -109,6 +117,50 @@ export function StaffsExpandedPanel({
           label="Ngày vào làm"
           value={format(new Date(staff.joinedAt), "dd/MM/yyyy", { locale: vi })}
         />
+        {staff.profile?.identificationId && (
+          <InfoItem
+            icon={<CreditCard className="size-4" />}
+            label="CCCD"
+            value={formatIdentificationId(staff.profile.identificationId)}
+          />
+        )}
+        {staff.profile?.gender && (
+          <InfoItem
+            icon={<User className="size-4" />}
+            label="Giới tính"
+            value={getStaffGenderLabel(staff.profile.gender)}
+          />
+        )}
+        {staff.profile?.dob && (
+          <InfoItem
+            icon={<CalendarDays className="size-4" />}
+            label="Ngày sinh"
+            value={format(new Date(staff.profile.dob), "dd/MM/yyyy", {
+              locale: vi,
+            })}
+          />
+        )}
+        {staff.profile?.address && (
+          <InfoItem
+            icon={<MapPin className="size-4" />}
+            label="Địa chỉ"
+            value={staff.profile.address}
+          />
+        )}
+        {staff.baseSalary !== undefined && (
+          <InfoItem
+            icon={<CreditCard className="size-4" />}
+            label="Lương cơ bản"
+            value={formatVndLabel(staff.baseSalary)}
+          />
+        )}
+        {staff.salaryType && (
+          <InfoItem
+            icon={<User className="size-4" />}
+            label="Loại lương"
+            value={getStaffSalaryTypeLabel(staff.salaryType)}
+          />
+        )}
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày tạo"

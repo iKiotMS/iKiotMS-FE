@@ -5,6 +5,19 @@ export type StaffRole =
 
 export type StaffStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
+export type StaffGender = "MALE" | "FEMALE" | "OTHER";
+
+export type StaffSalaryType = "FULL_TIME" | "PART_TIME";
+
+export interface StaffProfile {
+  identificationId?: string;
+  address?: string;
+  gender?: StaffGender;
+  dob?: string;
+  avatarUrl?: string;
+  taxNumber?: string;
+}
+
 export interface Staff {
   _id: string;
   tenantId: string;
@@ -20,6 +33,9 @@ export interface Staff {
   role: StaffRole;
   status: StaffStatus;
   joinedAt: string;
+  baseSalary?: number;
+  salaryType?: StaffSalaryType;
+  profile?: StaffProfile;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +68,15 @@ export interface StaffQueryParams {
   keyword?: string;
 }
 
+export interface StaffProfilePayload {
+  identificationId?: string;
+  address?: string;
+  gender?: StaffGender;
+  dob?: string;
+  avatarUrl?: string;
+  taxNumber?: string;
+}
+
 export interface CreateStaffPayload {
   firstName: string;
   lastName: string;
@@ -61,6 +86,9 @@ export interface CreateStaffPayload {
   branchId?: string;
   warehouseId?: string;
   hireDate?: string;
+  baseSalary?: number;
+  salaryType?: StaffSalaryType;
+  profile?: StaffProfilePayload;
   newPassword?: string;
   reEnterPassword?: string;
 }
@@ -73,6 +101,9 @@ export interface UpdateStaffPayload {
   branchId?: string;
   warehouseId?: string;
   hireDate?: string;
+  baseSalary?: number;
+  salaryType?: StaffSalaryType;
+  profile?: StaffProfilePayload;
 }
 
 export interface CreateStaffAccountPayload {

@@ -1,4 +1,11 @@
-import type { Staff, StaffRole, StaffStatus } from "@/types/staff";
+import type {
+  Staff,
+  StaffGender,
+  StaffProfile,
+  StaffRole,
+  StaffSalaryType,
+  StaffStatus,
+} from "@/types/staff";
 
 export interface ApiBranchRef {
   _id: string;
@@ -15,11 +22,13 @@ export interface ApiStaffUser {
   status: string;
   branchId?: string | ApiBranchRef | null;
   warehouseId?: string | { _id: string; name?: string } | null;
-  profile?: {
+  profile?: StaffProfile & {
     firstName?: string;
     lastName?: string;
   };
   hireDate?: string;
+  baseSalary?: number;
+  salaryType?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,8 +39,29 @@ const ROLE_LABELS: Record<StaffRole, string> = {
   BRANCH_MANAGER: "Quản lý chi nhánh",
 };
 
+const GENDER_LABELS: Record<StaffGender, string> = {
+  MALE: "Nam",
+  FEMALE: "Nữ",
+  OTHER: "Khác",
+};
+
+const SALARY_TYPE_LABELS: Record<StaffSalaryType, string> = {
+  FULL_TIME: "Toàn thời gian",
+  PART_TIME: "Bán thời gian",
+};
+
 export function getStaffRoleLabel(role: StaffRole): string {
   return ROLE_LABELS[role] ?? role;
+}
+
+export function getStaffGenderLabel(gender?: StaffGender): string {
+  if (!gender) return "—";
+  return GENDER_LABELS[gender] ?? gender;
+}
+
+export function getStaffSalaryTypeLabel(salaryType?: StaffSalaryType): string {
+  if (!salaryType) return "—";
+  return SALARY_TYPE_LABELS[salaryType] ?? salaryType;
 }
 
 function resolveRefId(
@@ -62,6 +92,25 @@ function mapRole(role: string): StaffRole {
   return "STAFF";
 }
 
+function mapSalaryType(value?: string): StaffSalaryType | undefined {
+  if (value === "FULL_TIME" || value === "PART_TIME") return value;
+  return undefined;
+}
+
+function mapProfile(profile?: ApiStaffUser["profile"]): StaffProfile | undefined {
+  if (!profile) return undefined;
+
+  const mapped: StaffProfile = {};
+  if (profile.identificationId) mapped.identificationId = profile.identificationId;
+  if (profile.address) mapped.address = profile.address;
+  if (profile.gender) mapped.gender = profile.gender;
+  if (profile.dob) mapped.dob = profile.dob;
+  if (profile.avatarUrl) mapped.avatarUrl = profile.avatarUrl;
+  if (profile.taxNumber) mapped.taxNumber = profile.taxNumber;
+
+  return Object.keys(mapped).length > 0 ? mapped : undefined;
+}
+
 export function isDeletedStaff(user: ApiStaffUser): boolean {
   return user.status === "DELETED";
 }
@@ -87,6 +136,9 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     role: mapRole(user.role),
     status: mapStatus(user.status),
     joinedAt: user.hireDate ?? user.createdAt,
+    baseSalary: user.baseSalary,
+    salaryType: mapSalaryType(user.salaryType),
+    profile: mapProfile(user.profile),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
