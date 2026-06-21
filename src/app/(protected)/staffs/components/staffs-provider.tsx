@@ -3,9 +3,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { staffApi } from "@/lib/api/staff";
+import { branchApi } from "@/lib/api/branch";
+import { warehouseApi } from "@/lib/api/warehouse";
 import {
-  extractBranchOptions,
-  extractWarehouseOptions,
   getApiErrorMessage,
   getStaffRoleLabel,
 } from "@/lib/api/staff-mapper";
@@ -115,25 +115,18 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const allStaff = await staffApi.getAllForOptions();
-        setBranchOptions(extractBranchOptions(allStaff));
-        setWarehouseOptions(extractWarehouseOptions(allStaff));
+        const [branches, warehouses] = await Promise.all([
+          branchApi.getOptions(),
+          warehouseApi.getOptions(),
+        ]);
+        setBranchOptions(branches);
+        setWarehouseOptions(warehouses);
       } catch {
         // Filter options are optional; list fetch handles errors.
       }
     }
 
     loadFilterOptions();
-  }, []);
-
-  const refreshBranchWarehouseOptions = useCallback(async () => {
-    try {
-      const allStaff = await staffApi.getAllForOptions();
-      setBranchOptions(extractBranchOptions(allStaff));
-      setWarehouseOptions(extractWarehouseOptions(allStaff));
-    } catch {
-      // Keep existing options on failure.
-    }
   }, []);
 
   const fetchStaffs = useCallback(async () => {
@@ -232,7 +225,6 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       }
 
       await fetchStaffs();
-      await refreshBranchWarehouseOptions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -244,7 +236,6 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       await staffApi.update(id, payload);
       toast.success("Đã cập nhật nhân viên");
       await fetchStaffs();
-      await refreshBranchWarehouseOptions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -258,7 +249,6 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa nhân viên");
       await fetchStaffs();
-      await refreshBranchWarehouseOptions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
