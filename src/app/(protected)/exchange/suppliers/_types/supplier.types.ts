@@ -15,7 +15,7 @@ export const supplierFormSchema = z.object({
       message: 'Email không hợp lệ',
     }),
   address: z.string().optional(),
-  creditLimit: z.coerce.number().min(0, 'Hạn mức tín dụng không được âm'),
+  creditLimit: z.number().min(0, 'Hạn mức tín dụng không được âm'),
   status: z.enum(['ACTIVE', 'INACTIVE']),
 })
 
