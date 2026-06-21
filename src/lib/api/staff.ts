@@ -1,5 +1,6 @@
 import client from "./client";
 import {
+  isDeletedStaff,
   mapStaffFromApi,
   type ApiStaffUser,
 } from "./staff-mapper";
@@ -72,7 +73,8 @@ export const staffApi = {
       },
     });
 
-    const items = response.data?.data ?? [];
+    const rawItems = response.data?.data ?? [];
+    const items = rawItems.filter((user) => !isDeletedStaff(user));
     const pagination = response.data?.pagination;
     const recordPerPage = pagination?.recordPerPage ?? items.length;
     const total = pagination?.total ?? items.length;

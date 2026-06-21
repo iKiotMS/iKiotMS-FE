@@ -22,6 +22,8 @@ import {
   STAFF_ROLE_MAP,
   getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
+import { canDeleteStaff } from "@/app/(protected)/staffs/shared/staff-permissions";
+import { getCachedUser } from "@/lib/auth";
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
 
@@ -53,6 +55,7 @@ export function StaffsExpandedPanel({
   isExpanded: boolean;
 }) {
   const { setOpen, setCurrentRow } = useStaffs();
+  const showDelete = canDeleteStaff(getCachedUser()?.role);
 
   if (!isExpanded) return null;
 
@@ -129,19 +132,23 @@ export function StaffsExpandedPanel({
 
       <Separator className="mt-4" />
       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(staff);
-            setOpen("delete");
-          }}
-        >
-          <Trash2 className="mr-2 size-4" />
-          Xóa nhân viên
-        </Button>
+        {showDelete ? (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(staff);
+              setOpen("delete");
+            }}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa nhân viên
+          </Button>
+        ) : (
+          <div />
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           {canActivate && (

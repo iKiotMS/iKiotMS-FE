@@ -44,6 +44,20 @@ const processQueue = (
   failedQueue = [];
 };
 
+function isExpiredAccessTokenError(error: AxiosError): boolean {
+  const message = (error.response?.data as { message?: string } | undefined)
+    ?.message;
+  return (
+    error.response?.status === 403 && message === "Invalid or expired token."
+  );
+}
+
+function shouldRefreshAccessToken(error: AxiosError): boolean {
+  if (!getRefreshToken()) return false;
+  if (isExpiredAccessTokenError(error)) return true;
+  return error.response?.status === 401;
+}
+
 /**
  * Request interceptor - Add access token to headers
  */
@@ -78,7 +92,7 @@ client.interceptors.response.use(
       originalRequest.url?.includes("/auth/reset-password");
 
     if (
-      error.response?.status === 401 &&
+      shouldRefreshAccessToken(error) &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {

@@ -8,6 +8,7 @@ import {
   extractWarehouseOptions,
   getApiErrorMessage,
   getStaffRoleLabel,
+  mergeSelectOptions,
 } from "@/lib/api/staff-mapper";
 import type {
   CreateStaffAccountPayload,
@@ -34,6 +35,8 @@ const DEFAULT_LIST_QUERY: StaffListQuery = {
   keyword: "",
   role: "all",
   status: "all",
+  branchId: "all",
+  warehouseId: "all",
 };
 
 type StaffsContextType = {
@@ -65,6 +68,8 @@ type StaffsContextType = {
   ) => Promise<void>;
   updateRoleFilter: (role: StaffRole | "all") => void;
   updateStatusFilter: (status: StaffStatus | "all") => void;
+  updateBranchFilter: (branchId: string) => void;
+  updateWarehouseFilter: (warehouseId: string) => void;
   updatePage: (page: number) => void;
   updatePageSize: (recordPerPage: number) => void;
 };
@@ -108,6 +113,24 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [keywordInput]);
 
+  useEffect(() => {
+    async function loadFilterOptions() {
+      try {
+        const response = await staffApi.getList({
+          page: 1,
+          recordPerPage: 100,
+        });
+        const activeStaff = response.data;
+        setBranchOptions(extractBranchOptions(activeStaff));
+        setWarehouseOptions(extractWarehouseOptions(activeStaff));
+      } catch {
+        // Filter options are optional; list fetch handles errors.
+      }
+    }
+
+    loadFilterOptions();
+  }, []);
+
   const fetchStaffs = useCallback(async () => {
     setIsFetching(true);
     try {
@@ -117,12 +140,19 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
         keyword: listQuery.keyword || undefined,
         role: listQuery.role === "all" ? undefined : listQuery.role,
         status: listQuery.status === "all" ? undefined : listQuery.status,
+        branchId: listQuery.branchId === "all" ? undefined : listQuery.branchId,
+        warehouseId:
+          listQuery.warehouseId === "all" ? undefined : listQuery.warehouseId,
       });
       setStaffs(response.data);
       setTotal(response.total);
       setTotalPages(response.totalPages);
-      setBranchOptions(extractBranchOptions(response.data));
-      setWarehouseOptions(extractWarehouseOptions(response.data));
+      setBranchOptions((prev) =>
+        mergeSelectOptions(prev, extractBranchOptions(response.data)),
+      );
+      setWarehouseOptions((prev) =>
+        mergeSelectOptions(prev, extractWarehouseOptions(response.data)),
+      );
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       setStaffs([]);
@@ -166,6 +196,14 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     setListQuery((prev) => ({ ...prev, status, page: 1 }));
   }
 
+  function updateBranchFilter(branchId: string) {
+    setListQuery((prev) => ({ ...prev, branchId, page: 1 }));
+  }
+
+  function updateWarehouseFilter(warehouseId: string) {
+    setListQuery((prev) => ({ ...prev, warehouseId, page: 1 }));
+  }
+
   function updatePage(page: number) {
     setListQuery((prev) => ({ ...prev, page }));
   }
@@ -207,6 +245,8 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
   async function handleDelete(id: string) {
     try {
       await staffApi.remove(id);
+      setStaffs((prev) => prev.filter((staff) => staff._id !== id));
+      setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa nhân viên");
       await fetchStaffs();
     } catch (error) {
@@ -282,6 +322,8 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
         handleUpdatePassword,
         updateRoleFilter,
         updateStatusFilter,
+        updateBranchFilter,
+        updateWarehouseFilter,
         updatePage,
         updatePageSize,
       }}

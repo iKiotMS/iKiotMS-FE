@@ -62,8 +62,12 @@ export function StaffsTable() {
     listQuery,
     keywordInput,
     setKeywordInput,
+    branchOptions,
+    warehouseOptions,
     updateRoleFilter,
     updateStatusFilter,
+    updateBranchFilter,
+    updateWarehouseFilter,
     updatePage,
     updatePageSize,
   } = useStaffs();
@@ -144,6 +148,44 @@ export function StaffsTable() {
               <SelectItem value="SUSPENDED">Tạm khóa</SelectItem>
             </SelectContent>
           </Select>
+
+          {branchOptions.length > 0 && (
+            <Select
+              value={listQuery.branchId}
+              onValueChange={updateBranchFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Chi nhánh" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả chi nhánh</SelectItem>
+                {branchOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {warehouseOptions.length > 0 && (
+            <Select
+              value={listQuery.warehouseId}
+              onValueChange={updateWarehouseFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Kho hàng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả kho</SelectItem>
+                {warehouseOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <DropdownMenu>

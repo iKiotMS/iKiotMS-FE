@@ -135,6 +135,15 @@ export function StaffsMutateDialog({
   const selectedRole = form.watch("role");
 
   useEffect(() => {
+    if (selectedRole === "WAREHOUSE_MANAGER") {
+      form.setValue("branchId", "");
+    }
+    if (selectedRole === "BRANCH_MANAGER") {
+      form.setValue("warehouseId", "");
+    }
+  }, [selectedRole, form]);
+
+  useEffect(() => {
     if (!open) return;
     if (isEdit && currentRow) {
       form.reset({
@@ -162,8 +171,14 @@ export function StaffsMutateDialog({
           lastName: editData.lastName,
           email: editData.email || undefined,
           role: editData.role,
-          branchId: editData.branchId || undefined,
-          warehouseId: editData.warehouseId || undefined,
+          branchId:
+            editData.role === "WAREHOUSE_MANAGER"
+              ? undefined
+              : editData.branchId || undefined,
+          warehouseId:
+            editData.role === "BRANCH_MANAGER"
+              ? undefined
+              : editData.warehouseId || undefined,
           hireDate: editData.hireDate || undefined,
         });
       } else {
@@ -174,8 +189,14 @@ export function StaffsMutateDialog({
           phoneNumber: createData.phoneNumber,
           email: createData.email || undefined,
           role: createData.role,
-          branchId: createData.branchId || undefined,
-          warehouseId: createData.warehouseId || undefined,
+          branchId:
+            createData.role === "WAREHOUSE_MANAGER"
+              ? undefined
+              : createData.branchId || undefined,
+          warehouseId:
+            createData.role === "BRANCH_MANAGER"
+              ? undefined
+              : createData.warehouseId || undefined,
           hireDate: createData.hireDate || undefined,
           newPassword: createData.newPassword,
           reEnterPassword: createData.reEnterPassword,
@@ -288,7 +309,8 @@ export function StaffsMutateDialog({
                 )}
               />
 
-              {(selectedRole === "BRANCH_MANAGER" || branchOptions.length > 0) && (
+              {(selectedRole === "BRANCH_MANAGER" ||
+                selectedRole === "STAFF") && (
                 <FormField
                   control={form.control}
                   name="branchId"
