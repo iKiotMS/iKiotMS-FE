@@ -209,7 +209,16 @@ export function SuppliersMutateDialog({
                   <FormItem>
                     <FormLabel>Hạn mức tín dụng (VND)</FormLabel>
                     <FormControl>
-                      <Input placeholder="VD: 50000000" type="number" min={0} {...field} />
+                      <Input
+                        placeholder="VD: 50000000"
+                        type="number"
+                        min={0}
+                        {...field}
+                        onChange={(e) => {
+                          const val = e.target.valueAsNumber
+                          field.onChange(isNaN(val) ? 0 : val)
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
