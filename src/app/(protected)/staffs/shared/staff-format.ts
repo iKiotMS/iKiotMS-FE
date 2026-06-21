@@ -14,7 +14,15 @@ export function getStaffInitials(fullName?: string): string {
 }
 
 function toDate(value?: string): Date | null {
-  return parseDateInput(value) ?? null;
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const fromInput = parseDateInput(trimmed);
+  if (fromInput) return fromInput;
+
+  // API returns Mongo dates as ISO strings (e.g. 2026-06-26T00:00:00.000Z).
+  const iso = parseISO(trimmed.includes("T") ? trimmed : `${trimmed}T00:00:00`);
+  return isValid(iso) ? iso : null;
 }
 
 export function formatStaffDate(
