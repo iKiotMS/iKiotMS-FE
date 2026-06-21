@@ -5,6 +5,10 @@ import {
   type ApiStaffUser,
 } from "./staff-mapper";
 import { parseIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
+import {
+  normalizeDateInput,
+  parseTaxNumber,
+} from "@/app/(protected)/staffs/shared/staff-date-validation";
 import type {
   CreateStaffAccountPayload,
   CreateStaffPayload,
@@ -40,30 +44,35 @@ function buildProfileBody(
   }
   if (profile?.address) result.address = profile.address;
   if (profile?.gender) result.gender = profile.gender;
-  if (profile?.dob) result.dob = profile.dob;
-  if (profile?.avatarUrl) result.avatarUrl = profile.avatarUrl;
-  if (profile?.taxNumber) result.taxNumber = profile.taxNumber;
+  if (profile?.dob) result.dob = normalizeDateInput(profile.dob) ?? profile.dob;
+  if (profile?.avatarUrl !== undefined) result.avatarUrl = profile.avatarUrl;
+  if (profile?.taxNumber) result.taxNumber = parseTaxNumber(profile.taxNumber);
 
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function buildCreateBody(payload: CreateStaffPayload) {
+  const profile = buildProfileBody(
+    payload.firstName,
+    payload.lastName,
+    payload.profile,
+  );
+
   return {
     phoneNumber: payload.phoneNumber,
     email: payload.email,
     role: payload.role,
-    branchId: payload.branchId || undefined,
-    warehouseId: payload.warehouseId || undefined,
-    hireDate: payload.hireDate || undefined,
+    branchId: payload.branchId ?? undefined,
+    warehouseId: payload.warehouseId ?? undefined,
+    hireDate: normalizeDateInput(payload.hireDate),
     baseSalary: payload.baseSalary,
     salaryType: payload.salaryType,
     firstName: payload.firstName,
     lastName: payload.lastName,
-    profile: buildProfileBody(
-      payload.firstName,
-      payload.lastName,
-      payload.profile,
-    ),
+    avatarUrl: payload.profile?.avatarUrl || undefined,
+    taxNumber: parseTaxNumber(payload.profile?.taxNumber) || undefined,
+    dob: normalizeDateInput(payload.profile?.dob),
+    profile,
   };
 }
 
@@ -74,9 +83,14 @@ function buildUpdateBody(payload: UpdateStaffPayload) {
   if (payload.role !== undefined) data.role = payload.role;
   if (payload.branchId !== undefined) data.branchId = payload.branchId;
   if (payload.warehouseId !== undefined) data.warehouseId = payload.warehouseId;
-  if (payload.hireDate !== undefined) data.hireDate = payload.hireDate;
+  if (payload.hireDate !== undefined) {
+    data.hireDate = normalizeDateInput(payload.hireDate) ?? payload.hireDate;
+  }
   if (payload.baseSalary !== undefined) data.baseSalary = payload.baseSalary;
   if (payload.salaryType !== undefined) data.salaryType = payload.salaryType;
+  if (payload.accountNote !== undefined) {
+    data.accountNote = payload.accountNote.trim();
+  }
 
   const profile = buildProfileBody(
     payload.firstName,
@@ -106,17 +120,40 @@ export const staffApi = {
     const items = rawItems.filter((user) => !isDeletedStaff(user));
     const pagination = response.data?.pagination;
     const recordPerPage = pagination?.recordPerPage ?? items.length;
-    const total = pagination?.total ?? items.length;
+    const rawTotal = pagination?.total ?? items.length;
+    const deletedOnPage = rawItems.length - items.length;
+    const total =
+      !params?.status && deletedOnPage > 0
+        ? Math.max(items.length, rawTotal - deletedOnPage)
+        : rawTotal;
+    const totalPages =
+      pagination?.totalPages ??
+      Math.max(1, Math.ceil(total / (recordPerPage || 1)));
 
     return {
       data: items.map(mapStaffFromApi),
       total,
       page: pagination?.page ?? 1,
       limit: recordPerPage,
-      totalPages:
-        pagination?.totalPages ??
-        Math.max(1, Math.ceil(total / (recordPerPage || 1))),
+      totalPages,
     };
+  },
+
+  /** Paginate GET /staff to collect branch/warehouse options from existing staff. */
+  getAllForOptions: async (): Promise<Staff[]> => {
+    const merged: Staff[] = [];
+    let page = 1;
+    let totalPages = 1;
+    const recordPerPage = 100;
+
+    while (page <= totalPages && page <= 10) {
+      const response = await staffApi.getList({ page, recordPerPage });
+      merged.push(...response.data);
+      totalPages = response.totalPages;
+      page += 1;
+    }
+
+    return merged;
   },
 
   create: async (payload: CreateStaffPayload): Promise<Staff> => {

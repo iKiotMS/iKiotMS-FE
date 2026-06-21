@@ -36,6 +36,7 @@ export interface Staff {
   baseSalary?: number;
   salaryType?: StaffSalaryType;
   profile?: StaffProfile;
+  accountNote?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,8 +64,8 @@ export interface StaffQueryParams {
   recordPerPage?: number;
   role?: StaffRole;
   status?: StaffStatus;
-  branchId?: string;
-  warehouseId?: string;
+  branchId?: string | null;
+  warehouseId?: string | null;
   keyword?: string;
 }
 
@@ -83,8 +84,8 @@ export interface CreateStaffPayload {
   phoneNumber: string;
   email?: string;
   role: StaffRole;
-  branchId?: string;
-  warehouseId?: string;
+  branchId?: string | null;
+  warehouseId?: string | null;
   hireDate?: string;
   baseSalary?: number;
   salaryType?: StaffSalaryType;
@@ -98,12 +99,13 @@ export interface UpdateStaffPayload {
   lastName?: string;
   email?: string;
   role?: StaffRole;
-  branchId?: string;
-  warehouseId?: string;
+  branchId?: string | null;
+  warehouseId?: string | null;
   hireDate?: string;
   baseSalary?: number;
   salaryType?: StaffSalaryType;
   profile?: StaffProfilePayload;
+  accountNote?: string;
 }
 
 export interface CreateStaffAccountPayload {
