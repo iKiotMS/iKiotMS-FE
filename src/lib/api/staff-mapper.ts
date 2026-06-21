@@ -62,6 +62,10 @@ function mapRole(role: string): StaffRole {
   return "STAFF";
 }
 
+export function isDeletedStaff(user: ApiStaffUser): boolean {
+  return user.status === "DELETED";
+}
+
 export function mapStaffFromApi(user: ApiStaffUser): Staff {
   const firstName = user.profile?.firstName ?? "";
   const lastName = user.profile?.lastName ?? "";
@@ -119,15 +123,34 @@ export function extractWarehouseOptions(
   return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
 }
 
+export function mergeSelectOptions(
+  current: { value: string; label: string }[],
+  incoming: { value: string; label: string }[],
+): { value: string; label: string }[] {
+  const map = new Map(current.map((item) => [item.value, item.label]));
+  for (const item of incoming) {
+    map.set(item.value, item.label);
+  }
+  return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+}
+
 export function getApiErrorMessage(error: unknown): string {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof (error as { response?: { data?: { error?: string } } }).response?.data
-      ?.error === "string"
-  ) {
-    return (error as { response: { data: { error: string } } }).response.data.error;
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const data = (error as { response?: { data?: Record<string, unknown> } })
+      .response?.data;
+
+    if (typeof data?.error === "string") return data.error;
+    if (typeof data?.message === "string") {
+      if (data.message === "Invalid or expired token.") {
+        return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+      }
+      return data.message;
+    }
+
+    const status = (error as { response?: { status?: number } }).response?.status;
+    if (status === 403) {
+      return "Bạn không có quyền thực hiện thao tác này.";
+    }
   }
   if (error instanceof Error) return error.message;
   return "Đã xảy ra lỗi";

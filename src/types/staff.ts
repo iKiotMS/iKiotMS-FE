@@ -38,6 +38,8 @@ export interface StaffListQuery {
   keyword: string;
   role: StaffRole | "all";
   status: StaffStatus | "all";
+  branchId: string;
+  warehouseId: string;
 }
 
 export interface StaffQueryParams {
