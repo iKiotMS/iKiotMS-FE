@@ -30,8 +30,74 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Staff } from "@/types/staff";
+import type { Staff, StaffGender, StaffSalaryType } from "@/types/staff";
+import {
+  formatVndAmount,
+  parseVndAmount,
+} from "@/app/(protected)/staffs/shared/salary-format";
+import {
+  isValidIdentificationId,
+  parseIdentificationId,
+} from "@/app/(protected)/staffs/shared/identification-format";
+import { CccdInput } from "./cccd-input";
 import { useStaffs } from "./staffs-provider";
+
+const GENDER_OPTIONS: { value: StaffGender; label: string }[] = [
+  { value: "MALE", label: "Nam" },
+  { value: "FEMALE", label: "Nữ" },
+  { value: "OTHER", label: "Khác" },
+];
+
+const SALARY_TYPE_OPTIONS: { value: StaffSalaryType; label: string }[] = [
+  { value: "FULL_TIME", label: "Toàn thời gian" },
+  { value: "PART_TIME", label: "Bán thời gian" },
+];
+
+const profileFieldsSchema = {
+  identificationId: z
+    .string()
+    .optional()
+    .refine((value) => isValidIdentificationId(value), {
+      message: "CCCD phải có đúng 12 số",
+    }),
+  address: z.string().optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER", ""]).optional(),
+  dob: z.string().optional(),
+  baseSalary: z.string().optional(),
+  salaryType: z.enum(["FULL_TIME", "PART_TIME", ""]).optional(),
+};
+
+function buildProfilePayload(data: {
+  identificationId?: string;
+  address?: string;
+  gender?: string;
+  dob?: string;
+}) {
+  const profile = {
+    identificationId: data.identificationId || undefined,
+    address: data.address?.trim() || undefined,
+    gender: (data.gender as StaffGender) || undefined,
+    dob: data.dob || undefined,
+  };
+
+  if (
+    !profile.identificationId &&
+    !profile.address &&
+    !profile.gender &&
+    !profile.dob
+  ) {
+    return undefined;
+  }
+
+  return profile;
+}
+
+function buildSalaryPayload(baseSalary?: string, salaryType?: string) {
+  return {
+    baseSalary: parseVndAmount(baseSalary),
+    salaryType: (salaryType as StaffSalaryType) || undefined,
+  };
+}
 
 const createFormSchema = z
   .object({
@@ -47,6 +113,7 @@ const createFormSchema = z
     hireDate: z.string().optional(),
     newPassword: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
     reEnterPassword: z.string().min(6, "Xác nhận mật khẩu tối thiểu 6 ký tự"),
+    ...profileFieldsSchema,
   })
   .refine((data) => data.newPassword === data.reEnterPassword, {
     message: "Mật khẩu xác nhận không khớp",
@@ -78,6 +145,7 @@ const editFormSchema = z
     branchId: z.string().optional(),
     warehouseId: z.string().optional(),
     hireDate: z.string().optional(),
+    ...profileFieldsSchema,
   })
   .superRefine((data, ctx) => {
     if (data.role === "WAREHOUSE_MANAGER" && !data.warehouseId?.trim()) {
@@ -108,6 +176,12 @@ const EMPTY_CREATE_VALUES: CreateFormValues = {
   branchId: "",
   warehouseId: "",
   hireDate: "",
+  identificationId: "",
+  address: "",
+  gender: "",
+  dob: "",
+  baseSalary: "",
+  salaryType: "",
   newPassword: "",
   reEnterPassword: "",
 };
@@ -130,6 +204,8 @@ export function StaffsMutateDialog({
   const form = useForm<CreateFormValues | EditFormValues>({
     resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
     defaultValues: EMPTY_CREATE_VALUES,
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
   });
 
   const selectedRole = form.watch("role");
@@ -156,6 +232,18 @@ export function StaffsMutateDialog({
         hireDate: currentRow.joinedAt
           ? currentRow.joinedAt.slice(0, 10)
           : "",
+        identificationId:
+          parseIdentificationId(currentRow.profile?.identificationId) ?? "",
+        address: currentRow.profile?.address ?? "",
+        gender: currentRow.profile?.gender ?? "",
+        dob: currentRow.profile?.dob
+          ? currentRow.profile.dob.slice(0, 10)
+          : "",
+        baseSalary:
+          currentRow.baseSalary !== undefined
+            ? formatVndAmount(currentRow.baseSalary)
+            : "",
+        salaryType: currentRow.salaryType ?? "",
       });
     } else {
       form.reset(EMPTY_CREATE_VALUES);
@@ -166,6 +254,7 @@ export function StaffsMutateDialog({
     try {
       if (isEdit && currentRow) {
         const editData = data as EditFormValues;
+        const salary = buildSalaryPayload(editData.baseSalary, editData.salaryType);
         await handleEdit(currentRow._id, {
           firstName: editData.firstName,
           lastName: editData.lastName,
@@ -180,9 +269,16 @@ export function StaffsMutateDialog({
               ? undefined
               : editData.warehouseId || undefined,
           hireDate: editData.hireDate || undefined,
+          baseSalary: salary.baseSalary,
+          salaryType: salary.salaryType,
+          profile: buildProfilePayload(editData),
         });
       } else {
         const createData = data as CreateFormValues;
+        const salary = buildSalaryPayload(
+          createData.baseSalary,
+          createData.salaryType,
+        );
         await handleAdd({
           firstName: createData.firstName,
           lastName: createData.lastName,
@@ -198,6 +294,9 @@ export function StaffsMutateDialog({
               ? undefined
               : createData.warehouseId || undefined,
           hireDate: createData.hireDate || undefined,
+          baseSalary: salary.baseSalary,
+          salaryType: salary.salaryType,
+          profile: buildProfilePayload(createData),
           newPassword: createData.newPassword,
           reEnterPassword: createData.reEnterPassword,
         });
@@ -210,7 +309,7 @@ export function StaffsMutateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Cập nhật nhân viên" : "Thêm nhân viên mới"}
@@ -402,6 +501,135 @@ export function StaffsMutateDialog({
                   <FormLabel>Ngày vào làm</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="identificationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CCCD</FormLabel>
+                    <FormControl>
+                      <CccdInput
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Giới tính</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="cursor-pointer w-full">
+                          <SelectValue placeholder="Chọn giới tính" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {GENDER_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Địa chỉ</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ho Chi Minh City" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="dob"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ngày sinh</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="salaryType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Loại lương</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="cursor-pointer w-full">
+                          <SelectValue placeholder="Chọn loại lương" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SALARY_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="baseSalary"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lương cơ bản (VND)</FormLabel>
+                  <FormControl>
+                    <Input
+                      inputMode="numeric"
+                      placeholder="8.000.000"
+                      className="tabular-nums"
+                      value={field.value ?? ""}
+                      onChange={(event) => {
+                        const digits = event.target.value.replace(/\D/g, "");
+                        field.onChange(digits ? formatVndAmount(digits) : "");
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

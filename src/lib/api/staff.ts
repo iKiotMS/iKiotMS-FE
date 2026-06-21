@@ -4,6 +4,7 @@ import {
   mapStaffFromApi,
   type ApiStaffUser,
 } from "./staff-mapper";
+import { parseIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
 import type {
   CreateStaffAccountPayload,
   CreateStaffPayload,
@@ -25,6 +26,27 @@ interface StaffListApiResponse {
   };
 }
 
+function buildProfileBody(
+  firstName?: string,
+  lastName?: string,
+  profile?: CreateStaffPayload["profile"],
+) {
+  const result: Record<string, string> = {};
+
+  if (firstName !== undefined) result.firstName = firstName;
+  if (lastName !== undefined) result.lastName = lastName;
+  if (profile?.identificationId) {
+    result.identificationId = parseIdentificationId(profile.identificationId);
+  }
+  if (profile?.address) result.address = profile.address;
+  if (profile?.gender) result.gender = profile.gender;
+  if (profile?.dob) result.dob = profile.dob;
+  if (profile?.avatarUrl) result.avatarUrl = profile.avatarUrl;
+  if (profile?.taxNumber) result.taxNumber = profile.taxNumber;
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function buildCreateBody(payload: CreateStaffPayload) {
   return {
     phoneNumber: payload.phoneNumber,
@@ -33,12 +55,15 @@ function buildCreateBody(payload: CreateStaffPayload) {
     branchId: payload.branchId || undefined,
     warehouseId: payload.warehouseId || undefined,
     hireDate: payload.hireDate || undefined,
+    baseSalary: payload.baseSalary,
+    salaryType: payload.salaryType,
     firstName: payload.firstName,
     lastName: payload.lastName,
-    profile: {
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-    },
+    profile: buildProfileBody(
+      payload.firstName,
+      payload.lastName,
+      payload.profile,
+    ),
   };
 }
 
@@ -50,11 +75,15 @@ function buildUpdateBody(payload: UpdateStaffPayload) {
   if (payload.branchId !== undefined) data.branchId = payload.branchId;
   if (payload.warehouseId !== undefined) data.warehouseId = payload.warehouseId;
   if (payload.hireDate !== undefined) data.hireDate = payload.hireDate;
+  if (payload.baseSalary !== undefined) data.baseSalary = payload.baseSalary;
+  if (payload.salaryType !== undefined) data.salaryType = payload.salaryType;
 
-  const profile: Record<string, string> = {};
-  if (payload.firstName !== undefined) profile.firstName = payload.firstName;
-  if (payload.lastName !== undefined) profile.lastName = payload.lastName;
-  if (Object.keys(profile).length > 0) data.profile = profile;
+  const profile = buildProfileBody(
+    payload.firstName,
+    payload.lastName,
+    payload.profile,
+  );
+  if (profile) data.profile = profile;
 
   return { data };
 }
