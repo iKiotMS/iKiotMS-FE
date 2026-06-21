@@ -44,6 +44,25 @@ const processQueue = (
   failedQueue = [];
 };
 
+function getResponseMessage(data: unknown): string | undefined {
+  if (typeof data === "string" && data.trim()) return data;
+  if (typeof data === "object" && data !== null && "message" in data) {
+    const message = (data as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return undefined;
+}
+
+/** BE returns 401 for missing token, 403 when JWT verify fails — both should refresh. */
+function shouldRefreshAccessToken(error: AxiosError): boolean {
+  const status = error.response?.status;
+  if (status === 401) return true;
+  if (status !== 403) return false;
+
+  const message = getResponseMessage(error.response?.data)?.toLowerCase() ?? "";
+  return message.includes("invalid or expired token");
+}
+
 /**
  * Request interceptor - Add access token to headers
  */
@@ -60,7 +79,7 @@ client.interceptors.request.use(
 );
 
 /**
- * Response interceptor - Handle 401 and auto-refresh token
+ * Response interceptor - Handle expired access token and auto-refresh
  */
 client.interceptors.response.use(
   (response: AxiosResponse) => response,
@@ -68,6 +87,10 @@ client.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
     // Don't refresh for auth endpoints (login, register, refresh, etc.)
     const isAuthEndpoint =
@@ -78,7 +101,7 @@ client.interceptors.response.use(
       originalRequest.url?.includes("/auth/reset-password");
 
     if (
-      error.response?.status === 401 &&
+      shouldRefreshAccessToken(error) &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
