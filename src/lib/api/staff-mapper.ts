@@ -29,6 +29,7 @@ export interface ApiStaffUser {
   hireDate?: string;
   baseSalary?: number;
   salaryType?: string;
+  accountNote?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -139,6 +140,7 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     baseSalary: user.baseSalary,
     salaryType: mapSalaryType(user.salaryType),
     profile: mapProfile(user.profile),
+    accountNote: user.accountNote,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

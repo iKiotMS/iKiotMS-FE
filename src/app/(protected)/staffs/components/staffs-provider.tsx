@@ -8,7 +8,6 @@ import {
   extractWarehouseOptions,
   getApiErrorMessage,
   getStaffRoleLabel,
-  mergeSelectOptions,
 } from "@/lib/api/staff-mapper";
 import type {
   CreateStaffAccountPayload,
@@ -116,19 +115,25 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const response = await staffApi.getList({
-          page: 1,
-          recordPerPage: 100,
-        });
-        const activeStaff = response.data;
-        setBranchOptions(extractBranchOptions(activeStaff));
-        setWarehouseOptions(extractWarehouseOptions(activeStaff));
+        const allStaff = await staffApi.getAllForOptions();
+        setBranchOptions(extractBranchOptions(allStaff));
+        setWarehouseOptions(extractWarehouseOptions(allStaff));
       } catch {
         // Filter options are optional; list fetch handles errors.
       }
     }
 
     loadFilterOptions();
+  }, []);
+
+  const refreshBranchWarehouseOptions = useCallback(async () => {
+    try {
+      const allStaff = await staffApi.getAllForOptions();
+      setBranchOptions(extractBranchOptions(allStaff));
+      setWarehouseOptions(extractWarehouseOptions(allStaff));
+    } catch {
+      // Keep existing options on failure.
+    }
   }, []);
 
   const fetchStaffs = useCallback(async () => {
@@ -147,12 +152,6 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       setStaffs(response.data);
       setTotal(response.total);
       setTotalPages(response.totalPages);
-      setBranchOptions((prev) =>
-        mergeSelectOptions(prev, extractBranchOptions(response.data)),
-      );
-      setWarehouseOptions((prev) =>
-        mergeSelectOptions(prev, extractWarehouseOptions(response.data)),
-      );
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       setStaffs([]);
@@ -217,14 +216,23 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       const created = await staffApi.create(payload);
 
       if (payload.newPassword && payload.reEnterPassword) {
-        await staffApi.createAccount(created._id, {
-          newPassword: payload.newPassword,
-          reEnterPassword: payload.reEnterPassword,
-        });
+        try {
+          await staffApi.createAccount(created._id, {
+            newPassword: payload.newPassword,
+            reEnterPassword: payload.reEnterPassword,
+          });
+          toast.success("Đã thêm nhân viên");
+        } catch {
+          toast.warning(
+            "Đã tạo nhân viên nhưng chưa kích hoạt tài khoản. Bạn có thể kích hoạt sau.",
+          );
+        }
+      } else {
+        toast.success("Đã thêm nhân viên");
       }
 
-      toast.success("Đã thêm nhân viên");
       await fetchStaffs();
+      await refreshBranchWarehouseOptions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -236,6 +244,7 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       await staffApi.update(id, payload);
       toast.success("Đã cập nhật nhân viên");
       await fetchStaffs();
+      await refreshBranchWarehouseOptions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -249,6 +258,7 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa nhân viên");
       await fetchStaffs();
+      await refreshBranchWarehouseOptions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
