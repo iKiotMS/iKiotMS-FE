@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -23,57 +22,28 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { paySheetApi } from "@/lib/api/paysheet";
+import { getPaySheetApiErrorMessage } from "@/lib/api/paysheet-mapper";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { Payslip } from "@/types/payslip";
-import { BRANCH_OPTIONS, STAFF_OPTIONS, usePayroll } from "./payroll-provider";
-
-const payrollFormSchema = z.object({
-  userId: z.string().min(1, "Vui lòng chọn nhân viên"),
-  branchId: z.string().min(1, "Vui lòng chọn chi nhánh"),
-  month: z.number().min(1).max(12),
-  year: z.number().min(2020).max(2100),
-  baseSalary: z.number().min(0),
-  totalHours: z.number().min(0),
-  bonus: z.number().min(0),
-  earnings: z.array(
-    z.object({
-      label: z.string().min(1, "Nhập tên khoản cộng"),
-      amount: z.number().min(0),
-    }),
-  ),
-  deductions: z.array(
-    z.object({
-      label: z.string().min(1, "Nhập tên khoản trừ"),
-      amount: z.number().min(0),
-    }),
-  ),
-  status: z.enum(["DRAFT", "PENDING", "PAID", "CANCELLED"]),
-  note: z.string().optional(),
-});
-
-type PayrollFormValues = z.infer<typeof payrollFormSchema>;
-
-const now = new Date();
-const EMPTY_VALUES: PayrollFormValues = {
-  userId: "staff-001",
-  branchId: "branch-1",
-  month: now.getMonth() + 1,
-  year: now.getFullYear(),
-  baseSalary: 9000000,
-  totalHours: 176,
-  bonus: 0,
-  earnings: [{ label: "Phụ cấp", amount: 0 }],
-  deductions: [{ label: "Bảo hiểm", amount: 0 }],
-  status: "DRAFT",
-  note: "",
-};
+  buildPaySheetPayload,
+  EMPTY_PAYSHEET_FORM_VALUES,
+  getFirstPaysheetFormError,
+  getInvalidPaysheetTab,
+  paysheetFormSchema,
+  toFormValues,
+  type PaysheetFormValues,
+} from "@/lib/paysheet/paysheet-form-schema";
+import type { PaySheet } from "@/types/paysheet";
+import { PaysheetAllowanceFields } from "./form/paysheet-allowance-fields";
+import {
+  PaysheetBasicPayFields,
+  PaysheetOvertimeFields,
+} from "./form/paysheet-basic-overtime-fields";
+import { PaysheetBonusFields } from "./form/paysheet-bonus-fields";
+import { PaysheetDeductionFields } from "./form/paysheet-deduction-fields";
+import { usePayroll } from "./payroll-provider";
 
 export function PayrollMutateDialog({
   open,
@@ -82,395 +52,153 @@ export function PayrollMutateDialog({
 }: {
   open: boolean;
   onOpenChange: (value: boolean) => void;
-  currentRow?: Payslip;
+  currentRow?: PaySheet;
 }) {
   const isEdit = !!currentRow;
   const { handleAdd, handleEdit } = usePayroll();
+  const [activeTab, setActiveTab] = useState("salary");
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-  const form = useForm<PayrollFormValues>({
-    resolver: zodResolver(payrollFormSchema),
-    defaultValues: EMPTY_VALUES,
+  const form = useForm<PaysheetFormValues>({
+    resolver: zodResolver(paysheetFormSchema),
+    defaultValues: EMPTY_PAYSHEET_FORM_VALUES,
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
 
-  const earningsArray = useFieldArray({
-    control: form.control,
-    name: "earnings",
-  });
-  const deductionsArray = useFieldArray({
-    control: form.control,
-    name: "deductions",
-  });
+  const payType = form.watch("payType");
+  const bonusCount = form.watch("bonuses")?.length ?? 0;
+  const allowanceCount = form.watch("allowances")?.length ?? 0;
+  const deductionCount = form.watch("deductions")?.length ?? 0;
+
+  const { reset } = form;
 
   useEffect(() => {
-    if (!open) return;
-    if (isEdit && currentRow) {
-      form.reset({
-        userId: currentRow.userId,
-        branchId: currentRow.branchId,
-        month: currentRow.month,
-        year: currentRow.year,
-        baseSalary: currentRow.baseSalary,
-        totalHours: currentRow.totalHours,
-        bonus: currentRow.bonus,
-        earnings: currentRow.earnings.length
-          ? currentRow.earnings
-          : [{ label: "Phụ cấp", amount: 0 }],
-        deductions: currentRow.deductions.length
-          ? currentRow.deductions
-          : [{ label: "Bảo hiểm", amount: 0 }],
-        status: currentRow.status,
-        note: currentRow.note ?? "",
-      });
-    } else {
-      form.reset(EMPTY_VALUES);
+    if (!open) {
+      setActiveTab("salary");
+      setIsLoadingDetail(false);
+      return;
     }
-  }, [open, isEdit, currentRow, form]);
 
-  async function onSubmit(values: PayrollFormValues) {
     if (isEdit && currentRow) {
-      await handleEdit(currentRow._id, values);
-    } else {
-      await handleAdd(values);
+      reset(toFormValues(currentRow));
+      setIsLoadingDetail(true);
+      paySheetApi
+        .getById(currentRow._id)
+        .then((detail) => reset(toFormValues(detail)))
+        .catch((error) => {
+          toast.error(getPaySheetApiErrorMessage(error));
+        })
+        .finally(() => setIsLoadingDetail(false));
+      return;
     }
-    onOpenChange(false);
+
+    reset(EMPTY_PAYSHEET_FORM_VALUES);
+  }, [open, isEdit, currentRow, reset]);
+
+  async function onSubmit(values: PaysheetFormValues) {
+    const payload = buildPaySheetPayload(values);
+    try {
+      if (isEdit && currentRow) {
+        await handleEdit(currentRow._id, payload);
+      } else {
+        await handleAdd(payload);
+      }
+      onOpenChange(false);
+    } catch {
+      // Toast handled in provider
+    }
   }
 
-  const values = form.watch();
-  const netPay =
-    (values.baseSalary || 0) +
-    (values.bonus || 0) +
-    values.earnings.reduce((sum, item) => sum + (item.amount || 0), 0) -
-    values.deductions.reduce((sum, item) => sum + (item.amount || 0), 0);
-
-  const formatVND = (value: number) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(value);
+  function onInvalidSubmit() {
+    const errors = form.formState.errors;
+    setActiveTab(getInvalidPaysheetTab(errors));
+    const message = getFirstPaysheetFormError(errors);
+    if (message) toast.error(message);
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Điều chỉnh bảng lương" : "Tạo bảng lương"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Điều chỉnh thủ công khoản cộng/trừ và trạng thái bảng lương."
-              : "Tạo mới bảng lương cho nhân viên theo kỳ lương."}
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <DialogHeader className="px-6 pt-6 pb-4 shrink-0 space-y-4">
+              <DialogTitle>
+                {isEdit ? "Sửa mẫu bảng lương" : "Tạo mẫu bảng lương"}
+              </DialogTitle>
               <FormField
                 control={form.control}
-                name="userId"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nhân viên</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Chọn nhân viên" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {STAFF_OPTIONS.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Tên mẫu</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="VD: Bảng lương bán hàng"
+                        maxLength={200}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="branchId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Chi nhánh</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Chọn chi nhánh" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {BRANCH_OPTIONS.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            </DialogHeader>
 
-            <div className="grid grid-cols-4 gap-4">
-              <FormField
-                control={form.control}
-                name="month"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tháng</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={12}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Năm</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={2020}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="totalHours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Giờ công</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trạng thái</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Chọn trạng thái" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="DRAFT">Nháp</SelectItem>
-                        <SelectItem value="PENDING">Chờ thanh toán</SelectItem>
-                        <SelectItem value="PAID">Đã thanh toán</SelectItem>
-                        <SelectItem value="CANCELLED">Đã hủy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="flex flex-col flex-1 min-h-0 px-6"
+            >
+              <TabsList className="w-full shrink-0 grid grid-cols-4">
+                <TabsTrigger value="salary" className="cursor-pointer">
+                  Lương
+                </TabsTrigger>
+                <TabsTrigger value="bonus" className="cursor-pointer">
+                  Thưởng{bonusCount > 0 ? ` · ${bonusCount}` : ""}
+                </TabsTrigger>
+                <TabsTrigger value="allowance" className="cursor-pointer">
+                  Phụ cấp{allowanceCount > 0 ? ` · ${allowanceCount}` : ""}
+                </TabsTrigger>
+                <TabsTrigger value="deduction" className="cursor-pointer">
+                  Giảm trừ{deductionCount > 0 ? ` · ${deductionCount}` : ""}
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="baseSalary"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lương cơ bản</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+              <div className="flex-1 overflow-y-auto py-4 min-h-0">
+                {isLoadingDetail ? (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                    <Loader2 className="size-4 animate-spin mr-2" />
+                    Đang tải...
+                  </div>
+                ) : (
+                  <>
+                    <TabsContent value="salary" className="mt-0 space-y-6">
+                      <PaysheetBasicPayFields
+                        control={form.control}
+                        payType={payType}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                      <Separator />
+                      <PaysheetOvertimeFields control={form.control} />
+                    </TabsContent>
+                    <TabsContent value="bonus" className="mt-0">
+                      <PaysheetBonusFields control={form.control} />
+                    </TabsContent>
+                    <TabsContent value="allowance" className="mt-0">
+                      <PaysheetAllowanceFields control={form.control} />
+                    </TabsContent>
+                    <TabsContent value="deduction" className="mt-0">
+                      <PaysheetDeductionFields control={form.control} />
+                    </TabsContent>
+                  </>
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="bonus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Thưởng thêm</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <FormLabel>Khoản cộng</FormLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="cursor-pointer"
-                  onClick={() => earningsArray.append({ label: "", amount: 0 })}
-                >
-                  <Plus className="mr-2 size-4" />
-                  Thêm khoản cộng
-                </Button>
               </div>
-              {earningsArray.fields.map((fieldItem, index) => (
-                <div key={fieldItem.id} className="grid grid-cols-12 gap-2">
-                  <FormField
-                    control={form.control}
-                    name={`earnings.${index}.label`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-7">
-                        <FormControl>
-                          <Input placeholder="Tên khoản cộng" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`earnings.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-4">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={field.value}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="col-span-1 cursor-pointer text-destructive"
-                    onClick={() => earningsArray.remove(index)}
-                    disabled={earningsArray.fields.length === 1}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+            </Tabs>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <FormLabel>Khoản trừ</FormLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="cursor-pointer"
-                  onClick={() => deductionsArray.append({ label: "", amount: 0 })}
-                >
-                  <Plus className="mr-2 size-4" />
-                  Thêm khoản trừ
-                </Button>
-              </div>
-              {deductionsArray.fields.map((fieldItem, index) => (
-                <div key={fieldItem.id} className="grid grid-cols-12 gap-2">
-                  <FormField
-                    control={form.control}
-                    name={`deductions.${index}.label`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-7">
-                        <FormControl>
-                          <Input placeholder="Tên khoản trừ" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`deductions.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-4">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={field.value}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="col-span-1 cursor-pointer text-destructive"
-                    onClick={() => deductionsArray.remove(index)}
-                    disabled={deductionsArray.fields.length === 1}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <FormField
-              control={form.control}
-              name="note"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ghi chú</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Ghi chú bảng lương..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="rounded-md border p-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Lương thực nhận</span>
-                <span className="font-semibold">{formatVND(netPay)}</span>
-              </div>
-            </div>
-
-            <DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t shrink-0">
               <Button
                 type="button"
                 variant="outline"
@@ -479,16 +207,20 @@ export function PayrollMutateDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" className="cursor-pointer">
+              <Button
+                type="submit"
+                className="cursor-pointer"
+                disabled={form.formState.isSubmitting || isLoadingDetail}
+              >
                 {isEdit ? (
                   <>
                     <Pencil className="mr-2 size-4" />
-                    Lưu điều chỉnh
+                    Lưu
                   </>
                 ) : (
                   <>
                     <Plus className="mr-2 size-4" />
-                    Tạo bảng lương
+                    Tạo
                   </>
                 )}
               </Button>

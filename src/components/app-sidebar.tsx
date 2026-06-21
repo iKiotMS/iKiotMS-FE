@@ -61,7 +61,7 @@ const data = {
               url: "/staffs/schedule",
             },
             {
-              title: "Bảng lương",
+              title: "Mẫu bảng lương",
               url: "/staffs/payroll",
             },
           ],

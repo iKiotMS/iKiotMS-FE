@@ -14,11 +14,10 @@ export default function PayrollPage() {
           <div>
             <div className="flex items-center gap-2">
               <ReceiptText className="size-6 text-primary" />
-              <h1 className="text-2xl font-bold tracking-tight">Bảng lương</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Mẫu bảng lương
+              </h1>
             </div>
-            <p className="text-muted-foreground text-sm mt-1">
-              Quản lý phiếu lương, generate kỳ lương và điều chỉnh thủ công
-            </p>
           </div>
           <PayrollButtonGroup />
         </div>

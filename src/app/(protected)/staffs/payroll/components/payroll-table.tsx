@@ -1,18 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import {
-  type ColumnFiltersState,
-  type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { Funnel, Search } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,93 +33,68 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { payrollColumns as columns } from "./payroll-columns";
 import { PayrollEmpty } from "./payroll-empty";
 import { usePayroll } from "./payroll-provider";
 
 const COLUMN_LABELS: Record<string, string> = {
-  staffName: "Nhân viên",
-  period: "Kỳ lương",
-  totalHours: "Giờ công",
-  baseSalary: "Lương cơ bản",
-  netPay: "Thực lãnh",
-  status: "Trạng thái",
+  name: "Tên mẫu",
+  payType: "Loại lương",
+  basicAmount: "Mức lương",
+  bonuses: "Thưởng",
+  allowances: "Phụ cấp",
+  deductions: "Giảm trừ",
+  updatedAt: "Cập nhật",
 };
 
 export function PayrollTable() {
-  const { payslips, isLoading } = usePayroll();
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const {
+    paySheets,
+    isInitialLoading,
+    isFetching,
+    total,
+    totalPages,
+    listQuery,
+    nameInput,
+    setNameInput,
+    updatePage,
+    updatePageSize,
+  } = usePayroll();
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
-    data: payslips,
+    data: paySheets,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    pageCount: totalPages,
+    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
     state: {
-      sorting,
-      columnFilters,
       columnVisibility,
-      rowSelection,
-      globalFilter,
+      pagination: {
+        pageIndex: listQuery.page - 1,
+        pageSize: listQuery.recordPerPage,
+      },
     },
   });
 
-  const statusFilter = table.getColumn("status")?.getFilterValue() as string;
-  const periodFilter = (table.getColumn("period")?.getFilterValue() as string) || "";
+  const rangeStart =
+    total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
+  const rangeEnd = Math.min(listQuery.page * listQuery.recordPerPage, total);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-48 max-w-sm">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Tìm nhân viên, chi nhánh..."
-              value={globalFilter ?? ""}
-              onChange={(e) => setGlobalFilter(String(e.target.value))}
-              className="pl-9 h-9"
-            />
-          </div>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-48 max-w-sm">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Kỳ lương: 6/2026"
-            value={periodFilter}
-            onChange={(e) =>
-              table
-                .getColumn("period")
-                ?.setFilterValue(e.target.value ? e.target.value : undefined)
-            }
-            className="h-9 w-36"
+            placeholder="Tìm theo tên mẫu bảng lương..."
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            className="pl-9 h-9"
           />
-          <Select
-            value={statusFilter || ""}
-            onValueChange={(value) =>
-              table
-                .getColumn("status")
-                ?.setFilterValue(value === "all" ? "" : value)
-            }
-          >
-            <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              <SelectItem value="DRAFT">Nháp</SelectItem>
-              <SelectItem value="PENDING">Chờ thanh toán</SelectItem>
-              <SelectItem value="PAID">Đã thanh toán</SelectItem>
-              <SelectItem value="CANCELLED">Đã hủy</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <DropdownMenu>
@@ -150,7 +120,12 @@ export function PayrollTable() {
         </DropdownMenu>
       </div>
 
-      <div className="rounded-md border">
+      <div
+        className={cn(
+          "rounded-md border relative transition-opacity",
+          isFetching && paySheets.length > 0 && "opacity-60",
+        )}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -169,7 +144,7 @@ export function PayrollTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isInitialLoading ? (
               Array.from({ length: 6 }).map((_, index) => (
                 <TableRow key={index}>
                   {columns.map((_, cellIndex) => (
@@ -181,10 +156,7 @@ export function PayrollTable() {
               ))
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
@@ -210,11 +182,11 @@ export function PayrollTable() {
         <div className="flex items-center space-x-2">
           <Label className="text-sm font-medium">Hiển thị</Label>
           <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+            value={`${listQuery.recordPerPage}`}
+            onValueChange={(value) => updatePageSize(Number(value))}
           >
             <SelectTrigger className="w-20 cursor-pointer">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue placeholder={listQuery.recordPerPage} />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50].map((pageSize) => (
@@ -226,21 +198,22 @@ export function PayrollTable() {
           </Select>
         </div>
         <div className="hidden sm:block text-sm text-muted-foreground">
-          Đã chọn {table.getFilteredSelectedRowModel().rows.length} /{" "}
-          {table.getFilteredRowModel().rows.length} bảng lương
+          {total === 0
+            ? "Không có mẫu bảng lương"
+            : `Hiển thị ${rangeStart}–${rangeEnd} / ${total} mẫu`}
         </div>
         <div className="flex items-center space-x-2">
           <span className="hidden sm:block text-sm font-medium">
             Trang{" "}
             <strong>
-              {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              {listQuery.page} / {totalPages || 1}
             </strong>
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => updatePage(listQuery.page - 1)}
+            disabled={listQuery.page <= 1 || isFetching}
             className="cursor-pointer"
           >
             Trước
@@ -248,8 +221,8 @@ export function PayrollTable() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => updatePage(listQuery.page + 1)}
+            disabled={listQuery.page >= totalPages || isFetching}
             className="cursor-pointer"
           >
             Tiếp
