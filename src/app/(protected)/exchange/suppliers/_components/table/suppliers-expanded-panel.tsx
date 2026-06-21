@@ -64,8 +64,6 @@ export function SuppliersExpandedPanel({
     }
     if (!isExpanded) {
       wasExpandedRef.current = false;
-      setHistoryFetched(false);
-      setHistory([]);
     }
   }, [isExpanded]);
 
