@@ -1,54 +1,93 @@
-// [Domain – Types]
-export type ProductStatus = 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED'
+export type ProductStatus = "ACTIVE" | "INACTIVE" | "DISCONTINUED";
+
+export interface ProductImage {
+  url: string;
+  isThumbnail: boolean;
+}
 
 export interface Product {
-  id: string
-  productCode: string
-  sku: string
-  barcode: string
-  name: string
-  categoryName: string
-  brandName: string
-  retailPrice: number
-  costPrice: number
-  VAT: number
-  stock: number
-  status: ProductStatus
-  warrantyPeriod: string
-  description: string
-  createdAt: string
-  imageUrl?: string
+  id: string;
+  tenantId: string;
+  brandId?: string;
+  categoryId?: string;
+  supplierId?: string;
+  name: string;
+  status: ProductStatus;
+  categoryName?: string;
+  images?: ProductImage[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProductItem {
+  id?: string;
+  tenantId: string;
+  productId: string;
+  productName: string;
+  productCode: string;
+  sku: string;
+  barcode?: string;
+  description?: string;
+  retailPrice: number;
+  costPrice: number;
+  VAT?: number;
+  warrantyPeriod?: string;
+  images?: ProductImage[];
+}
+
+export interface ProductDetailResponse extends Product {
+  items: ProductItem[];
 }
 
 export interface ProductQueryParams {
-  keyword?: string
-  status?: ProductStatus
-  categoryName?: string
-  page?: number
-  limit?: number
+  search?: string;
+  status?: ProductStatus;
+  categoryId?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginationResponse {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export interface ProductListResponse {
-  data: Product[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
+  data: Product[];
+  pagination: PaginationResponse;
+}
+
+export interface ProductItemCreatePayload {
+  productCode: string;
+  sku: string;
+  barcode?: string;
+  description?: string;
+  retailPrice: number;
+  costPrice: number;
+  VAT?: number;
+  warrantyPeriod?: string;
+  images?: ProductImage[];
 }
 
 export interface ProductCreatePayload {
-  productCode: string
-  sku: string
-  barcode?: string
-  name: string
-  categoryName: string
-  brandName?: string
-  retailPrice: number
-  costPrice: number
-  VAT?: number
-  warrantyPeriod?: string
-  description?: string
-  status: ProductStatus
+  name: string;
+  brandId?: string;
+  categoryId?: string;
+  categoryName?: string;
+  supplierId?: string;
+  status: ProductStatus;
+  images?: ProductImage[];
+  items: ProductItemCreatePayload[];
 }
 
-export type ProductUpdatePayload = Partial<ProductCreatePayload>
+export interface ProductUpdatePayload {
+  name?: string;
+  brandId?: string;
+  categoryId?: string;
+  categoryName?: string;
+  supplierId?: string;
+  status?: ProductStatus;
+  images?: ProductImage[];
+}

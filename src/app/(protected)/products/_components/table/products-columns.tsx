@@ -6,9 +6,6 @@ import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product'
 import { STATUS_MAP } from '../../_constants/product.constants'
 
-const formatVND = (value: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
-
 function SortableHeader({
   label,
   column,
@@ -68,82 +65,40 @@ export const productsColumns: ColumnDef<Product>[] = [
   {
     id: 'image',
     header: '',
-    cell: ({ row }) => (
-      <img
-        src={row.original.imageUrl || 'https://placehold.co/40x40/e2e8f0/94a3b8?text=IMG'}
-        alt={row.original.name}
-        className="size-10 rounded-md object-cover border"
-      />
-    ),
+    cell: ({ row }) => {
+      const thumbnail =
+        row.original.images?.find((i) => i.isThumbnail) ?? row.original.images?.[0]
+      return (
+        <img
+          src={thumbnail?.url || 'https://placehold.co/40x40/e2e8f0/94a3b8?text=IMG'}
+          alt={row.original.name}
+          className="size-10 rounded-md object-cover border"
+        />
+      )
+    },
     size: 56,
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: 'productCode',
-    header: ({ column }) => <SortableHeader label="Mã hàng" column={column} />,
-    cell: ({ row }) => (
-      <span className="font-mono text-sm font-medium">{row.getValue('productCode')}</span>
-    ),
-  },
-  {
     accessorKey: 'name',
     header: ({ column }) => <SortableHeader label="Tên hàng hóa" column={column} />,
-    cell: ({ row }) => {
-      const product = row.original
-      return (
-        <div className="flex flex-col">
-          <span className="font-medium">{product.name}</span>
-          <span className="text-xs text-muted-foreground">{product.brandName}</span>
-        </div>
-      )
-    },
+    cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
   },
   {
     accessorKey: 'categoryName',
     header: 'Danh mục',
-    cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs">
-        {row.getValue('categoryName')}
-      </Badge>
-    ),
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
-  },
-  {
-    accessorKey: 'costPrice',
-    header: ({ column }) => <SortableHeader label="Giá vốn" column={column} />,
-    cell: ({ row }) => (
-      <span className="text-sm tabular-nums">{formatVND(row.getValue('costPrice'))}</span>
-    ),
-  },
-  {
-    accessorKey: 'retailPrice',
-    header: ({ column }) => <SortableHeader label="Giá bán" column={column} />,
-    cell: ({ row }) => (
-      <span className="text-sm font-medium tabular-nums">
-        {formatVND(row.getValue('retailPrice'))}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'stock',
-    header: ({ column }) => <SortableHeader label="Tồn kho" column={column} />,
     cell: ({ row }) => {
-      const stock = row.getValue('stock') as number
-      return (
-        <span
-          className={
-            stock === 0
-              ? 'text-red-600 dark:text-red-400 font-medium'
-              : stock < 10
-                ? 'text-orange-500 dark:text-orange-400 font-medium'
-                : ''
-          }
-        >
-          {stock.toLocaleString('vi-VN')}
-        </span>
+      const cat = row.getValue('categoryName') as string | undefined
+      return cat ? (
+        <Badge variant="secondary" className="text-xs">
+          {cat}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground text-xs">—</span>
       )
     },
+    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     accessorKey: 'status',
