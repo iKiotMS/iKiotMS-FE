@@ -78,7 +78,7 @@ client.interceptors.response.use(
       originalRequest.url?.includes("/auth/reset-password");
 
     if (
-      error.response?.status === 401 &&
+      (error.response?.status === 401 || error.response?.status === 403) &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
