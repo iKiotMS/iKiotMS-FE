@@ -1,15 +1,22 @@
 // [Mutations – Product]
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { Product } from '@/types/product'
 import type { ProductFormValues } from '../_types/product.types'
-import initialData from '../data/products.json'
+import { productApi } from '@/lib/api/product'
 
 export function useProductsMutations() {
-  const [products, setProducts] = useState<Product[]>(initialData as Product[])
+  const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    productApi
+      .getList()
+      .then((res) => setProducts(res.data))
+      .catch(() => toast.error('Tải danh sách hàng hóa thất bại'))
+  }, [])
 
   async function handleAdd(data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)

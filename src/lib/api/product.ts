@@ -6,12 +6,19 @@ import type {
   ProductListResponse,
   ProductCreatePayload,
   ProductUpdatePayload,
+  PaginationResponse,
 } from '@/types/product'
 
 export const productApi = {
   getList: async (params?: ProductQueryParams): Promise<ProductListResponse> => {
-    const res = await client.get<ProductListResponse>('/products', { params })
-    return res.data
+    const res = await client.get<{
+      data: Array<Omit<Product, 'id'> & { _id: string }>
+      pagination: PaginationResponse
+    }>('/products', { params })
+    return {
+      data: res.data.data.map(({ _id, ...rest }) => ({ ...rest, id: _id })),
+      pagination: res.data.pagination,
+    }
   },
   getById: async (id: string): Promise<Product> => {
     const res = await client.get<{ data: Product }>(`/products/${id}`)
