@@ -1,150 +1,293 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { workingScheduleApi } from "@/lib/api/working-schedule";
+import {
+  shiftTemplateApi,
+  workingScheduleApi,
+} from "@/lib/api/schedule";
+import { mapShiftTemplatesToOptions } from "@/lib/api/schedule-mapper";
+import { staffApi } from "@/lib/api/staff";
+import {
+  getApiErrorMessage,
+  getStaffRoleLabel,
+} from "@/lib/api/staff-mapper";
 import type {
   CreateWorkingSchedulePayload,
-  ShiftType,
+  ScheduleListQuery,
+  ScheduleStatus,
+  ShiftTemplate,
+  ShiftTemplateOption,
+  UpdateShiftTemplatePayload,
   UpdateWorkingSchedulePayload,
   WorkingSchedule,
 } from "@/types/working-schedule";
 
-type ScheduleDialogType = "add" | "edit" | "delete";
+type ScheduleDialogType = "add" | "edit" | "delete" | "shiftTemplate";
+
+const DEFAULT_LIST_QUERY: ScheduleListQuery = {
+  page: 1,
+  recordPerPage: 10,
+  userId: "all",
+  status: "all",
+  startDate: "",
+  endDate: "",
+};
 
 type ScheduleContextType = {
   schedules: WorkingSchedule[];
-  isLoading: boolean;
+  isInitialLoading: boolean;
+  isFetching: boolean;
+  total: number;
+  totalPages: number;
+  listQuery: ScheduleListQuery;
   open: ScheduleDialogType | null;
   setOpen: (value: ScheduleDialogType | null) => void;
   currentRow: WorkingSchedule | null;
   setCurrentRow: React.Dispatch<React.SetStateAction<WorkingSchedule | null>>;
-  fetchSchedules: () => Promise<void>;
+  fetchScheduleById: (id: string) => Promise<WorkingSchedule | null>;
   handleAdd: (payload: CreateWorkingSchedulePayload) => Promise<void>;
   handleEdit: (
     id: string,
     payload: UpdateWorkingSchedulePayload,
   ) => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
+  handleCreateShiftTemplate: (
+    payload: UpdateShiftTemplatePayload,
+  ) => Promise<void>;
+  handleUpdateShiftTemplate: (
+    id: string,
+    payload: UpdateShiftTemplatePayload,
+  ) => Promise<void>;
+  handleDeleteShiftTemplate: (id: string) => Promise<void>;
+  shiftTemplates: ShiftTemplate[];
+  shiftTemplateOptions: ShiftTemplateOption[];
+  staffOptions: { value: string; label: string }[];
+  updateStatusFilter: (status: ScheduleStatus | "all") => void;
+  updateUserFilter: (userId: string) => void;
+  updateStartDateFilter: (startDate: string) => void;
+  updateEndDateFilter: (endDate: string) => void;
+  updatePage: (page: number) => void;
+  updatePageSize: (recordPerPage: number) => void;
 };
 
 const ScheduleContext = React.createContext<ScheduleContextType | null>(null);
 
 export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [schedules, setSchedules] = useState<WorkingSchedule[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [listQuery, setListQuery] = useState<ScheduleListQuery>(
+    DEFAULT_LIST_QUERY,
+  );
   const [open, setOpen] = useState<ScheduleDialogType | null>(null);
   const [currentRow, setCurrentRow] = useState<WorkingSchedule | null>(null);
-  const mockData = useMemo(() => MOCK_SCHEDULES, []);
+  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([]);
+  const [shiftTemplateOptions, setShiftTemplateOptions] = useState<
+    ShiftTemplateOption[]
+  >([]);
+  const [staffOptions, setStaffOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+
+  const refreshShiftTemplates = useCallback(async () => {
+    try {
+      const res = await shiftTemplateApi.getList({ recordPerPage: 100 });
+      const templates = res.data ?? [];
+      setShiftTemplates(templates);
+      setShiftTemplateOptions(mapShiftTemplatesToOptions(templates));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setShiftTemplates([]);
+      setShiftTemplateOptions([]);
+    }
+  }, []);
 
   const fetchSchedules = useCallback(async () => {
-    setIsLoading(true);
+    setIsFetching(true);
     try {
-      const response = await workingScheduleApi.getList({ page: 1, limit: 100 });
-      setSchedules(response?.data ?? []);
-    } catch {
-      setSchedules(mockData);
+      const response = await workingScheduleApi.getList({
+        page: listQuery.page,
+        recordPerPage: listQuery.recordPerPage,
+        userId: listQuery.userId === "all" ? undefined : listQuery.userId,
+        status: listQuery.status === "all" ? undefined : listQuery.status,
+        startDate: listQuery.startDate || undefined,
+        endDate: listQuery.endDate || undefined,
+      });
+      setSchedules(response.data);
+      setTotal(response.total);
+      setTotalPages(response.totalPages);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setSchedules([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
+      setIsInitialLoading(false);
     }
-  }, [mockData]);
+  }, [listQuery]);
+
+  const fetchScheduleById = useCallback(async (id: string) => {
+    try {
+      return await workingScheduleApi.getById(id);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  useEffect(() => {
+    void refreshShiftTemplates();
+    void staffApi
+      .getAllForOptions()
+      .then((allStaff) => {
+        setStaffOptions(
+          allStaff.map((s) => ({
+            value: s._id,
+            label: `${s.fullName} (${getStaffRoleLabel(s.role)})`,
+          })),
+        );
+      })
+      .catch(() => {
+        setStaffOptions([]);
+      });
+  }, [refreshShiftTemplates]);
 
   async function handleAdd(payload: CreateWorkingSchedulePayload) {
     try {
       await workingScheduleApi.create(payload);
       toast.success("Đã thêm lịch làm việc");
       await fetchSchedules();
-    } catch {
-      const now = new Date().toISOString();
-      const shift = SHIFT_MAP[payload.shiftType];
-      const staff = STAFF_OPTIONS.find((item) => item.value === payload.userId);
-      const branch = BRANCH_OPTIONS.find(
-        (item) => item.value === payload.branchId,
-      );
-      const fallback: WorkingSchedule = {
-        _id: Date.now().toString(),
-        tenantId: "tenant-1",
-        branchId: payload.branchId,
-        branchName: branch?.label ?? "Không xác định",
-        userId: payload.userId,
-        staffName: staff?.label ?? "Nhân viên",
-        shiftType: payload.shiftType,
-        shiftName: shift.name,
-        startTime: shift.start,
-        endTime: shift.end,
-        date: payload.date,
-        note: payload.note,
-        status: "ASSIGNED",
-        createdAt: now,
-        updatedAt: now,
-      };
-      setSchedules((prev) => [fallback, ...prev]);
-      toast.success("Đã thêm lịch làm việc (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
 
-  async function handleEdit(id: string, payload: UpdateWorkingSchedulePayload) {
+  async function handleEdit(
+    id: string,
+    payload: UpdateWorkingSchedulePayload,
+  ) {
     try {
       await workingScheduleApi.update(id, payload);
       toast.success("Đã cập nhật lịch làm việc");
       await fetchSchedules();
-    } catch {
-      setSchedules((prev) =>
-        prev.map((item) => {
-          if (item._id !== id) return item;
-          const shiftType = payload.shiftType ?? item.shiftType;
-          const shift = SHIFT_MAP[shiftType];
-          const staff = payload.userId
-            ? STAFF_OPTIONS.find((entry) => entry.value === payload.userId)
-            : null;
-          const branch = payload.branchId
-            ? BRANCH_OPTIONS.find((entry) => entry.value === payload.branchId)
-            : null;
-          return {
-            ...item,
-            ...payload,
-            shiftType,
-            shiftName: shift.name,
-            startTime: shift.start,
-            endTime: shift.end,
-            staffName: staff?.label ?? item.staffName,
-            branchName: branch?.label ?? item.branchName,
-            updatedAt: new Date().toISOString(),
-          };
-        }),
-      );
-      toast.success("Đã cập nhật lịch làm việc (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
 
   async function handleDelete(id: string) {
     try {
       await workingScheduleApi.remove(id);
+      setSchedules((prev) => prev.filter((s) => s._id !== id));
+      setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa lịch làm việc");
-      await fetchSchedules();
-    } catch {
-      setSchedules((prev) => prev.filter((item) => item._id !== id));
-      toast.success("Đã xóa lịch làm việc (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
+
+  async function handleCreateShiftTemplate(
+    payload: UpdateShiftTemplatePayload,
+  ) {
+    try {
+      await shiftTemplateApi.create(payload);
+      toast.success("Đã tạo ca mẫu");
+      await refreshShiftTemplates();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleUpdateShiftTemplate(
+    id: string,
+    payload: UpdateShiftTemplatePayload,
+  ) {
+    try {
+      await shiftTemplateApi.update(id, payload);
+      toast.success("Đã cập nhật ca mẫu");
+      await refreshShiftTemplates();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleDeleteShiftTemplate(id: string) {
+    try {
+      await shiftTemplateApi.remove(id);
+      toast.success("Đã xóa ca mẫu");
+      await refreshShiftTemplates();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  const updateStatusFilter = useCallback((status: ScheduleStatus | "all") => {
+    setListQuery((prev) => ({ ...prev, status, page: 1 }));
+  }, []);
+
+  const updateUserFilter = useCallback((userId: string) => {
+    setListQuery((prev) => ({ ...prev, userId, page: 1 }));
+  }, []);
+
+  const updateStartDateFilter = useCallback((startDate: string) => {
+    setListQuery((prev) => ({ ...prev, startDate, page: 1 }));
+  }, []);
+
+  const updateEndDateFilter = useCallback((endDate: string) => {
+    setListQuery((prev) => ({ ...prev, endDate, page: 1 }));
+  }, []);
+
+  const updatePage = useCallback((page: number) => {
+    setListQuery((prev) => ({ ...prev, page }));
+  }, []);
+
+  const updatePageSize = useCallback((recordPerPage: number) => {
+    setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
+  }, []);
 
   return (
     <ScheduleContext.Provider
       value={{
         schedules,
-        isLoading,
+        isInitialLoading,
+        isFetching,
+        total,
+        totalPages,
+        listQuery,
         open,
         setOpen,
         currentRow,
         setCurrentRow,
-        fetchSchedules,
+        fetchScheduleById,
         handleAdd,
         handleEdit,
         handleDelete,
+        handleCreateShiftTemplate,
+        handleUpdateShiftTemplate,
+        handleDeleteShiftTemplate,
+        shiftTemplates,
+        shiftTemplateOptions,
+        staffOptions,
+        updateStatusFilter,
+        updateUserFilter,
+        updateStartDateFilter,
+        updateEndDateFilter,
+        updatePage,
+        updatePageSize,
       }}
     >
       {children}
@@ -154,61 +297,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
 export function useSchedule() {
   const ctx = React.useContext(ScheduleContext);
-  if (!ctx) throw new Error("useSchedule must be used within <ScheduleProvider>");
+  if (!ctx)
+    throw new Error("useSchedule must be used within <ScheduleProvider>");
   return ctx;
 }
-
-export const STAFF_OPTIONS = [
-  { value: "staff-001", label: "Nguyễn An" },
-  { value: "staff-002", label: "Trần Bình" },
-  { value: "staff-003", label: "Lê Chi" },
-] as const;
-
-export const BRANCH_OPTIONS = [
-  { value: "branch-1", label: "Chi nhánh Quận 1" },
-  { value: "branch-2", label: "Chi nhánh Quận 3" },
-  { value: "branch-3", label: "Chi nhánh Gò Vấp" },
-] as const;
-
-const SHIFT_MAP: Record<ShiftType, { name: string; start: string; end: string }> = {
-  MORNING: { name: "Ca sáng", start: "08:00", end: "12:00" },
-  AFTERNOON: { name: "Ca chiều", start: "13:00", end: "17:00" },
-  EVENING: { name: "Ca tối", start: "18:00", end: "22:00" },
-};
-
-const MOCK_SCHEDULES: WorkingSchedule[] = [
-  {
-    _id: "sch-001",
-    tenantId: "tenant-1",
-    branchId: "branch-1",
-    branchName: "Chi nhánh Quận 1",
-    userId: "staff-001",
-    staffName: "Nguyễn An",
-    shiftType: "MORNING",
-    shiftName: SHIFT_MAP.MORNING.name,
-    startTime: SHIFT_MAP.MORNING.start,
-    endTime: SHIFT_MAP.MORNING.end,
-    date: new Date().toISOString().split("T")[0],
-    note: "Hỗ trợ khu vực quầy thu ngân",
-    status: "ASSIGNED",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    _id: "sch-002",
-    tenantId: "tenant-1",
-    branchId: "branch-2",
-    branchName: "Chi nhánh Quận 3",
-    userId: "staff-002",
-    staffName: "Trần Bình",
-    shiftType: "AFTERNOON",
-    shiftName: SHIFT_MAP.AFTERNOON.name,
-    startTime: SHIFT_MAP.AFTERNOON.start,
-    endTime: SHIFT_MAP.AFTERNOON.end,
-    date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-    note: "Kiểm kê kho cuối ca",
-    status: "ASSIGNED",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];

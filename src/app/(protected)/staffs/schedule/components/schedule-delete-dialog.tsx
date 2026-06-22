@@ -25,8 +25,13 @@ export function ScheduleDeleteDialog({
   const { handleDelete } = useSchedule();
 
   async function onConfirm() {
-    if (currentRow) await handleDelete(currentRow._id);
-    onOpenChange(false);
+    if (!currentRow) return;
+    try {
+      await handleDelete(currentRow._id);
+      onOpenChange(false);
+    } catch {
+      // Toast handled in provider
+    }
   }
 
   return (

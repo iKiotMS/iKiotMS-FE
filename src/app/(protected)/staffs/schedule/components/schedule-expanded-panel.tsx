@@ -1,10 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
-  Building2,
   CalendarDays,
   Clock,
   FileText,
@@ -16,10 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  SCHEDULE_STATUS_MAP,
-  SHIFT_TYPE_MAP,
-} from "@/app/(protected)/staffs/shared/schedule-status";
+import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { useSchedule } from "./schedule-provider";
 
@@ -50,24 +46,37 @@ export function ScheduleExpandedPanel({
   schedule: WorkingSchedule;
   isExpanded: boolean;
 }) {
-  const { setOpen, setCurrentRow } = useSchedule();
+  const { setOpen, setCurrentRow, fetchScheduleById } = useSchedule();
+  const [detail, setDetail] = useState<WorkingSchedule | null>(null);
   const [loading, setLoading] = useState(false);
   const wasExpandedRef = useRef(false);
 
-  useLayoutEffect(() => {
-    if (isExpanded && !wasExpandedRef.current) {
-      wasExpandedRef.current = true;
-      setLoading(true);
-      const t = setTimeout(() => setLoading(false), 350);
-      return () => clearTimeout(t);
-    }
+  useEffect(() => {
     if (!isExpanded) {
       wasExpandedRef.current = false;
+      setDetail(null);
+      return;
     }
-  }, [isExpanded]);
+    if (wasExpandedRef.current) return;
+    wasExpandedRef.current = true;
 
-  const status = SCHEDULE_STATUS_MAP[schedule.status];
-  const shift = SHIFT_TYPE_MAP[schedule.shiftType];
+    let cancelled = false;
+    setLoading(true);
+    fetchScheduleById(schedule._id).then((fresh) => {
+      if (!cancelled) {
+        setDetail(fresh ?? schedule);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isExpanded, schedule, fetchScheduleById]);
+
+  const data = detail ?? schedule;
+  const status = SCHEDULE_STATUS_MAP[data.status];
+  const isLocked = data.status === "COMPLETED";
 
   if (loading) {
     return (
@@ -93,83 +102,86 @@ export function ScheduleExpandedPanel({
     <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
-        <Badge variant={shift.variant}>{shift.label}</Badge>
+        <Badge variant="outline">{data.shiftName}</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-4">
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày làm"
-          value={format(new Date(schedule.date), "dd/MM/yyyy", { locale: vi })}
+          value={format(new Date(data.workDate), "dd/MM/yyyy", { locale: vi })}
         />
         <InfoItem
           icon={<User className="size-4" />}
           label="Nhân viên"
-          value={schedule.staffName}
+          value={data.staffName}
         />
         <InfoItem
-          icon={<Building2 className="size-4" />}
-          label="Chi nhánh"
-          value={schedule.branchName}
+          icon={<User className="size-4" />}
+          label="Số điện thoại"
+          value={data.staffPhone || "—"}
         />
         <InfoItem
           icon={<Clock className="size-4" />}
           label="Khung giờ"
-          value={`${schedule.startTime} - ${schedule.endTime}`}
+          value={`${data.startTime} - ${data.endTime}`}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày tạo"
-          value={format(new Date(schedule.createdAt), "dd/MM/yyyy HH:mm", {
+          value={format(new Date(data.createdAt), "dd/MM/yyyy HH:mm", {
             locale: vi,
           })}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Cập nhật lần cuối"
-          value={format(new Date(schedule.updatedAt), "dd/MM/yyyy HH:mm", {
+          value={format(new Date(data.updatedAt), "dd/MM/yyyy HH:mm", {
             locale: vi,
           })}
         />
         <InfoItem
           icon={<FileText className="size-4" />}
-          label="Ghi chú"
-          value={schedule.note || "—"}
-        />
-        <InfoItem
-          icon={<User className="size-4" />}
           label="Mã lịch"
-          value={`#${schedule._id.slice(-6).toUpperCase()}`}
+          value={`#${data._id.slice(-6).toUpperCase()}`}
         />
       </div>
 
       <Separator className="mt-4" />
       <div className="flex items-center justify-between mt-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(schedule);
-            setOpen("delete");
-          }}
-        >
-          <Trash2 className="mr-2 size-4" />
-          Xóa ca làm
-        </Button>
-        <Button
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(schedule);
-            setOpen("edit");
-          }}
-        >
-          <Pencil className="mr-2 size-4" />
-          Chỉnh sửa
-        </Button>
+        {isLocked ? (
+          <p className="text-sm text-muted-foreground">
+            Lịch đã hoàn thành — không thể chỉnh sửa hoặc xóa.
+          </p>
+        ) : (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(data);
+              setOpen("delete");
+            }}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa ca làm
+          </Button>
+        )}
+        {!isLocked && (
+          <Button
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(data);
+              setOpen("edit");
+            }}
+          >
+            <Pencil className="mr-2 size-4" />
+            Chỉnh sửa
+          </Button>
+        )}
       </div>
     </div>
   );

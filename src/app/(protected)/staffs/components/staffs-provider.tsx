@@ -115,14 +115,16 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const [branches, warehouses] = await Promise.all([
-          branchApi.getOptions(),
-          warehouseApi.getOptions(),
-        ]);
+        const branches = await branchApi.getOptions();
         setBranchOptions(branches);
+      } catch {
+        setBranchOptions([]);
+      }
+      try {
+        const warehouses = await warehouseApi.getOptions();
         setWarehouseOptions(warehouses);
       } catch {
-        // Filter options are optional; list fetch handles errors.
+        setWarehouseOptions([]);
       }
     }
 
