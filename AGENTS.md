@@ -27,6 +27,7 @@ Before performing any task:
 - When create new components or pages, default langauge is Vietnamese
 - Follow the existing file and naming conventions in the frontend codebase.
 - Keep components small and focused; prefer composition over large monolith components.
+- Functions in code file for must be written in hooks folder inside the its father folder.
 - Do not introduce new dependencies without approval.
 - Keep lint clean and match existing formatting rules.
 - Use react-hook-form and Zod
