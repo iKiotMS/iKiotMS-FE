@@ -1,5 +1,9 @@
 import client from "./client";
-import { mapScheduleFromApi } from "./schedule-mapper";
+import {
+  filterVisibleSchedules,
+  mapScheduleFromApi,
+} from "./schedule-mapper";
+import { isDeletedScheduleStatus } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type {
   ApiWorkingSchedule,
   CreateWorkingSchedulePayload,
@@ -77,9 +81,10 @@ export const workingScheduleApi = {
       { params },
     );
     const raw = response.data;
+    const visible = filterVisibleSchedules(raw.data ?? []);
     return {
-      data: (raw.data ?? []).map(mapScheduleFromApi),
-      total: raw.pagination?.total ?? 0,
+      data: visible.map(mapScheduleFromApi),
+      total: raw.pagination?.total ?? visible.length,
       page: raw.pagination?.page ?? 1,
       totalPages: raw.pagination?.totalPages ?? 1,
     };
@@ -89,6 +94,9 @@ export const workingScheduleApi = {
     const response = await client.get<ApiWorkingSchedule>(
       `/working-schedules/${id}`,
     );
+    if (isDeletedScheduleStatus(response.data.status)) {
+      throw new Error("Không tìm thấy lịch làm việc");
+    }
     return mapScheduleFromApi(response.data);
   },
 

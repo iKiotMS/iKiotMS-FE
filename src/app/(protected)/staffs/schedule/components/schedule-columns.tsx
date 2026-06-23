@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
+import { formatShiftTimeRange } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 
 function SortableHeader({
@@ -104,7 +105,7 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
     header: "Khung giờ",
     cell: ({ row }) => (
       <span className="font-mono text-sm">
-        {row.original.startTime} - {row.original.endTime}
+        {formatShiftTimeRange(row.original.startTime, row.original.endTime)}
       </span>
     ),
   },

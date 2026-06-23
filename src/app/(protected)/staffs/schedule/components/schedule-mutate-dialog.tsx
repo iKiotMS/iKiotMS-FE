@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { WorkingSchedule } from "@/types/working-schedule";
+import { isScheduleLocked } from "@/app/(protected)/staffs/shared/schedule-utils";
 import { useSchedule } from "./schedule-provider";
 
 const scheduleFormSchema = z.object({
@@ -52,8 +53,22 @@ export function ScheduleMutateDialog({
   currentRow?: WorkingSchedule;
 }) {
   const isEdit = !!currentRow;
+  const isLocked = isEdit && currentRow ? isScheduleLocked(currentRow.status) : false;
   const { handleAdd, handleEdit, shiftTemplateOptions, staffOptions, setOpen } =
     useSchedule();
+
+  const staffSelectOptions =
+    isEdit && currentRow
+      ? staffOptions.some((o) => o.value === currentRow.userId)
+        ? staffOptions
+        : [
+            {
+              value: currentRow.userId,
+              label: `${currentRow.staffName} (hiện tại)`,
+            },
+            ...staffOptions,
+          ]
+      : staffOptions;
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
@@ -85,6 +100,7 @@ export function ScheduleMutateDialog({
   }, [open, isEdit, currentRow, form]);
 
   async function onSubmit(values: ScheduleFormValues) {
+    if (isLocked) return;
     try {
       if (isEdit && currentRow) {
         await handleEdit(currentRow._id, {
@@ -114,12 +130,26 @@ export function ScheduleMutateDialog({
             {isEdit ? "Chỉnh sửa lịch làm" : "Phân ca làm việc"}
           </DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? "Cập nhật ca làm và trạng thái của nhân viên."
-              : "Tạo lịch làm mới theo ca cho nhân viên."}
+            {isLocked
+              ? "Lịch đã hoàn thành — không thể chỉnh sửa theo quy tắc hệ thống."
+              : isEdit
+                ? "Cập nhật ca làm và trạng thái của nhân viên."
+                : "Tạo lịch làm mới theo ca cho nhân viên đang hoạt động."}
           </DialogDescription>
         </DialogHeader>
 
+        {isLocked ? (
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => onOpenChange(false)}
+            >
+              Đóng
+            </Button>
+          </DialogFooter>
+        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -129,7 +159,7 @@ export function ScheduleMutateDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nhân viên</FormLabel>
-                    {staffOptions.length > 0 ? (
+                    {staffSelectOptions.length > 0 ? (
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -140,7 +170,7 @@ export function ScheduleMutateDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {staffOptions.map((item) => (
+                          {staffSelectOptions.map((item) => (
                             <SelectItem key={item.value} value={item.value}>
                               {item.label}
                             </SelectItem>
@@ -276,6 +306,7 @@ export function ScheduleMutateDialog({
             </DialogFooter>
           </form>
         </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

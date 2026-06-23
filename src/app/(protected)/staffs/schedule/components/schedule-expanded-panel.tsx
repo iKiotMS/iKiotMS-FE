@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
+import {
+  formatShiftTimeRange,
+  isScheduleLocked,
+} from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { useSchedule } from "./schedule-provider";
 
@@ -76,7 +80,7 @@ export function ScheduleExpandedPanel({
 
   const data = detail ?? schedule;
   const status = SCHEDULE_STATUS_MAP[data.status];
-  const isLocked = data.status === "COMPLETED";
+  const isLocked = isScheduleLocked(data.status);
 
   if (loading) {
     return (
@@ -124,7 +128,7 @@ export function ScheduleExpandedPanel({
         <InfoItem
           icon={<Clock className="size-4" />}
           label="Khung giờ"
-          value={`${data.startTime} - ${data.endTime}`}
+          value={formatShiftTimeRange(data.startTime, data.endTime)}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}

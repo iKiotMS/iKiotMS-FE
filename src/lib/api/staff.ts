@@ -139,7 +139,13 @@ export const staffApi = {
     };
   },
 
-  /** Paginate GET /staff to collect branch/warehouse options from existing staff. */
+  /** Paginate GET /staff — dùng cho dropdown phân ca (chỉ nhân viên ACTIVE). */
+  getActiveForScheduleOptions: async (): Promise<Staff[]> => {
+    const all = await staffApi.getAllForOptions();
+    return all.filter((staff) => staff.status === "ACTIVE");
+  },
+
+  /** Paginate GET /staff to collect all staff records across pages. */
   getAllForOptions: async (): Promise<Staff[]> => {
     const merged: Staff[] = [];
     let page = 1;

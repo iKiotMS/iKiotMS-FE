@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { WorkingSchedule } from "@/types/working-schedule";
+import { isScheduleLocked } from "@/app/(protected)/staffs/shared/schedule-utils";
 import { useSchedule } from "./schedule-provider";
 
 export function ScheduleDeleteDialog({
@@ -23,9 +24,10 @@ export function ScheduleDeleteDialog({
   currentRow: WorkingSchedule | null;
 }) {
   const { handleDelete } = useSchedule();
+  const isLocked = currentRow ? isScheduleLocked(currentRow.status) : false;
 
   async function onConfirm() {
-    if (!currentRow) return;
+    if (!currentRow || isLocked) return;
     try {
       await handleDelete(currentRow._id);
       onOpenChange(false);
@@ -40,11 +42,17 @@ export function ScheduleDeleteDialog({
         <DialogHeader>
           <DialogTitle>Xóa lịch làm</DialogTitle>
           <DialogDescription>
-            Bạn có chắc muốn xóa lịch làm của{" "}
-            <strong className="text-foreground">
-              {currentRow?.staffName ?? ""}
-            </strong>
-            ? Hành động này không thể hoàn tác.
+            {isLocked ? (
+              "Lịch đã hoàn thành — không thể xóa theo quy tắc hệ thống."
+            ) : (
+              <>
+                Bạn có chắc muốn xóa lịch làm của{" "}
+                <strong className="text-foreground">
+                  {currentRow?.staffName ?? ""}
+                </strong>
+                ? Hành động này không thể hoàn tác.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
@@ -53,8 +61,9 @@ export function ScheduleDeleteDialog({
             className="cursor-pointer"
             onClick={() => onOpenChange(false)}
           >
-            Hủy
+            {isLocked ? "Đóng" : "Hủy"}
           </Button>
+          {!isLocked && (
           <Button
             variant="destructive"
             className="cursor-pointer"
@@ -63,6 +72,7 @@ export function ScheduleDeleteDialog({
             <Trash2 className="mr-2 size-4" />
             Xóa
           </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
