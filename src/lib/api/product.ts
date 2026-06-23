@@ -7,6 +7,7 @@ import type {
   ProductCreatePayload,
   ProductUpdatePayload,
   PaginationResponse,
+  ProductDetailResponse,
 } from '@/types/product'
 
 export const productApi = {
@@ -20,8 +21,8 @@ export const productApi = {
       pagination: res.data.pagination,
     }
   },
-  getById: async (id: string): Promise<Product> => {
-    const res = await client.get<{ data: Product }>(`/products/${id}`)
+  getById: async (id: string): Promise<ProductDetailResponse> => {
+    const res = await client.get<{ data: ProductDetailResponse }>(`/products/${id}`)
     return res.data.data
   },
   create: async (payload: ProductCreatePayload): Promise<Product> => {
