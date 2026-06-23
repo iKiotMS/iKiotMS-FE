@@ -20,7 +20,7 @@ export interface Product {
 }
 
 export interface ProductItem {
-  id?: string;
+  id: string;
   tenantId: string;
   productId: string;
   productName: string;
