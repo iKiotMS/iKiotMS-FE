@@ -31,7 +31,7 @@ export interface ApiWorkingSchedule {
   workDate: string;
   startAt: string;
   endAt: string;
-  status: ScheduleStatus;
+  status: ScheduleStatus | "DELETED";
   createdAt: string;
   updatedAt: string;
 }

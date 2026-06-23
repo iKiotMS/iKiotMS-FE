@@ -1,3 +1,8 @@
+import {
+  extractUtcTimeFromIso,
+  formatShiftTimeRange,
+  isDeletedScheduleStatus,
+} from "@/app/(protected)/staffs/shared/schedule-utils";
 import type {
   ApiWorkingSchedule,
   ShiftTemplate,
@@ -17,6 +22,20 @@ function resolveStaffName(userId: ApiWorkingSchedule["userId"]): string {
   return name || userId.phoneNumber;
 }
 
+function resolveShiftTimes(raw: ApiWorkingSchedule, shiftTemplate: ShiftTemplate | null) {
+  if (raw.startAt && raw.endAt) {
+    return {
+      startTime: extractUtcTimeFromIso(raw.startAt),
+      endTime: extractUtcTimeFromIso(raw.endAt),
+    };
+  }
+
+  return {
+    startTime: shiftTemplate?.startTime ?? "",
+    endTime: shiftTemplate?.endTime ?? "",
+  };
+}
+
 export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
   const shiftTemplate =
     typeof raw.shiftTemplateId === "string" ? null : raw.shiftTemplateId;
@@ -25,9 +44,7 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     ? raw.workDate.slice(0, 10)
     : (raw.startAt?.slice(0, 10) ?? "");
 
-  const startTime =
-    shiftTemplate?.startTime ?? raw.startAt?.slice(11, 16) ?? "";
-  const endTime = shiftTemplate?.endTime ?? raw.endAt?.slice(11, 16) ?? "";
+  const { startTime, endTime } = resolveShiftTimes(raw, shiftTemplate);
 
   return {
     _id: raw._id,
@@ -41,7 +58,7 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     startTime,
     endTime,
     workDate,
-    status: raw.status,
+    status: raw.status as WorkingSchedule["status"],
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
@@ -52,8 +69,14 @@ export function mapShiftTemplatesToOptions(
 ): ShiftTemplateOption[] {
   return templates.map((t) => ({
     value: t._id,
-    label: `${t.name} (${t.startTime} - ${t.endTime})`,
+    label: `${t.name} (${formatShiftTimeRange(t.startTime, t.endTime)})`,
     startTime: t.startTime,
     endTime: t.endTime,
   }));
+}
+
+export function filterVisibleSchedules(
+  items: ApiWorkingSchedule[],
+): ApiWorkingSchedule[] {
+  return items.filter((item) => !isDeletedScheduleStatus(item.status));
 }

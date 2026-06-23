@@ -145,11 +145,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void refreshShiftTemplates();
+  }, [refreshShiftTemplates]);
+
+  useEffect(() => {
     void staffApi
-      .getAllForOptions()
-      .then((allStaff) => {
+      .getActiveForScheduleOptions()
+      .then((activeStaff) => {
         setStaffOptions(
-          allStaff.map((s) => ({
+          activeStaff.map((s) => ({
             value: s._id,
             label: `${s.fullName} (${getStaffRoleLabel(s.role)})`,
           })),
@@ -158,7 +161,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         setStaffOptions([]);
       });
-  }, [refreshShiftTemplates]);
+  }, []);
 
   async function handleAdd(payload: CreateWorkingSchedulePayload) {
     try {
@@ -188,9 +191,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   async function handleDelete(id: string) {
     try {
       await workingScheduleApi.remove(id);
-      setSchedules((prev) => prev.filter((s) => s._id !== id));
-      setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa lịch làm việc");
+      await fetchSchedules();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;

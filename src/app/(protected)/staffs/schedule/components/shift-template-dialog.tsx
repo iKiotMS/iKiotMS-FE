@@ -29,20 +29,15 @@ import { useSchedule } from "./schedule-provider";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-const shiftTemplateSchema = z
-  .object({
-    name: z.string().trim().min(1, "Tên ca mẫu là bắt buộc"),
-    startTime: z
-      .string()
-      .regex(TIME_PATTERN, "Giờ bắt đầu phải có định dạng HH:mm"),
-    endTime: z
-      .string()
-      .regex(TIME_PATTERN, "Giờ kết thúc phải có định dạng HH:mm"),
-  })
-  .refine((data) => data.startTime < data.endTime, {
-    message: "Giờ kết thúc phải sau giờ bắt đầu",
-    path: ["endTime"],
-  });
+const shiftTemplateSchema = z.object({
+  name: z.string().trim().min(1, "Tên ca mẫu là bắt buộc"),
+  startTime: z
+    .string()
+    .regex(TIME_PATTERN, "Giờ bắt đầu phải có định dạng HH:mm"),
+  endTime: z
+    .string()
+    .regex(TIME_PATTERN, "Giờ kết thúc phải có định dạng HH:mm"),
+});
 
 type ShiftTemplateFormValues = z.infer<typeof shiftTemplateSchema>;
 

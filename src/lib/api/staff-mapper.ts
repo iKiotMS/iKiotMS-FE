@@ -146,48 +146,6 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
   };
 }
 
-export function extractBranchOptions(staffs: Staff[]): { value: string; label: string }[] {
-  const map = new Map<string, string>();
-  for (const staff of staffs) {
-    if (staff.branchId) {
-      const label =
-        staff.branchName && staff.branchName !== "—"
-          ? staff.branchName
-          : "Chi nhánh";
-      map.set(staff.branchId, label);
-    }
-  }
-  return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
-}
-
-export function extractWarehouseOptions(
-  staffs: Staff[],
-): { value: string; label: string }[] {
-  const map = new Map<string, string>();
-  for (const staff of staffs) {
-    if (staff.warehouseId) {
-      map.set(
-        staff.warehouseId,
-        staff.warehouseName && staff.warehouseName !== "—"
-          ? staff.warehouseName
-          : "Kho",
-      );
-    }
-  }
-  return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
-}
-
-export function mergeSelectOptions(
-  current: { value: string; label: string }[],
-  incoming: { value: string; label: string }[],
-): { value: string; label: string }[] {
-  const map = new Map(current.map((item) => [item.value, item.label]));
-  for (const item of incoming) {
-    map.set(item.value, item.label);
-  }
-  return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
-}
-
 export function getApiErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "response" in error) {
     const data = (error as { response?: { data?: Record<string, unknown> } })
