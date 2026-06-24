@@ -1,3 +1,4 @@
+// [API – Warehouse]
 import client from "@/lib/api/client";
 import type {
   Warehouse,
@@ -6,11 +7,6 @@ import type {
   WarehouseCreatePayload,
   WarehouseUpdatePayload,
 } from "@/types/warehouse";
-
-export interface WarehouseOption {
-  value: string;
-  label: string;
-}
 
 export const warehouseApi = {
   getList: async (params?: WarehouseQueryParams): Promise<WarehouseListResponse> => {
@@ -31,11 +27,5 @@ export const warehouseApi = {
   },
   remove: async (id: string): Promise<void> => {
     await client.delete(`/warehouses/${id}/delete`);
-  },
-
-  /** Lấy toàn bộ kho ACTIVE của tenant hiện tại dưới dạng dropdown options. */
-  getOptions: async (): Promise<WarehouseOption[]> => {
-    const response = await warehouseApi.getList({ limit: 100, status: "ACTIVE" });
-    return (response.data ?? []).map((w) => ({ value: w._id, label: w.name }));
   },
 };

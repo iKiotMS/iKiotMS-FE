@@ -115,14 +115,24 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const branches = await branchApi.getOptions();
-        setBranchOptions(branches);
+        const response = await branchApi.getList({ limit: 100 });
+        setBranchOptions(
+          (response.data ?? []).map((branch) => ({
+            value: branch._id,
+            label: branch.name,
+          })),
+        );
       } catch {
         setBranchOptions([]);
       }
       try {
-        const warehouses = await warehouseApi.getOptions();
-        setWarehouseOptions(warehouses);
+        const response = await warehouseApi.getList({ limit: 100 });
+        setWarehouseOptions(
+          (response.data ?? []).map((warehouse) => ({
+            value: warehouse._id,
+            label: warehouse.name,
+          })),
+        );
       } catch {
         setWarehouseOptions([]);
       }

@@ -12,7 +12,9 @@ export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await client.post<UploadResponse>("/uploads", formData);
+  const response = await client.post<UploadResponse>("/uploads", formData, {
+    headers: { "Content-Type": undefined },
+  });
 
   const url = response.data?.data?.url;
   if (!url) {
