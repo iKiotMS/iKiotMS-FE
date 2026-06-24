@@ -1,22 +1,11 @@
-import client from "./client";
-
-interface BranchItem {
-  _id: string;
-  name: string;
-  status: string;
-  address?: string;
-}
-
-interface BranchListResponse {
-  success: boolean;
-  data: BranchItem[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+import client from "@/lib/api/client";
+import type {
+  Branch,
+  BranchQueryParams,
+  BranchListResponse,
+  BranchCreatePayload,
+  BranchUpdatePayload,
+} from "@/types/branch";
 
 export interface BranchOption {
   value: string;
@@ -24,16 +13,24 @@ export interface BranchOption {
 }
 
 export const branchApi = {
-  getList: async (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    search?: string;
-  }): Promise<BranchListResponse> => {
-    const response = await client.get<BranchListResponse>("/branches", {
-      params,
-    });
-    return response.data;
+  getList: async (params?: BranchQueryParams): Promise<BranchListResponse> => {
+    const res = await client.get<BranchListResponse>("/branches", { params });
+    return res.data;
+  },
+  getById: async (id: string): Promise<Branch> => {
+    const res = await client.get<{ data: Branch }>(`/branches/${id}`);
+    return res.data.data;
+  },
+  create: async (payload: BranchCreatePayload): Promise<Branch> => {
+    const res = await client.post<{ data: Branch }>("/branches", payload);
+    return res.data.data;
+  },
+  update: async (id: string, payload: BranchUpdatePayload): Promise<Branch> => {
+    const res = await client.patch<{ data: Branch }>(`/branches/${id}`, payload);
+    return res.data.data;
+  },
+  remove: async (id: string): Promise<void> => {
+    await client.delete(`/branches/${id}/delete`);
   },
 
   /** Lấy toàn bộ chi nhánh ACTIVE của tenant hiện tại dưới dạng dropdown options. */

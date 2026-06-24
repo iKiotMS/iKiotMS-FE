@@ -1,6 +1,8 @@
 "use client"
 
+import * as React from "react"
 import { Button } from "@/components/ui/button"
+import { SWITCHER_STATUS_OPTIONS } from "./constants/status"
 import {
   Dialog,
   DialogContent,
@@ -36,7 +38,13 @@ const branchFormSchema = z.object({
   status: z.string().min(1, {
     message: "Trạng thái là bắt buộc.",
   }),
-  address: z.string(),
+  address: z.string().optional(),
+  phoneNumber: z.string().min(10, {
+    message: "Số điện thoại là bắt buộc và phải có ít nhất 10 số.",
+  }),
+  email: z.string().email({
+    message: "Email không hợp lệ.",
+  }).optional().or(z.literal("")),
 })
 
 export type BranchFormValues = z.infer<typeof branchFormSchema>
@@ -45,12 +53,16 @@ interface BranchFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: BranchFormValues) => void
+  defaultValues?: Partial<BranchFormValues>
+  title?: string
 }
 
 export function BranchFormDialog({
   open,
   onOpenChange,
   onSubmit,
+  defaultValues,
+  title,
 }: BranchFormDialogProps) {
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchFormSchema),
@@ -58,8 +70,24 @@ export function BranchFormDialog({
       name: "",
       status: "ACTIVE",
       address: "",
+      phoneNumber: "",
+      email: "",
+      ...defaultValues,
     },
   })
+
+  React.useEffect(() => {
+    if (open) {
+      form.reset({
+        name: "",
+        status: "ACTIVE",
+        address: "",
+        phoneNumber: "",
+        email: "",
+        ...defaultValues,
+      })
+    }
+  }, [open, defaultValues, form])
 
   function handleFormSubmit(data: BranchFormValues) {
     onSubmit(data)
@@ -70,7 +98,7 @@ export function BranchFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Thêm chi nhánh mới</DialogTitle>
+          <DialogTitle>{title || "Thêm chi nhánh mới"}</DialogTitle>
           <DialogDescription>
             Nhập các thông tin chi tiết để tạo một chi nhánh mới. Nhấp Lưu khi bạn hoàn tất.
           </DialogDescription>
@@ -103,9 +131,11 @@ export function BranchFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="ACTIVE">Hoạt động (ACTIVE)</SelectItem>
-                      <SelectItem value="SUSPENDED">Tạm dừng (SUSPENDED)</SelectItem>
-                      <SelectItem value="INACTIVE">Ngừng hoạt động (INACTIVE)</SelectItem>
+                      {SWITCHER_STATUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -120,6 +150,32 @@ export function BranchFormDialog({
                   <FormLabel>Địa chỉ</FormLabel>
                   <FormControl>
                     <Input placeholder="Nhập địa chỉ chi nhánh" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Số điện thoại</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nhập số điện thoại (ví dụ: 0987654321)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email (Tùy chọn)</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="Nhập địa chỉ email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
