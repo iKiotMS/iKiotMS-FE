@@ -1,22 +1,11 @@
-import client from "./client";
-
-interface WarehouseItem {
-  _id: string;
-  name: string;
-  status: string;
-  address?: string;
-}
-
-interface WarehouseListResponse {
-  success: boolean;
-  data: WarehouseItem[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+import client from "@/lib/api/client";
+import type {
+  Warehouse,
+  WarehouseQueryParams,
+  WarehouseListResponse,
+  WarehouseCreatePayload,
+  WarehouseUpdatePayload,
+} from "@/types/warehouse";
 
 export interface WarehouseOption {
   value: string;
@@ -24,16 +13,24 @@ export interface WarehouseOption {
 }
 
 export const warehouseApi = {
-  getList: async (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    search?: string;
-  }): Promise<WarehouseListResponse> => {
-    const response = await client.get<WarehouseListResponse>("/warehouses", {
-      params,
-    });
-    return response.data;
+  getList: async (params?: WarehouseQueryParams): Promise<WarehouseListResponse> => {
+    const res = await client.get<WarehouseListResponse>("/warehouses", { params });
+    return res.data;
+  },
+  getById: async (id: string): Promise<Warehouse> => {
+    const res = await client.get<{ data: Warehouse }>(`/warehouses/${id}`);
+    return res.data.data;
+  },
+  create: async (payload: WarehouseCreatePayload): Promise<Warehouse> => {
+    const res = await client.post<{ data: Warehouse }>("/warehouses", payload);
+    return res.data.data;
+  },
+  update: async (id: string, payload: WarehouseUpdatePayload): Promise<Warehouse> => {
+    const res = await client.patch<{ data: Warehouse }>(`/warehouses/${id}`, payload);
+    return res.data.data;
+  },
+  remove: async (id: string): Promise<void> => {
+    await client.delete(`/warehouses/${id}/delete`);
   },
 
   /** Lấy toàn bộ kho ACTIVE của tenant hiện tại dưới dạng dropdown options. */

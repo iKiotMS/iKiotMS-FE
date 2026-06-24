@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
 import { UpgradeToProButton } from "@/components/upgrade-to-pro-button";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
+import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
 
 export default function DashboardLayout({
@@ -17,6 +18,17 @@ export default function DashboardLayout({
 }) {
   const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
   const { config } = useSidebarConfig();
+  const pathname = usePathname();
+
+  if (pathname === "/check-out") {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen w-full bg-background">
+          {children}
+        </div>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>

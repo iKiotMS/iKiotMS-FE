@@ -1,6 +1,8 @@
 "use client"
 
+import * as React from "react"
 import { Button } from "@/components/ui/button"
+import { SWITCHER_STATUS_OPTIONS } from "./constants/status"
 import {
   Dialog,
   DialogContent,
@@ -45,12 +47,16 @@ interface WarehouseFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: WarehouseFormValues) => void
+  defaultValues?: Partial<WarehouseFormValues>
+  title?: string
 }
 
 export function WarehouseFormDialog({
   open,
   onOpenChange,
   onSubmit,
+  defaultValues,
+  title,
 }: WarehouseFormDialogProps) {
   const form = useForm<WarehouseFormValues>({
     resolver: zodResolver(warehouseFormSchema),
@@ -58,8 +64,20 @@ export function WarehouseFormDialog({
       name: "",
       status: "ACTIVE",
       address: "",
+      ...defaultValues,
     },
   })
+
+  React.useEffect(() => {
+    if (open) {
+      form.reset({
+        name: "",
+        status: "ACTIVE",
+        address: "",
+        ...defaultValues,
+      })
+    }
+  }, [open, defaultValues, form])
 
   function handleFormSubmit(data: WarehouseFormValues) {
     onSubmit(data)
@@ -70,7 +88,7 @@ export function WarehouseFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Thêm kho hàng mới</DialogTitle>
+          <DialogTitle>{title || "Thêm kho hàng mới"}</DialogTitle>
           <DialogDescription>
             Nhập các thông tin chi tiết để tạo một kho hàng mới. Nhấp Lưu khi bạn hoàn tất.
           </DialogDescription>
@@ -103,9 +121,11 @@ export function WarehouseFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="ACTIVE">Hoạt động (ACTIVE)</SelectItem>
-                      <SelectItem value="SUSPENDED">Tạm dừng (SUSPENDED)</SelectItem>
-                      <SelectItem value="INACTIVE">Ngừng hoạt động (INACTIVE)</SelectItem>
+                      {SWITCHER_STATUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
