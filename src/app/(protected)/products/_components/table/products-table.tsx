@@ -43,6 +43,7 @@ export function ProductsTable() {
   const table = useReactTable({
     data: products,
     columns: productsColumns,
+    getRowId: (row) => row.id,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -101,7 +102,7 @@ export function ProductsTable() {
                     onClick={() => row.toggleExpanded()}
                     className={cn(
                       row.getIsExpanded() &&
-                        'bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
+                        'bg-primary/5 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
