@@ -21,25 +21,24 @@ export function useProductsMutations() {
   async function handleAdd(data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      const newProduct: Product = {
-        id: Date.now().toString(),
-        productCode: data.productCode,
-        sku: data.sku,
-        barcode: data.barcode ?? '',
+      const product = await productApi.create({
         name: data.name,
         categoryName: data.categoryName,
-        brandName: data.brandName ?? '',
-        retailPrice: data.retailPrice,
-        costPrice: data.costPrice,
-        VAT: data.VAT ?? 0,
-        stock: 0,
         status: data.status,
-        warrantyPeriod: data.warrantyPeriod ?? '',
-        description: data.description ?? '',
-        createdAt: new Date().toISOString().split('T')[0],
-        imageUrl: '',
-      }
-      setProducts((prev) => [newProduct, ...prev])
+        items: [
+          {
+            productCode: data.productCode ?? '',
+            sku: data.sku ?? '',
+            barcode: data.barcode,
+            retailPrice: data.retailPrice ?? 0,
+            costPrice: data.costPrice ?? 0,
+            VAT: data.VAT,
+            warrantyPeriod: data.warrantyPeriod,
+            description: data.description,
+          },
+        ],
+      })
+      setProducts((prev) => [product, ...prev])
       toast.success('Thêm hàng hóa thành công')
       return true
     } catch {
@@ -53,27 +52,12 @@ export function useProductsMutations() {
   async function handleEdit(id: string, data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                name: data.name,
-                productCode: data.productCode,
-                sku: data.sku,
-                barcode: data.barcode ?? p.barcode,
-                categoryName: data.categoryName,
-                brandName: data.brandName ?? p.brandName,
-                retailPrice: data.retailPrice,
-                costPrice: data.costPrice,
-                VAT: data.VAT ?? p.VAT,
-                warrantyPeriod: data.warrantyPeriod ?? p.warrantyPeriod,
-                description: data.description ?? p.description,
-                status: data.status,
-              }
-            : p,
-        ),
-      )
+      const product = await productApi.update(id, {
+        name: data.name,
+        categoryName: data.categoryName,
+        status: data.status,
+      })
+      setProducts((prev) => prev.map((p) => (p.id === id ? product : p)))
       toast.success('Cập nhật hàng hóa thành công')
       return true
     } catch {
@@ -87,6 +71,7 @@ export function useProductsMutations() {
   async function handleDelete(id: string): Promise<boolean> {
     setIsLoading(true)
     try {
+      await productApi.remove(id)
       setProducts((prev) => prev.filter((p) => p.id !== id))
       toast.success('Xóa hàng hóa thành công')
       return true
@@ -101,6 +86,7 @@ export function useProductsMutations() {
   async function handleDeleteMany(ids: string[]): Promise<boolean> {
     setIsLoading(true)
     try {
+      await Promise.all(ids.map((id) => productApi.remove(id)))
       setProducts((prev) => prev.filter((p) => !ids.includes(p.id)))
       toast.success(`Xóa ${ids.length} hàng hóa thành công`)
       return true

@@ -69,6 +69,20 @@ export interface ProductItemCreatePayload {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
+  productDetails?: Record<string, unknown>[];
+}
+
+export interface ProductItemUpdatePayload {
+  productCode?: string;
+  sku?: string;
+  barcode?: string;
+  description?: string;
+  retailPrice?: number;
+  costPrice?: number;
+  VAT?: number;
+  warrantyPeriod?: string;
+  images?: ProductImage[];
+  productDetails?: Record<string, unknown>[];
 }
 
 export interface ProductCreatePayload {
