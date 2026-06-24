@@ -44,20 +44,6 @@ const processQueue = (
   failedQueue = [];
 };
 
-function isExpiredAccessTokenError(error: AxiosError): boolean {
-  const message = (error.response?.data as { message?: string } | undefined)
-    ?.message;
-  return (
-    error.response?.status === 403 && message === "Invalid or expired token."
-  );
-}
-
-function shouldRefreshAccessToken(error: AxiosError): boolean {
-  if (!getRefreshToken()) return false;
-  if (isExpiredAccessTokenError(error)) return true;
-  return error.response?.status === 401;
-}
-
 /**
  * Request interceptor - Add access token to headers
  */
@@ -66,11 +52,6 @@ client.interceptors.request.use(
     const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Let the browser set multipart boundary for file uploads.
-    if (config.data instanceof FormData) {
-      delete config.headers["Content-Type"];
     }
 
     return config;
@@ -97,7 +78,7 @@ client.interceptors.response.use(
       originalRequest.url?.includes("/auth/reset-password");
 
     if (
-      shouldRefreshAccessToken(error) &&
+      (error.response?.status === 401 || error.response?.status === 403) &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
