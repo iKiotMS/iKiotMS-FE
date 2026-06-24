@@ -7,8 +7,6 @@ export type StaffStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export type StaffGender = "MALE" | "FEMALE" | "OTHER";
 
-export type StaffSalaryType = "FULL_TIME" | "PART_TIME";
-
 export interface StaffProfile {
   identificationId?: string;
   address?: string;
@@ -33,8 +31,6 @@ export interface Staff {
   role: StaffRole;
   status: StaffStatus;
   joinedAt: string;
-  baseSalary?: number;
-  salaryType?: StaffSalaryType;
   profile?: StaffProfile;
   accountNote?: string;
   createdAt: string;
@@ -87,8 +83,6 @@ export interface CreateStaffPayload {
   branchId?: string | null;
   warehouseId?: string | null;
   hireDate?: string;
-  baseSalary?: number;
-  salaryType?: StaffSalaryType;
   profile?: StaffProfilePayload;
   newPassword?: string;
   reEnterPassword?: string;
@@ -102,8 +96,6 @@ export interface UpdateStaffPayload {
   branchId?: string | null;
   warehouseId?: string | null;
   hireDate?: string;
-  baseSalary?: number;
-  salaryType?: StaffSalaryType;
   profile?: StaffProfilePayload;
   accountNote?: string;
 }
