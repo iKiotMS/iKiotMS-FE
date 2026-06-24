@@ -1,13 +1,14 @@
 "use client";
 
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 import {
   Building2,
   CalendarDays,
+  CreditCard,
+  FileText,
   KeyRound,
   Lock,
   Mail,
+  MapPin,
   Pencil,
   Phone,
   Trash2,
@@ -15,13 +16,31 @@ import {
   UserCheck,
   Warehouse,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
+  formatStaffDate,
+  formatStaffDateTime,
+  getStaffInitials,
+} from "@/app/(protected)/staffs/shared/staff-format";
+import {
   STAFF_ROLE_MAP,
   getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
+import { getCachedUser } from "@/lib/auth";
+import {
+  canDeleteStaff,
+  canManageStaffAccount,
+  canUpdateStaff,
+} from "@/app/(protected)/staffs/shared/staff-permissions";
+import {
+  getStaffGenderLabel,
+  getStaffSalaryTypeLabel,
+} from "@/lib/api/staff-mapper";
+import { formatVndLabel } from "@/app/(protected)/staffs/shared/salary-format";
+import { formatIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
 
@@ -53,11 +72,18 @@ export function StaffsExpandedPanel({
   isExpanded: boolean;
 }) {
   const { setOpen, setCurrentRow } = useStaffs();
+  const userRole = getCachedUser()?.role;
+  const showDelete = canDeleteStaff(userRole);
+  const showEdit = canUpdateStaff(userRole);
+  const showAccountActions = canManageStaffAccount(userRole);
 
   if (!isExpanded) return null;
 
   const status = getStaffStatusDisplay(staff.status);
-  const role = STAFF_ROLE_MAP[staff.role];
+  const role = STAFF_ROLE_MAP[staff.role] ?? {
+    label: staff.role,
+    variant: "outline" as const,
+  };
   const canActivate = staff.status !== "ACTIVE";
   const canDeactivate = staff.status === "ACTIVE";
   const canChangePassword = staff.status === "ACTIVE";
@@ -67,6 +93,19 @@ export function StaffsExpandedPanel({
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
         <Badge variant={role.variant}>{role.label}</Badge>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <Avatar className="size-14">
+          {staff.profile?.avatarUrl ? (
+            <AvatarImage src={staff.profile.avatarUrl} alt={staff.fullName} />
+          ) : null}
+          <AvatarFallback>{getStaffInitials(staff.fullName)}</AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="text-xs text-muted-foreground">Ảnh đại diện</p>
+          <p className="text-sm font-medium">{staff.fullName}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-4">
@@ -104,21 +143,73 @@ export function StaffsExpandedPanel({
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày vào làm"
-          value={format(new Date(staff.joinedAt), "dd/MM/yyyy", { locale: vi })}
+          value={formatStaffDate(staff.joinedAt)}
         />
+        {staff.profile?.identificationId && (
+          <InfoItem
+            icon={<CreditCard className="size-4" />}
+            label="CCCD"
+            value={formatIdentificationId(staff.profile.identificationId)}
+          />
+        )}
+        {staff.profile?.gender && (
+          <InfoItem
+            icon={<User className="size-4" />}
+            label="Giới tính"
+            value={getStaffGenderLabel(staff.profile.gender)}
+          />
+        )}
+        {staff.profile?.dob && (
+          <InfoItem
+            icon={<CalendarDays className="size-4" />}
+            label="Ngày sinh"
+            value={formatStaffDate(staff.profile.dob)}
+          />
+        )}
+        {staff.profile?.address && (
+          <InfoItem
+            icon={<MapPin className="size-4" />}
+            label="Địa chỉ"
+            value={staff.profile.address}
+          />
+        )}
+        {staff.profile?.taxNumber && (
+          <InfoItem
+            icon={<CreditCard className="size-4" />}
+            label="Mã số thuế"
+            value={staff.profile.taxNumber}
+          />
+        )}
+        {staff.baseSalary !== undefined && (
+          <InfoItem
+            icon={<CreditCard className="size-4" />}
+            label="Lương cơ bản"
+            value={formatVndLabel(staff.baseSalary)}
+          />
+        )}
+        {staff.salaryType && (
+          <InfoItem
+            icon={<User className="size-4" />}
+            label="Loại lương"
+            value={getStaffSalaryTypeLabel(staff.salaryType)}
+          />
+        )}
+        {staff.accountNote && (
+          <InfoItem
+            icon={<FileText className="size-4" />}
+            label="Ghi chú tài khoản"
+            value={staff.accountNote}
+          />
+        )}
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày tạo"
-          value={format(new Date(staff.createdAt), "dd/MM/yyyy HH:mm", {
-            locale: vi,
-          })}
+          value={formatStaffDateTime(staff.createdAt)}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Cập nhật lần cuối"
-          value={format(new Date(staff.updatedAt), "dd/MM/yyyy HH:mm", {
-            locale: vi,
-          })}
+          value={formatStaffDateTime(staff.updatedAt)}
         />
         <InfoItem
           icon={<User className="size-4" />}
@@ -129,22 +220,26 @@ export function StaffsExpandedPanel({
 
       <Separator className="mt-4" />
       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(staff);
-            setOpen("delete");
-          }}
-        >
-          <Trash2 className="mr-2 size-4" />
-          Xóa nhân viên
-        </Button>
+        {showDelete ? (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(staff);
+              setOpen("delete");
+            }}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa nhân viên
+          </Button>
+        ) : (
+          <div />
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
-          {canActivate && (
+          {showAccountActions && canActivate && (
             <Button
               variant="outline"
               size="sm"
@@ -159,7 +254,7 @@ export function StaffsExpandedPanel({
               Kích hoạt tài khoản
             </Button>
           )}
-          {canDeactivate && (
+          {showAccountActions && canDeactivate && (
             <Button
               variant="outline"
               size="sm"
@@ -174,7 +269,7 @@ export function StaffsExpandedPanel({
               Khóa tài khoản
             </Button>
           )}
-          {canChangePassword && (
+          {showAccountActions && canChangePassword && (
             <Button
               variant="outline"
               size="sm"
@@ -189,18 +284,20 @@ export function StaffsExpandedPanel({
               Đổi mật khẩu
             </Button>
           )}
-          <Button
-            size="sm"
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentRow(staff);
-              setOpen("edit");
-            }}
-          >
-            <Pencil className="mr-2 size-4" />
-            Chỉnh sửa
-          </Button>
+          {showEdit && (
+            <Button
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("edit");
+              }}
+            >
+              <Pencil className="mr-2 size-4" />
+              Chỉnh sửa
+            </Button>
+          )}
         </div>
       </div>
     </div>

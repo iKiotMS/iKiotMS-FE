@@ -3,12 +3,10 @@
 import { Fragment, useState } from "react";
 import {
   type ExpandedState,
-  type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { Funnel, Search } from "lucide-react";
@@ -44,6 +42,7 @@ import { StaffsExpandedPanel } from "./staffs-expanded-panel";
 import { useStaffs } from "./staffs-provider";
 
 const COLUMN_LABELS: Record<string, string> = {
+  avatar: "Ảnh",
   fullName: "Nhân viên",
   phoneNumber: "Số điện thoại",
   role: "Vai trò",
@@ -62,15 +61,18 @@ export function StaffsTable() {
     listQuery,
     keywordInput,
     setKeywordInput,
+    roleOptions,
+    branchOptions,
+    warehouseOptions,
     updateRoleFilter,
     updateStatusFilter,
+    updateBranchFilter,
+    updateWarehouseFilter,
     updatePage,
     updatePageSize,
   } = useStaffs();
 
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useReactTable({
@@ -78,17 +80,12 @@ export function StaffsTable() {
     columns,
     pageCount: totalPages,
     manualPagination: true,
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     onExpandedChange: setExpanded,
     state: {
-      sorting,
       columnVisibility,
-      rowSelection,
       expanded,
       pagination: {
         pageIndex: listQuery.page - 1,
@@ -96,6 +93,10 @@ export function StaffsTable() {
       },
     },
   });
+
+  const rangeStart =
+    total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
+  const rangeEnd = Math.min(listQuery.page * listQuery.recordPerPage, total);
 
   return (
     <div className="space-y-4">
@@ -122,9 +123,11 @@ export function StaffsTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả vai trò</SelectItem>
-              <SelectItem value="STAFF">Nhân viên bán hàng</SelectItem>
-              <SelectItem value="WAREHOUSE_MANAGER">Quản lý kho</SelectItem>
-              <SelectItem value="BRANCH_MANAGER">Quản lý chi nhánh</SelectItem>
+              {roleOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -144,6 +147,44 @@ export function StaffsTable() {
               <SelectItem value="SUSPENDED">Tạm khóa</SelectItem>
             </SelectContent>
           </Select>
+
+          {branchOptions.length > 0 && (
+            <Select
+              value={listQuery.branchId}
+              onValueChange={updateBranchFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Chi nhánh" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả chi nhánh</SelectItem>
+                {branchOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {warehouseOptions.length > 0 && (
+            <Select
+              value={listQuery.warehouseId}
+              onValueChange={updateWarehouseFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Kho hàng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả kho</SelectItem>
+                {warehouseOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <DropdownMenu>
@@ -208,7 +249,6 @@ export function StaffsTable() {
               table.getRowModel().rows.map((row) => (
                 <Fragment key={row.id}>
                   <TableRow
-                    data-state={row.getIsSelected() ? "selected" : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
                       "cursor-pointer",
@@ -217,14 +257,7 @@ export function StaffsTable() {
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        onClick={
-                          cell.column.id === "select"
-                            ? (e) => e.stopPropagation()
-                            : undefined
-                        }
-                      >
+                      <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
@@ -293,8 +326,9 @@ export function StaffsTable() {
           </Select>
         </div>
         <div className="hidden sm:block text-sm text-muted-foreground">
-          Đã chọn {table.getFilteredSelectedRowModel().rows.length} / {total}{" "}
-          nhân viên
+          {total === 0
+            ? "Không có nhân viên"
+            : `Hiển thị ${rangeStart}–${rangeEnd} / ${total} nhân viên`}
         </div>
         <div className="flex items-center space-x-2">
           <span className="hidden sm:block text-sm font-medium">

@@ -1,17 +1,12 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
-  type ColumnFiltersState,
   type ExpandedState,
-  type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { Funnel, Search } from "lucide-react";
@@ -47,49 +42,70 @@ import { ScheduleExpandedPanel } from "./schedule-expanded-panel";
 import { useSchedule } from "./schedule-provider";
 
 const COLUMN_LABELS: Record<string, string> = {
-  date: "Ngày làm",
+  workDate: "Ngày làm",
   staffName: "Nhân viên",
-  shiftType: "Ca làm",
+  shiftName: "Ca làm",
   shiftTime: "Khung giờ",
   status: "Trạng thái",
-  note: "Ghi chú",
 };
 
 export function ScheduleTable() {
-  const { schedules, isLoading } = useSchedule();
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const {
+    schedules,
+    isInitialLoading,
+    isFetching,
+    total,
+    totalPages,
+    listQuery,
+    staffOptions,
+    updateStatusFilter,
+    updateUserFilter,
+    updateStartDateFilter,
+    updateEndDateFilter,
+    updatePage,
+    updatePageSize,
+  } = useSchedule();
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
+  const filteredData = useMemo(() => {
+    const keyword = globalFilter.trim().toLowerCase();
+    if (!keyword) return schedules;
+    return schedules.filter(
+      (s) =>
+        s.staffName.toLowerCase().includes(keyword) ||
+        s.shiftName.toLowerCase().includes(keyword) ||
+        s.staffPhone.includes(keyword),
+    );
+  }, [schedules, globalFilter]);
+
   const table = useReactTable({
-    data: schedules,
+    data: filteredData,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    pageCount: totalPages,
+    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
     onExpandedChange: setExpanded,
     state: {
-      sorting,
-      columnFilters,
       columnVisibility,
-      rowSelection,
-      globalFilter,
       expanded,
+      pagination: {
+        pageIndex: listQuery.page - 1,
+        pageSize: listQuery.recordPerPage,
+      },
     },
   });
 
-  const shiftFilter = table.getColumn("shiftType")?.getFilterValue() as string;
-  const statusFilter = table.getColumn("status")?.getFilterValue() as string;
+  const rangeStart =
+    total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
+  const rangeEnd = Math.min(
+    listQuery.page * listQuery.recordPerPage,
+    total,
+  );
 
   return (
     <div className="space-y-4">
@@ -98,49 +114,65 @@ export function ScheduleTable() {
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm theo tên nhân viên, chi nhánh..."
-              value={globalFilter ?? ""}
-              onChange={(e) => setGlobalFilter(String(e.target.value))}
+              placeholder="Tìm trên trang hiện tại..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
               className="pl-9 h-9"
             />
           </div>
+
+          {staffOptions.length > 0 && (
+            <Select
+              value={listQuery.userId}
+              onValueChange={updateUserFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Nhân viên" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả nhân viên</SelectItem>
+                {staffOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select
-            value={shiftFilter || ""}
+            value={listQuery.status}
             onValueChange={(value) =>
-              table
-                .getColumn("shiftType")
-                ?.setFilterValue(value === "all" ? "" : value)
+              updateStatusFilter(
+                value as typeof listQuery.status,
+              )
             }
           >
             <SelectTrigger className="cursor-pointer w-40 h-9 text-sm">
-              <SelectValue placeholder="Ca làm" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả ca</SelectItem>
-              <SelectItem value="MORNING">Ca sáng</SelectItem>
-              <SelectItem value="AFTERNOON">Ca chiều</SelectItem>
-              <SelectItem value="EVENING">Ca tối</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={statusFilter || ""}
-            onValueChange={(value) =>
-              table
-                .getColumn("status")
-                ?.setFilterValue(value === "all" ? "" : value)
-            }
-          >
-            <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              <SelectItem value="ASSIGNED">Đã phân ca</SelectItem>
+              <SelectItem value="SCHEDULED">Đã phân ca</SelectItem>
               <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-              <SelectItem value="ABSENT">Vắng mặt</SelectItem>
               <SelectItem value="CANCELLED">Đã hủy</SelectItem>
             </SelectContent>
           </Select>
+
+          <Input
+            type="date"
+            value={listQuery.startDate}
+            onChange={(e) => updateStartDateFilter(e.target.value)}
+            className="w-36 h-9"
+            title="Từ ngày"
+          />
+          <Input
+            type="date"
+            value={listQuery.endDate}
+            onChange={(e) => updateEndDateFilter(e.target.value)}
+            className="w-36 h-9"
+            title="Đến ngày"
+          />
         </div>
 
         <DropdownMenu>
@@ -186,7 +218,7 @@ export function ScheduleTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isInitialLoading ? (
               Array.from({ length: 6 }).map((_, index) => (
                 <TableRow key={index}>
                   {columns.map((_, cellIndex) => (
@@ -196,7 +228,7 @@ export function ScheduleTable() {
                   ))}
                 </TableRow>
               ))
-            ) : table.getRowModel().rows?.length ? (
+            ) : table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
                 <Fragment key={row.id}>
                   <TableRow
@@ -206,6 +238,7 @@ export function ScheduleTable() {
                       "cursor-pointer",
                       row.getIsExpanded() &&
                         "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
+                      isFetching && "opacity-60",
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -269,11 +302,11 @@ export function ScheduleTable() {
         <div className="flex items-center space-x-2">
           <Label className="text-sm font-medium">Hiển thị</Label>
           <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+            value={`${listQuery.recordPerPage}`}
+            onValueChange={(value) => updatePageSize(Number(value))}
           >
             <SelectTrigger className="w-20 cursor-pointer">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50].map((pageSize) => (
@@ -285,22 +318,22 @@ export function ScheduleTable() {
           </Select>
         </div>
         <div className="hidden sm:block text-sm text-muted-foreground">
-          Đã chọn {table.getFilteredSelectedRowModel().rows.length} /{" "}
-          {table.getFilteredRowModel().rows.length} lịch làm
+          {total === 0
+            ? "Không có lịch làm"
+            : `Hiển thị ${rangeStart}–${rangeEnd} / ${total} lịch làm`}
         </div>
         <div className="flex items-center space-x-2">
           <span className="hidden sm:block text-sm font-medium">
             Trang{" "}
             <strong>
-              {table.getState().pagination.pageIndex + 1} /{" "}
-              {table.getPageCount() || 1}
+              {listQuery.page} / {totalPages || 1}
             </strong>
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => updatePage(listQuery.page - 1)}
+            disabled={listQuery.page <= 1 || isFetching}
             className="cursor-pointer"
           >
             Trước
@@ -308,8 +341,8 @@ export function ScheduleTable() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => updatePage(listQuery.page + 1)}
+            disabled={listQuery.page >= totalPages || isFetching}
             className="cursor-pointer"
           >
             Tiếp

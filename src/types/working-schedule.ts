@@ -1,24 +1,53 @@
-export type ShiftType = "MORNING" | "AFTERNOON" | "EVENING";
+export type ScheduleStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
-export type ScheduleStatus =
-  | "ASSIGNED"
-  | "COMPLETED"
-  | "ABSENT"
-  | "CANCELLED";
+export interface ShiftTemplate {
+  _id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  status?: string;
+}
 
+export interface ShiftTemplateOption {
+  value: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+}
+
+/** Raw response shape từ BE (populate userId + shiftTemplateId). */
+export interface ApiWorkingSchedule {
+  _id: string;
+  tenantId: string;
+  userId:
+    | {
+        _id: string;
+        phoneNumber: string;
+        profile?: { firstName?: string; lastName?: string };
+        role: string;
+      }
+    | string;
+  shiftTemplateId: ShiftTemplate | string;
+  workDate: string;
+  startAt: string;
+  endAt: string;
+  status: ScheduleStatus | "DELETED";
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Flat shape cho UI/table. */
 export interface WorkingSchedule {
   _id: string;
   tenantId: string;
-  branchId: string;
-  branchName: string;
   userId: string;
   staffName: string;
-  shiftType: ShiftType;
+  staffPhone: string;
+  shiftTemplateId: string;
   shiftName: string;
   startTime: string;
   endTime: string;
-  date: string;
-  note?: string;
+  workDate: string;
   status: ScheduleStatus;
   createdAt: string;
   updatedAt: string;
@@ -26,13 +55,39 @@ export interface WorkingSchedule {
 
 export interface WorkingScheduleQueryParams {
   page?: number;
-  limit?: number;
+  recordPerPage?: number;
   userId?: string;
-  branchId?: string;
-  date?: string;
-  fromDate?: string;
-  toDate?: string;
-  shiftType?: ShiftType;
+  startDate?: string;
+  endDate?: string;
+  status?: ScheduleStatus;
+}
+
+export interface WorkingScheduleListApiResponse {
+  data: ApiWorkingSchedule[];
+  pagination: {
+    total: number;
+    page: number;
+    recordPerPage: number;
+    totalPages: number;
+  };
+}
+
+export interface CreateWorkingSchedulePayload {
+  userId: string;
+  shiftTemplateId: string;
+  workDate: string;
+}
+
+export interface UpdateShiftTemplatePayload {
+  name: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface UpdateWorkingSchedulePayload {
+  userId?: string;
+  shiftTemplateId?: string;
+  workDate?: string;
   status?: ScheduleStatus;
 }
 
@@ -40,22 +95,14 @@ export interface WorkingScheduleListResponse {
   data: WorkingSchedule[];
   total: number;
   page: number;
-  limit: number;
+  totalPages: number;
 }
 
-export interface CreateWorkingSchedulePayload {
+export interface ScheduleListQuery {
+  page: number;
+  recordPerPage: number;
   userId: string;
-  branchId: string;
-  shiftType: ShiftType;
-  date: string;
-  note?: string;
-}
-
-export interface UpdateWorkingSchedulePayload {
-  userId?: string;
-  branchId?: string;
-  shiftType?: ShiftType;
-  date?: string;
-  note?: string;
-  status?: ScheduleStatus;
+  status: ScheduleStatus | "all";
+  startDate: string;
+  endDate: string;
 }

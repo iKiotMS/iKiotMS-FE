@@ -31,27 +31,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { WorkingSchedule } from "@/types/working-schedule";
-import { useSchedule, BRANCH_OPTIONS, STAFF_OPTIONS } from "./schedule-provider";
+import { isScheduleLocked } from "@/app/(protected)/staffs/shared/schedule-utils";
+import { useSchedule } from "./schedule-provider";
 
 const scheduleFormSchema = z.object({
   userId: z.string().min(1, "Vui lòng chọn nhân viên"),
-  branchId: z.string().min(1, "Vui lòng chọn chi nhánh"),
-  shiftType: z.enum(["MORNING", "AFTERNOON", "EVENING"]),
-  date: z.string().min(1, "Vui lòng chọn ngày"),
-  note: z.string().optional(),
-  status: z.enum(["ASSIGNED", "COMPLETED", "ABSENT", "CANCELLED"]),
+  shiftTemplateId: z.string().min(1, "Vui lòng chọn ca làm"),
+  workDate: z.string().min(1, "Vui lòng chọn ngày"),
+  status: z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]).optional(),
 });
 
 type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
-
-const EMPTY_VALUES: ScheduleFormValues = {
-  userId: "staff-001",
-  branchId: "branch-1",
-  shiftType: "MORNING",
-  date: new Date().toISOString().split("T")[0],
-  note: "",
-  status: "ASSIGNED",
-};
 
 export function ScheduleMutateDialog({
   open,
@@ -63,11 +53,31 @@ export function ScheduleMutateDialog({
   currentRow?: WorkingSchedule;
 }) {
   const isEdit = !!currentRow;
-  const { handleAdd, handleEdit } = useSchedule();
+  const isLocked = isEdit && currentRow ? isScheduleLocked(currentRow.status) : false;
+  const { handleAdd, handleEdit, shiftTemplateOptions, staffOptions, setOpen } =
+    useSchedule();
+
+  const staffSelectOptions =
+    isEdit && currentRow
+      ? staffOptions.some((o) => o.value === currentRow.userId)
+        ? staffOptions
+        : [
+            {
+              value: currentRow.userId,
+              label: `${currentRow.staffName} (hiện tại)`,
+            },
+            ...staffOptions,
+          ]
+      : staffOptions;
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
-    defaultValues: EMPTY_VALUES,
+    defaultValues: {
+      userId: "",
+      shiftTemplateId: "",
+      workDate: new Date().toISOString().split("T")[0],
+      status: "SCHEDULED",
+    },
   });
 
   useEffect(() => {
@@ -75,44 +85,71 @@ export function ScheduleMutateDialog({
     if (isEdit && currentRow) {
       form.reset({
         userId: currentRow.userId,
-        branchId: currentRow.branchId,
-        shiftType: currentRow.shiftType,
-        date: currentRow.date,
-        note: currentRow.note ?? "",
+        shiftTemplateId: currentRow.shiftTemplateId,
+        workDate: currentRow.workDate,
         status: currentRow.status,
       });
     } else {
-      form.reset(EMPTY_VALUES);
+      form.reset({
+        userId: "",
+        shiftTemplateId: "",
+        workDate: new Date().toISOString().split("T")[0],
+        status: "SCHEDULED",
+      });
     }
   }, [open, isEdit, currentRow, form]);
 
   async function onSubmit(values: ScheduleFormValues) {
-    if (isEdit && currentRow) {
-      await handleEdit(currentRow._id, values);
-    } else {
-      await handleAdd({
-        userId: values.userId,
-        branchId: values.branchId,
-        shiftType: values.shiftType,
-        date: values.date,
-        note: values.note,
-      });
+    if (isLocked) return;
+    try {
+      if (isEdit && currentRow) {
+        await handleEdit(currentRow._id, {
+          userId: values.userId,
+          shiftTemplateId: values.shiftTemplateId,
+          workDate: values.workDate,
+          status: values.status,
+        });
+      } else {
+        await handleAdd({
+          userId: values.userId,
+          shiftTemplateId: values.shiftTemplateId,
+          workDate: values.workDate,
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      // Toast handled in provider
     }
-    onOpenChange(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Chỉnh sửa lịch làm" : "Phân ca làm việc"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Chỉnh sửa lịch làm" : "Phân ca làm việc"}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? "Cập nhật ca làm và trạng thái của nhân viên."
-              : "Tạo lịch làm mới theo ca cho nhân viên."}
+            {isLocked
+              ? "Lịch đã hoàn thành — không thể chỉnh sửa theo quy tắc hệ thống."
+              : isEdit
+                ? "Cập nhật ca làm và trạng thái của nhân viên."
+                : "Tạo lịch làm mới theo ca cho nhân viên đang hoạt động."}
           </DialogDescription>
         </DialogHeader>
 
+        {isLocked ? (
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => onOpenChange(false)}
+            >
+              Đóng
+            </Button>
+          </DialogFooter>
+        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -122,20 +159,32 @@ export function ScheduleMutateDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nhân viên</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    {staffSelectOptions.length > 0 ? (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="cursor-pointer w-full">
+                            <SelectValue placeholder="Chọn nhân viên" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {staffSelectOptions.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
                       <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn nhân viên" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="Nhập ID nhân viên"
+                          {...field}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {STAFF_OPTIONS.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -143,57 +192,7 @@ export function ScheduleMutateDialog({
 
               <FormField
                 control={form.control}
-                name="branchId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Chi nhánh</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn chi nhánh" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {BRANCH_OPTIONS.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="shiftType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ca làm</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn ca làm" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="MORNING">Ca sáng (08:00 - 12:00)</SelectItem>
-                        <SelectItem value="AFTERNOON">Ca chiều (13:00 - 17:00)</SelectItem>
-                        <SelectItem value="EVENING">Ca tối (18:00 - 22:00)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="date"
+                name="workDate"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Ngày làm</FormLabel>
@@ -208,13 +207,40 @@ export function ScheduleMutateDialog({
 
             <FormField
               control={form.control}
-              name="note"
+              name="shiftTemplateId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ghi chú</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ghi chú thêm (nếu có)" {...field} />
-                  </FormControl>
+                  <FormLabel>Ca làm</FormLabel>
+                  {shiftTemplateOptions.length > 0 ? (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="cursor-pointer w-full">
+                          <SelectValue placeholder="Chọn ca làm" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {shiftTemplateOptions.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
+                      Chưa có ca mẫu.{" "}
+                      <button
+                        type="button"
+                        className="text-primary underline cursor-pointer"
+                        onClick={() => {
+                          onOpenChange(false);
+                          setOpen("shiftTemplate");
+                        }}
+                      >
+                        Tạo ca mẫu
+                      </button>
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -227,16 +253,18 @@ export function ScheduleMutateDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Trạng thái</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? "SCHEDULED"}
+                    >
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
                           <SelectValue placeholder="Chọn trạng thái" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="ASSIGNED">Đã phân ca</SelectItem>
+                        <SelectItem value="SCHEDULED">Đã phân ca</SelectItem>
                         <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-                        <SelectItem value="ABSENT">Vắng mặt</SelectItem>
                         <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                       </SelectContent>
                     </Select>
@@ -255,7 +283,14 @@ export function ScheduleMutateDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" className="cursor-pointer">
+              <Button
+                type="submit"
+                className="cursor-pointer"
+                disabled={
+                  form.formState.isSubmitting ||
+                  (!isEdit && shiftTemplateOptions.length === 0)
+                }
+              >
                 {isEdit ? (
                   <>
                     <Pencil className="mr-2 size-4" />
@@ -271,6 +306,7 @@ export function ScheduleMutateDialog({
             </DialogFooter>
           </form>
         </Form>
+        )}
       </DialogContent>
     </Dialog>
   );
