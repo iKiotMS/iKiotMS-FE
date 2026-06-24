@@ -37,9 +37,7 @@ import {
 } from "@/app/(protected)/staffs/shared/staff-permissions";
 import {
   getStaffGenderLabel,
-  getStaffSalaryTypeLabel,
 } from "@/lib/api/staff-mapper";
-import { formatVndLabel } from "@/app/(protected)/staffs/shared/salary-format";
 import { formatIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
 import type { Staff } from "@/types/staff";
 import { useStaffs } from "./staffs-provider";
@@ -178,20 +176,6 @@ export function StaffsExpandedPanel({
             icon={<CreditCard className="size-4" />}
             label="Mã số thuế"
             value={staff.profile.taxNumber}
-          />
-        )}
-        {staff.baseSalary !== undefined && (
-          <InfoItem
-            icon={<CreditCard className="size-4" />}
-            label="Lương cơ bản"
-            value={formatVndLabel(staff.baseSalary)}
-          />
-        )}
-        {staff.salaryType && (
-          <InfoItem
-            icon={<User className="size-4" />}
-            label="Loại lương"
-            value={getStaffSalaryTypeLabel(staff.salaryType)}
           />
         )}
         {staff.accountNote && (

@@ -3,7 +3,6 @@ import type {
   StaffGender,
   StaffProfile,
   StaffRole,
-  StaffSalaryType,
   StaffStatus,
 } from "@/types/staff";
 
@@ -27,8 +26,6 @@ export interface ApiStaffUser {
     lastName?: string;
   };
   hireDate?: string;
-  baseSalary?: number;
-  salaryType?: string;
   accountNote?: string;
   createdAt: string;
   updatedAt: string;
@@ -46,11 +43,6 @@ const GENDER_LABELS: Record<StaffGender, string> = {
   OTHER: "Khác",
 };
 
-const SALARY_TYPE_LABELS: Record<StaffSalaryType, string> = {
-  FULL_TIME: "Toàn thời gian",
-  PART_TIME: "Bán thời gian",
-};
-
 export function getStaffRoleLabel(role: StaffRole): string {
   return ROLE_LABELS[role] ?? role;
 }
@@ -58,11 +50,6 @@ export function getStaffRoleLabel(role: StaffRole): string {
 export function getStaffGenderLabel(gender?: StaffGender): string {
   if (!gender) return "—";
   return GENDER_LABELS[gender] ?? gender;
-}
-
-export function getStaffSalaryTypeLabel(salaryType?: StaffSalaryType): string {
-  if (!salaryType) return "—";
-  return SALARY_TYPE_LABELS[salaryType] ?? salaryType;
 }
 
 function resolveRefId(
@@ -91,11 +78,6 @@ function mapRole(role: string): StaffRole {
     return role;
   }
   return "STAFF";
-}
-
-function mapSalaryType(value?: string): StaffSalaryType | undefined {
-  if (value === "FULL_TIME" || value === "PART_TIME") return value;
-  return undefined;
 }
 
 function mapProfile(profile?: ApiStaffUser["profile"]): StaffProfile | undefined {
@@ -137,8 +119,6 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     role: mapRole(user.role),
     status: mapStatus(user.status),
     joinedAt: user.hireDate ?? user.createdAt,
-    baseSalary: user.baseSalary,
-    salaryType: mapSalaryType(user.salaryType),
     profile: mapProfile(user.profile),
     accountNote: user.accountNote,
     createdAt: user.createdAt,
