@@ -18,23 +18,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!authStatus) {
       router.push("/sign-in");
     } else {
-      if (!user) {
-        fetchMe()
-          .then(() => {
-            setAuthenticated(true);
-            setIsChecking(false);
-          })
-          .catch((err) => {
-            console.error("AuthGuard user fetch error:", err);
-            setAuthenticated(true);
-            setIsChecking(false);
-          });
-      } else {
-        setAuthenticated(true);
-        setIsChecking(false);
-      }
+      // Fetch latest profile from backend on mount (e.g. F5 refresh)
+      fetchMe()
+        .then(() => {
+          setAuthenticated(true);
+          setIsChecking(false);
+        })
+        .catch((err) => {
+          console.error("AuthGuard user fetch error:", err);
+          setAuthenticated(true);
+          setIsChecking(false);
+        });
     }
-  }, [router, user, fetchMe]);
+  }, [router, fetchMe]);
 
   if (isChecking || !authenticated) {
     return <Loading />;
