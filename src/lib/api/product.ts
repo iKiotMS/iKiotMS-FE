@@ -20,6 +20,14 @@ function mapId<T extends object>(doc: MongoDoc<T>): T & { id: string } {
   return { ...(rest as T), id: _id }
 }
 
+function mapProduct<T extends any>(prod: MongoDoc<T>): T & { id: string } {
+  const mapped = mapId(prod) as any
+  if (mapped.items && Array.isArray(mapped.items)) {
+    mapped.items = mapped.items.map((item: any) => mapId(item))
+  }
+  return mapped
+}
+
 export const productApi = {
   getList: async (params?: ProductQueryParams): Promise<ProductListResponse> => {
     const res = await client.get<{
@@ -27,14 +35,14 @@ export const productApi = {
       pagination: PaginationResponse
     }>('/products', { params })
     return {
-      data: res.data.data.map(mapId),
+      data: res.data.data.map(mapProduct),
       pagination: res.data.pagination,
     }
   },
 
   getById: async (id: string): Promise<ProductDetailResponse> => {
-    const res = await client.get<{ data: ProductDetailResponse }>(`/products/${id}`)
-    return res.data.data
+    const res = await client.get<{ data: MongoDoc<ProductDetailResponse> }>(`/products/${id}`)
+    return mapProduct(res.data.data)
   },
 
   create: async (payload: ProductCreatePayload): Promise<Product> => {
