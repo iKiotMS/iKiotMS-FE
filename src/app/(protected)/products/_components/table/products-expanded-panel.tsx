@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,28 +9,35 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useProducts } from "../../_context/products-provider";
-import { STATUS_MAP } from "../../_constants/product.constants";
-import type { Product, ProductDetailResponse, ProductItem } from "@/types/product";
+import { formatVND, STATUS_MAP } from "../../_constants/product.constants";
+import type {
+  Product,
+  ProductDetailResponse,
+  ProductItem,
+} from "@/types/product";
 import { productApi } from "@/lib/api/product";
 import Image from "next/image";
 import { ProductsEmpty } from "../products-empty";
 import { ProductsItemMutateDialog } from "../dialogs/products-item-mutate-dialog";
-
-const formatVND = (value: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
+import { ProductsItemDetailSheet } from "../dialogs/products-item-detail-sheet";
 
 type ProductsExpandedPanelProps = {
   product: Product;
   isExpanded: boolean;
 };
 
-export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedPanelProps) {
+export function ProductsExpandedPanel({
+  product,
+  isExpanded,
+}: ProductsExpandedPanelProps) {
   const { setOpen, setCurrentRow } = useProducts();
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<ProductDetailResponse | null>(null);
   const [editingItem, setEditingItem] = useState<ProductItem | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [viewingItem, setViewingItem] = useState<ProductItem | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
 
   useEffect(() => {
     if (!isExpanded || detail) return;
@@ -103,18 +110,12 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
 
   return (
     <>
-      <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+      <div className="bg-background px-6 py-4 animate-in fade-in-0 duration-200">
         {detail?.items?.length ? (
           <div className="space-y-3">
-            {detail.items.map((item) => {
-              const profit = item.retailPrice - item.costPrice;
-              const profitPositive = profit >= 0;
-              return (
-                <div
-                  key={item.id ?? item.sku}
-                  className="relative flex gap-6 rounded-lg border p-4"
-                >
-                  {/* Item action buttons */}
+            {detail.items.map((item) => (
+              <div key={item.id ?? item.sku}>
+                <div className="relative flex gap-6 rounded-lg px-4 pb-4">
                   <div className="absolute top-2 right-2 flex gap-1">
                     <Button
                       size="icon"
@@ -122,124 +123,105 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
                       className="size-7 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditingItem(item);
-                        setEditOpen(true);
+                        setViewingItem(item);
+                        setViewOpen(true);
                       }}
                     >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 cursor-pointer text-destructive hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleItemDelete(item.id);
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
+                      <Eye className="size-5" />
                     </Button>
                   </div>
 
                   <Image
                     src={
-                      (item.images?.find((i) => i.isThumbnail) ?? item.images?.[0])?.url ??
-                      "/placeholder-product.svg"
+                      (
+                        item.images?.find((i) => i.isThumbnail) ??
+                        item.images?.[0]
+                      )?.url ?? "/placeholder-product.svg"
                     }
                     alt={product.name}
-                    width={112}
-                    height={160}
-                    className="w-28 h-40 rounded-lg object-cover border shrink-0"
+                    width={96}
+                    height={96}
+                    className="w-24 h-24 rounded-lg object-contain border shrink-0"
                   />
 
-                  <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm pr-16">
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 auto-rows-min">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Mã hàng</span>
-                      <span className="font-mono font-medium">{item.productCode}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Mã hàng
+                      </span>
+                      <span className="font-mono font-medium">
+                        {item.productCode}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">SKU</span>
                       <span className="font-mono">{item.sku}</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Mã vạch</span>
+                      <span className="text-xs text-muted-foreground">
+                        Mã vạch
+                      </span>
                       <span className="font-mono">{item.barcode || "—"}</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Trạng thái</span>
+                      <span className="text-xs text-muted-foreground">
+                        Trạng thái
+                      </span>
                       <Badge
                         variant="secondary"
-                        className={cn("w-fit text-xs", STATUS_MAP[product.status].className)}
+                        className={cn(
+                          "w-fit text-xs",
+                          STATUS_MAP[product.status].className,
+                        )}
                       >
                         {STATUS_MAP[product.status].label}
                       </Badge>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Giá vốn</span>
-                      <span className="tabular-nums">{formatVND(item.costPrice)}</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Giá bán</span>
+                      <span className="text-xs text-muted-foreground">
+                        Giá bán
+                      </span>
                       <span className="tabular-nums font-medium text-primary">
                         {formatVND(item.retailPrice)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Lợi nhuận</span>
+                      <span className="text-xs text-muted-foreground">
+                        Tồn kho
+                      </span>
                       <span
                         className={cn(
-                          "tabular-nums font-medium",
-                          profitPositive
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400",
+                          "font-semibold",
+                          (item.stock ?? 0) === 0
+                            ? "text-destructive"
+                            : (item.stock ?? 0) < 10
+                              ? "text-orange-500 dark:text-orange-400"
+                              : "text-emerald-600 dark:text-emerald-400",
                         )}
                       >
-                        {formatVND(profit)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">VAT</span>
-                      <span>{item.VAT ?? 0}%</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Tồn kho</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {item.totalStock ?? 15}
+                        {item.stock ?? 0}
                       </span>
                     </div>
                     {item.warrantyPeriod && (
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-xs text-muted-foreground">Bảo hành</span>
-                        <span>{item.warrantyPeriod}</span>
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">Ngày tạo</span>
-                      <span>{product.createdAt}</span>
-                    </div>
-                    {item.description && (
-                      <div className="flex flex-col gap-0.5 col-span-2 md:col-span-4">
-                        <span className="text-xs text-muted-foreground">Mô tả</span>
-                        <span
-                          className="line-clamp-2 break-words whitespace-normal text-muted-foreground max-w-full"
-                          title={item.description}
-                        >
-                          {item.description}
+                        <span className="text-xs text-muted-foreground">
+                          Bảo hành
                         </span>
+                        <span>{item.warrantyPeriod}</span>
                       </div>
                     )}
                   </div>
                 </div>
-              );
-            })}
+                <Separator />
+              </div>
+            ))}
           </div>
         ) : (
-          <ProductsEmpty />
+          <div>
+            <ProductsEmpty /> <Separator />
+          </div>
         )}
 
-        <Separator className="mt-4" />
-
-        {/* Product action bar */}
         <div className="flex items-center justify-between mt-3">
           <Button
             variant="destructive"
@@ -284,7 +266,27 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
         </div>
       </div>
 
-      {/* Dialog thêm phiên bản mới */}
+      <ProductsItemDetailSheet
+        product={product}
+        item={viewingItem}
+        open={viewOpen}
+        onOpenChange={(v) => {
+          setViewOpen(v);
+          if (!v) setViewingItem(null);
+        }}
+        isSubDialogOpen={editOpen}
+        onEdit={() => {
+          setEditingItem(viewingItem);
+          setEditOpen(true);
+        }}
+        onDelete={() => {
+          if (viewingItem) {
+            setViewOpen(false);
+            handleItemDelete(viewingItem.id);
+          }
+        }}
+      />
+
       <ProductsItemMutateDialog
         mode="create"
         productId={product.id}
@@ -293,7 +295,6 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
         onSuccess={handleItemAdded}
       />
 
-      {/* Dialog chỉnh sửa phiên bản */}
       {editingItem && (
         <ProductsItemMutateDialog
           mode="edit"
@@ -303,7 +304,13 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
             setEditOpen(v);
             if (!v) setEditingItem(null);
           }}
-          onSuccess={handleItemUpdated}
+          onSuccess={(updated) => {
+            handleItemUpdated(updated);
+            setEditOpen(false);
+            setEditingItem(null);
+            setViewOpen(false);
+            setViewingItem(null);
+          }}
         />
       )}
     </>

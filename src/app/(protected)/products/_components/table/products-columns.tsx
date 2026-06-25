@@ -76,12 +76,12 @@ export const productsColumns: ColumnDef<Product>[] = [
         row.original.images?.find((i) => i.isThumbnail) ??
         row.original.images?.[0];
       return (
-        <div className="relative w-10 h-12">
+        <div className="relative w-12 h-12">
           <Image
             fill
             src={thumbnail?.url || "/placeholder-product.svg"}
             alt={row.original.name}
-            className="rounded-md border object-cover"
+            className="rounded-md border object-contant"
           />
         </div>
       );
@@ -127,6 +127,36 @@ export const productsColumns: ColumnDef<Product>[] = [
     },
     filterFn: (row, columnId, value: string) =>
       row.getValue(columnId) === value,
+  },
+  {
+    id: "stock",
+    accessorKey: "totalStock",
+    header: ({ column }) => (
+      <SortableHeader label="Tồn kho" column={column} />
+    ),
+    cell: ({ row }) => {
+      const stock = row.original.totalStock ?? 0;
+      return (
+        <span
+          className={cn(
+            "font-semibold tabular-nums",
+            stock === 0
+              ? "text-destructive"
+              : stock < 10
+                ? "text-orange-500 dark:text-orange-400"
+                : "text-emerald-600 dark:text-emerald-400",
+          )}
+        >
+          {stock}
+        </span>
+      );
+    },
+    filterFn: (row, _columnId, value: string) => {
+      const stock = row.original.totalStock ?? 0;
+      if (value === "out") return stock === 0;
+      if (value === "low") return stock < 10;
+      return true;
+    },
   },
   {
     id: "expand",

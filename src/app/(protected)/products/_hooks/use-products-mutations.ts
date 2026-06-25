@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import type { Product } from '@/types/product'
 import type { ProductFormValues } from '../_types/product.types'
 import { productApi } from '@/lib/api/product'
+import { parsePriceAmount } from '../_constants/product.constants'
 
 export function useProductsMutations() {
   const [products, setProducts] = useState<Product[]>([])
@@ -28,12 +29,12 @@ export function useProductsMutations() {
         images: data.images,
         items: [
           {
-            productCode: data.productCode ?? '',
-            sku: data.sku ?? '',
+            productCode: data.productCode!,
+            sku: data.sku!,
             barcode: data.barcode,
-            retailPrice: data.retailPrice ?? 0,
-            costPrice: data.costPrice ?? 0,
-            VAT: data.VAT,
+            retailPrice: parsePriceAmount(data.retailPrice),
+            costPrice: parsePriceAmount(data.costPrice),
+            VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
             warrantyPeriod: data.warrantyPeriod,
             description: data.description,
             images: data.images,

@@ -107,6 +107,7 @@ export function ProductsTable() {
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
+                      className='border-t'
                         key={cell.id}
                         onClick={
                           cell.column.id === 'select' ? (e) => e.stopPropagation() : undefined

@@ -28,14 +28,15 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ProductItem } from '@/types/product'
 import { productApi } from '@/lib/api/product'
 import { productItemFormSchema, type ProductItemFormValues } from '../../_types/product.types'
+import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
 
 const EMPTY_VALUES: ProductItemFormValues = {
   productCode: '',
   sku: '',
   barcode: '',
-  retailPrice: 0,
-  costPrice: 0,
-  VAT: 0,
+  retailPrice: '',
+  costPrice: '',
+  VAT: '',
   warrantyPeriod: '',
   description: '',
   images: [],
@@ -75,9 +76,9 @@ export function ProductsItemMutateDialog(props: Props) {
         productCode: existingItem.productCode,
         sku: existingItem.sku,
         barcode: existingItem.barcode ?? '',
-        retailPrice: existingItem.retailPrice,
-        costPrice: existingItem.costPrice,
-        VAT: existingItem.VAT ?? 0,
+        retailPrice: formatPriceAmount(existingItem.retailPrice),
+        costPrice: formatPriceAmount(existingItem.costPrice),
+        VAT: existingItem.VAT != null ? String(existingItem.VAT) : '',
         warrantyPeriod: existingItem.warrantyPeriod ?? '',
         description: existingItem.description ?? '',
         images: existingItem.images ?? [],
@@ -95,6 +96,7 @@ export function ProductsItemMutateDialog(props: Props) {
       const url = await uploadImage(file)
       form.setValue('images', [{ url, isThumbnail: true }])
       toast.success('Tải ảnh lên thành công')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.message || 'Tải ảnh lên thất bại')
     } finally {
@@ -103,13 +105,19 @@ export function ProductsItemMutateDialog(props: Props) {
   }
 
   async function onSubmit(data: ProductItemFormValues) {
+    const payload = {
+      ...data,
+      costPrice: parsePriceAmount(data.costPrice),
+      retailPrice: parsePriceAmount(data.retailPrice),
+      VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
+    }
     try {
       let result: ProductItem
       if (props.mode === 'edit') {
-        result = await productApi.updateItem(props.item.id, data)
+        result = await productApi.updateItem(props.item.id, payload)
         toast.success('Cập nhật phiên bản thành công')
       } else {
-        result = await productApi.createItem(props.productId, data)
+        result = await productApi.createItem(props.productId, payload)
         toast.success('Thêm phiên bản thành công')
       }
       onSuccess(result)
@@ -227,11 +235,14 @@ export function ProductsItemMutateDialog(props: Props) {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
+                        inputMode="numeric"
                         placeholder="0"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        className="tabular-nums"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          field.onChange(digits ? formatPriceAmount(digits) : '')
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -248,11 +259,14 @@ export function ProductsItemMutateDialog(props: Props) {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
+                        inputMode="numeric"
                         placeholder="0"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        className="tabular-nums"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          field.onChange(digits ? formatPriceAmount(digits) : '')
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -267,16 +281,16 @@ export function ProductsItemMutateDialog(props: Props) {
                     <FormLabel>VAT (%)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
-                        max={100}
+                        inputMode="numeric"
                         placeholder="0"
+                        className="tabular-nums"
                         value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === '' ? undefined : e.target.valueAsNumber,
-                          )
-                        }
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          if (!digits) { field.onChange(''); return }
+                          const capped = Math.min(Number(digits), 100)
+                          field.onChange(String(capped))
+                        }}
                       />
                     </FormControl>
                     <FormMessage />

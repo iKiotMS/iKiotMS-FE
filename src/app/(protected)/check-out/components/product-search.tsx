@@ -60,7 +60,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             retailPrice: item.retailPrice,
             costPrice: item.costPrice,
             VAT: item.VAT || 0,
-            stock: item.totalStock || 0,
+            stock: item.stock || 0,
             status: product.status,
             imageUrl: (
               item.images?.find((img) => img.isThumbnail) ||
@@ -91,7 +91,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         retailPrice: item.retailPrice,
         costPrice: item.costPrice,
         VAT: item.VAT || 0,
-        stock: item.totalStock || 0,
+        stock: item.stock || 0,
         status: product.status,
         imageUrl: (
           item.images?.find((img) => img.isThumbnail) ||
