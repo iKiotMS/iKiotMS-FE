@@ -8,6 +8,14 @@ export const productFormSchema = z.object({
   name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
   categoryName: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']),
+  images: z
+    .array(
+      z.object({
+        url: z.string(),
+        isThumbnail: z.boolean(),
+      }),
+    )
+    .optional(),
   productCode: z.string().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
@@ -30,6 +38,14 @@ export const productItemFormSchema = z.object({
   VAT: z.number().min(0).max(100).optional(),
   warrantyPeriod: z.string().optional(),
   description: z.string().optional(),
+  images: z
+    .array(
+      z.object({
+        url: z.string(),
+        isThumbnail: z.boolean(),
+      }),
+    )
+    .optional(),
 })
 
 export type ProductItemFormValues = z.infer<typeof productItemFormSchema>

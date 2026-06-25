@@ -201,6 +201,12 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
                       <span className="text-xs text-muted-foreground">VAT</span>
                       <span>{item.VAT ?? 0}%</span>
                     </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">Tồn kho</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        {item.totalStock ?? 15}
+                      </span>
+                    </div>
                     {item.warrantyPeriod && (
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs text-muted-foreground">Bảo hành</span>
@@ -214,7 +220,12 @@ export function ProductsExpandedPanel({ product, isExpanded }: ProductsExpandedP
                     {item.description && (
                       <div className="flex flex-col gap-0.5 col-span-2 md:col-span-4">
                         <span className="text-xs text-muted-foreground">Mô tả</span>
-                        <span>{item.description}</span>
+                        <span
+                          className="line-clamp-2 break-words whitespace-normal text-muted-foreground max-w-full"
+                          title={item.description}
+                        >
+                          {item.description}
+                        </span>
                       </div>
                     )}
                   </div>

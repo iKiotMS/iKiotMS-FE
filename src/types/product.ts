@@ -17,6 +17,11 @@ export interface Product {
   images?: ProductImage[];
   createdAt?: string;
   updatedAt?: string;
+  items?: (ProductItem & {
+    stockDetails?: { locationId: string; locationType: string; stock: number }[];
+    totalStock?: number;
+  })[];
+  totalStock?: number;
 }
 
 export interface ProductItem {
@@ -33,6 +38,8 @@ export interface ProductItem {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
+  totalStock?: number;
+  stockDetails?: { locationId: string; locationType: string; stock: number }[];
 }
 
 export interface ProductDetailResponse extends Product {

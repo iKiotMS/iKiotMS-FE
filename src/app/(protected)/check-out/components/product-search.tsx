@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Search, Sparkles, AlertCircle, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import productsData from "../../products/data/products.json";
+import { useCheckoutProducts } from "../_hooks/use-checkout-products";
+import { productApi } from "@/lib/api/product";
 
 interface Product {
   id: string;
@@ -33,16 +34,74 @@ const formatVND = (value: number) =>
 
 export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [quickItems, setQuickItems] = useState<Product[]>([]);
 
-  // Quick select items (first 5 active items)
-  const quickItems = (productsData as Product[])
-    .filter((p) => p.status === "ACTIVE" && p.stock > 0)
-    .slice(0, 5);
+  // Fetch search results from the custom API hook
+  const { products, loading } = useCheckoutProducts(query);
+
+  // Fetch initial active products for quick purchase on mount
+  useEffect(() => {
+    productApi
+      .getList({ limit: 10, status: "ACTIVE" })
+      .then((res) => {
+        const flattened = res.data.flatMap((product) =>
+          (product.items || []).map((item) => ({
+            id: item.id,
+            productCode: item.productCode,
+            sku: item.sku,
+            barcode: item.barcode || "",
+            name: `${product.name} (${item.sku})`,
+            categoryName: product.categoryName || "",
+            brandName: "",
+            retailPrice: item.retailPrice,
+            costPrice: item.costPrice,
+            VAT: item.VAT || 0,
+            stock: item.totalStock || 0,
+            status: product.status,
+            imageUrl: (
+              item.images?.find((img) => img.isThumbnail) ||
+              item.images?.[0] ||
+              product.images?.find((img) => img.isThumbnail) ||
+              product.images?.[0]
+            )?.url,
+          })),
+        );
+        setQuickItems(flattened.slice(0, 5));
+      })
+      .catch((err) => {
+        console.error("Failed to load quick items:", err);
+      });
+  }, []);
+
+  // Map API products response to flat list of variants (ProductItems)
+  const results = useMemo(() => {
+    return products.flatMap((product) =>
+      (product.items || []).map((item) => ({
+        id: item.id,
+        productCode: item.productCode,
+        sku: item.sku,
+        barcode: item.barcode || "",
+        name: `${product.name} (${item.sku})`,
+        categoryName: product.categoryName || "",
+        brandName: "",
+        retailPrice: item.retailPrice,
+        costPrice: item.costPrice,
+        VAT: item.VAT || 0,
+        stock: item.totalStock || 0,
+        status: product.status,
+        imageUrl: (
+          item.images?.find((img) => img.isThumbnail) ||
+          item.images?.[0] ||
+          product.images?.find((img) => img.isThumbnail) ||
+          product.images?.[0]
+        )?.url,
+      })),
+    );
+  }, [products]);
 
   // Focus search input on F2
   useEffect(() => {
@@ -56,41 +115,34 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Filter products based on search input
+  // Automatically open dropdown when query starts, and reset index
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
+    if (query.trim()) {
+      setIsOpen(true);
+      setSelectedIndex(-1);
+    } else {
       setIsOpen(false);
-      return;
     }
+  }, [query]);
 
-    const lowerQuery = query.toLowerCase();
-    const filtered = (productsData as Product[]).filter((product) => {
-      return (
-        product.name.toLowerCase().includes(lowerQuery) ||
-        product.productCode.toLowerCase().includes(lowerQuery) ||
-        product.sku.toLowerCase().includes(lowerQuery) ||
-        product.barcode.includes(lowerQuery)
-      );
-    });
+  // Barcode auto-add feature: if there's an exact barcode/code match, select it immediately
+  useEffect(() => {
+    if (!query.trim()) return;
 
-    // Barcode auto-add feature: if there's an exact barcode match, select it immediately
-    const exactMatch = filtered.find(
+    const lowerQuery = query.toLowerCase().trim();
+    const exactMatch = results.find(
       (p) =>
-        p.barcode === query || p.productCode.toLowerCase() === lowerQuery,
+        p.barcode === lowerQuery ||
+        p.productCode.toLowerCase() === lowerQuery ||
+        p.sku.toLowerCase() === lowerQuery,
     );
-    if (exactMatch && exactMatch.status === "ACTIVE") {
+
+    if (exactMatch && exactMatch.status === "ACTIVE" && exactMatch.stock > 0) {
       onProductSelect(exactMatch);
       setQuery("");
-      setResults([]);
       setIsOpen(false);
-      return;
     }
-
-    setResults(filtered);
-    setIsOpen(true);
-    setSelectedIndex(-1);
-  }, [query, onProductSelect]);
+  }, [results, query, onProductSelect]);
 
   // Click outside listener to close dropdown
   useEffect(() => {
@@ -136,7 +188,6 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     }
     onProductSelect(product);
     setQuery("");
-    setResults([]);
     setIsOpen(false);
   };
 
@@ -156,100 +207,116 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         />
 
         {/* Floating Autocomplete Dropdown */}
-        {isOpen && results.length > 0 && (
+        {isOpen && query.trim() !== "" && (
           <div
             ref={dropdownRef}
             className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-lg shadow-lg max-h-[320px] overflow-y-auto w-full divide-y scrollbar-thin"
           >
-            {results.map((product, index) => {
-              const isSelected = index === selectedIndex;
-              const isOutOfStock = product.stock <= 0;
-              const isInactive = product.status !== "ACTIVE";
+            {loading ? (
+              <div className="p-4 text-center text-muted-foreground flex items-center justify-center gap-2">
+                <span className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+                <span>Đang tìm kiếm sản phẩm...</span>
+              </div>
+            ) : results.length > 0 ? (
+              results.map((product, index) => {
+                const isSelected = index === selectedIndex;
+                const isOutOfStock = product.stock <= 0;
+                const isInactive = product.status !== "ACTIVE";
 
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => handleSelect(product)}
-                  className={cn(
-                    "flex items-center gap-3 p-2.5 cursor-pointer text-base transition-colors duration-150",
-                    isSelected && "bg-primary/10 dark:bg-primary/20",
-                    (isOutOfStock || isInactive) && "opacity-60 cursor-not-allowed",
-                    product.status === "ACTIVE" && !isOutOfStock && "hover:bg-muted/60",
-                  )}
-                >
-                  {/* Thumbnail */}
-                  <div className="size-10 rounded border overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                    {product.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="object-cover size-full"
-                      />
-                    ) : (
-                      <ShoppingBag className="size-5 text-muted-foreground" />
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => handleSelect(product)}
+                    className={cn(
+                      "flex items-center gap-3 p-2.5 cursor-pointer text-base transition-colors duration-150",
+                      isSelected && "bg-primary/10 dark:bg-primary/20",
+                      (isOutOfStock || isInactive) &&
+                        "opacity-60 cursor-not-allowed",
+                      product.status === "ACTIVE" &&
+                        !isOutOfStock &&
+                        "hover:bg-muted/60",
                     )}
-                  </div>
-
-                  {/* Info details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-foreground text-base truncate">{product.name}</div>
-                    <div className="flex gap-2 text-sm text-muted-foreground font-mono mt-0.5">
-                      <span>{product.sku}</span>
-                      <span>•</span>
-                      <span>Mã vạch: {product.barcode}</span>
-                    </div>
-                  </div>
-
-                  {/* Price and Stock status */}
-                  <div className="text-right shrink-0 space-y-1">
-                    <div className="font-bold text-foreground text-lg">
-                      {formatVND(product.retailPrice)}
-                    </div>
-                    <div>
-                      {isInactive ? (
-                        <span className="text-sm px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium">Ngừng bán</span>
-                      ) : isOutOfStock ? (
-                        <span className="text-sm px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium">Hết hàng</span>
+                  >
+                    {/* Thumbnail */}
+                    <div className="size-10 rounded border overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                      {product.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="object-cover size-full"
+                        />
                       ) : (
-                        <span className="text-sm px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded font-medium">Tồn: {product.stock}</span>
+                        <ShoppingBag className="size-5 text-muted-foreground" />
                       )}
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
-        {/* If searching but no results found */}
-        {isOpen && results.length === 0 && query.trim() !== "" && (
-          <div
-            ref={dropdownRef}
-            className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-lg shadow-lg p-4 text-center text-base text-muted-foreground flex flex-col items-center justify-center gap-1.5"
-          >
-            <AlertCircle className="size-5 text-yellow-500" />
-            <span>Không tìm thấy sản phẩm nào khớp với từ khóa "{query}"</span>
+                    {/* Info details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-foreground text-base truncate">
+                        {product.name}
+                      </div>
+                      <div className="flex gap-2 text-sm text-muted-foreground font-mono mt-0.5">
+                        <span>{product.sku}</span>
+                        <span>•</span>
+                        <span>Mã vạch: {product.barcode || "—"}</span>
+                      </div>
+                    </div>
+
+                    {/* Price and Stock status */}
+                    <div className="text-right shrink-0 space-y-1">
+                      <div className="font-bold text-foreground text-lg">
+                        {formatVND(product.retailPrice)}
+                      </div>
+                      <div>
+                        {isInactive ? (
+                          <span className="text-sm px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium">
+                            Ngừng bán
+                          </span>
+                        ) : isOutOfStock ? (
+                          <span className="text-sm px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium">
+                            Hết hàng
+                          </span>
+                        ) : (
+                          <span className="text-sm px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded font-medium">
+                            Tồn: {product.stock}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-4 text-center text-base text-muted-foreground flex flex-col items-center justify-center gap-1.5">
+                <AlertCircle className="size-5 text-yellow-500" />
+                <span>
+                  Không tìm thấy sản phẩm nào khớp với từ khóa "{query}"
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Quick Click Items Grid */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-bold text-muted-foreground flex items-center gap-1">
-          <Sparkles className="size-3 text-primary" /> Mua nhanh:
-        </span>
-        {quickItems.map((product) => (
-          <button
-            key={product.id}
-            type="button"
-            onClick={() => handleSelect(product)}
-            className="text-sm font-semibold px-2.5 py-1 border rounded-full bg-background hover:bg-primary/5 hover:border-primary/40 text-foreground transition-all cursor-pointer shadow-xs max-w-[150px] truncate"
-          >
-            {product.name}
-          </button>
-        ))}
-      </div>
+      {quickItems.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-bold text-muted-foreground flex items-center gap-1">
+            <Sparkles className="size-3 text-primary" /> Mua nhanh:
+          </span>
+          {quickItems.map((product) => (
+            <button
+              key={product.id}
+              type="button"
+              onClick={() => handleSelect(product)}
+              className="text-sm font-semibold px-2.5 py-1 border rounded-full bg-background hover:bg-primary/5 hover:border-primary/40 text-foreground transition-all cursor-pointer shadow-xs max-w-[150px] truncate"
+            >
+              {product.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

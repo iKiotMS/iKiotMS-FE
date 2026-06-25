@@ -25,6 +25,7 @@ export function useProductsMutations() {
         name: data.name,
         categoryName: data.categoryName,
         status: data.status,
+        images: data.images,
         items: [
           {
             productCode: data.productCode ?? '',
@@ -35,6 +36,7 @@ export function useProductsMutations() {
             VAT: data.VAT,
             warrantyPeriod: data.warrantyPeriod,
             description: data.description,
+            images: data.images,
           },
         ],
       })
@@ -56,6 +58,7 @@ export function useProductsMutations() {
         name: data.name,
         categoryName: data.categoryName,
         status: data.status,
+        images: data.images,
       })
       setProducts((prev) => prev.map((p) => (p.id === id ? product : p)))
       toast.success('Cập nhật hàng hóa thành công')
