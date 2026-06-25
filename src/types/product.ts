@@ -17,11 +17,14 @@ export interface Product {
   images?: ProductImage[];
   createdAt?: string;
   updatedAt?: string;
-  items?: (ProductItem & {
-    stockDetails?: { locationId: string; locationType: string; stock: number }[];
-    totalStock?: number;
-  })[];
+  items?: ProductItem[];
   totalStock?: number;
+}
+
+export interface StockDetail {
+  locationId: string;
+  locationType: string;
+  stock: number;
 }
 
 export interface ProductItem {
@@ -38,8 +41,10 @@ export interface ProductItem {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
-  totalStock?: number;
-  stockDetails?: { locationId: string; locationType: string; stock: number }[];
+  stock?: number;
+  stockDetails?: StockDetail[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProductDetailResponse extends Product {
@@ -50,6 +55,8 @@ export interface ProductQueryParams {
   search?: string;
   status?: ProductStatus;
   categoryId?: string;
+  locationId?: string;
+  locationType?: 'branch' | 'warehouse';
   page?: number;
   limit?: number;
 }
@@ -66,6 +73,12 @@ export interface ProductListResponse {
   pagination: PaginationResponse;
 }
 
+export interface InitialStock {
+  locationId: string;
+  locationType: 'branch' | 'warehouse';
+  stock: number;
+}
+
 export interface ProductItemCreatePayload {
   productCode: string;
   sku: string;
@@ -76,7 +89,7 @@ export interface ProductItemCreatePayload {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
-  productDetails?: Record<string, unknown>[];
+  initialStock?: InitialStock[];
 }
 
 export interface ProductItemUpdatePayload {
@@ -89,15 +102,11 @@ export interface ProductItemUpdatePayload {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
-  productDetails?: Record<string, unknown>[];
 }
 
 export interface ProductCreatePayload {
   name: string;
-  brandId?: string;
-  categoryId?: string;
   categoryName?: string;
-  supplierId?: string;
   status: ProductStatus;
   images?: ProductImage[];
   items: ProductItemCreatePayload[];
@@ -105,10 +114,7 @@ export interface ProductCreatePayload {
 
 export interface ProductUpdatePayload {
   name?: string;
-  brandId?: string;
-  categoryId?: string;
   categoryName?: string;
-  supplierId?: string;
   status?: ProductStatus;
   images?: ProductImage[];
 }

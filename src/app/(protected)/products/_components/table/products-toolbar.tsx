@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { Funnel, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CATEGORIES, COLUMN_LABELS } from '../../_constants/product.constants'
+import { COLUMN_LABELS } from '../../_constants/product.constants'
 import type { Product } from '@/types/product'
 
 type ProductsToolbarProps = {
@@ -27,6 +28,14 @@ type ProductsToolbarProps = {
 export function ProductsToolbar({ table }: ProductsToolbarProps) {
   const categoryFilter = table.getColumn('categoryName')?.getFilterValue() as string
   const statusFilter = table.getColumn('status')?.getFilterValue() as string
+
+  const categories = useMemo(() => {
+    const all = table
+      .getCoreRowModel()
+      .rows.map((r) => r.original.categoryName)
+      .filter((c): c is string => !!c)
+    return [...new Set(all)].sort()
+  }, [table])
 
   return (
     <div className="flex items-center justify-between">
@@ -52,7 +61,7 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả danh mục</SelectItem>
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
               </SelectItem>

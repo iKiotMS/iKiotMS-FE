@@ -36,6 +36,7 @@ import { Separator } from '@/components/ui/separator'
 import type { Product } from '@/types/product'
 import { productFormSchema, type ProductFormValues } from '../../_types/product.types'
 import { useProducts } from '../../_context/products-provider'
+import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
@@ -45,9 +46,9 @@ const EMPTY_VALUES: ProductFormValues = {
   productCode: '',
   sku: '',
   barcode: '',
-  retailPrice: 0,
-  costPrice: 0,
-  VAT: 0,
+  retailPrice: '',
+  costPrice: '',
+  VAT: '',
   warrantyPeriod: '',
   description: '',
 }
@@ -90,6 +91,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
       const url = await uploadImage(file)
       form.setValue('images', [{ url, isThumbnail: true }])
       toast.success('Tải ảnh lên thành công')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.message || 'Tải ảnh lên thất bại')
     } finally {
@@ -98,7 +100,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
   }
 
   async function onSubmit(data: ProductFormValues) {
-    // Validate item fields bắt buộc khi create
     if (!isEdit) {
       let hasErrors = false
       if (!data.productCode?.trim()) {
@@ -109,11 +110,11 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
         form.setError('sku', { message: 'SKU là bắt buộc' })
         hasErrors = true
       }
-      if (data.retailPrice === undefined || isNaN(data.retailPrice as number)) {
+      if (!data.retailPrice?.trim()) {
         form.setError('retailPrice', { message: 'Giá bán là bắt buộc' })
         hasErrors = true
       }
-      if (data.costPrice === undefined || isNaN(data.costPrice as number)) {
+      if (!data.costPrice?.trim()) {
         form.setError('costPrice', { message: 'Giá vốn là bắt buộc' })
         hasErrors = true
       }
@@ -140,7 +141,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* === Tải ảnh hàng hóa === */}
             <div className="space-y-2">
               <FormLabel>Hình ảnh hàng hóa</FormLabel>
               <div className="flex items-center gap-4">
@@ -190,7 +190,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
               </div>
             </div>
 
-            {/* === Thông tin hàng hóa === */}
             <FormField
               control={form.control}
               name="name"
@@ -246,7 +245,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
               />
             </div>
 
-            {/* === Phiên bản đầu tiên (chỉ khi tạo mới) === */}
             {!isEdit && (
               <>
                 <Separator />
@@ -301,11 +299,14 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                         </FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            min={0}
+                            inputMode="numeric"
                             placeholder="0"
+                            className="tabular-nums"
                             value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/\D/g, '')
+                              field.onChange(digits ? formatPriceAmount(digits) : '')
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -322,11 +323,14 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                         </FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            min={0}
+                            inputMode="numeric"
                             placeholder="0"
+                            className="tabular-nums"
                             value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/\D/g, '')
+                              field.onChange(digits ? formatPriceAmount(digits) : '')
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -341,16 +345,16 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                         <FormLabel>VAT (%)</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            min={0}
-                            max={100}
+                            inputMode="numeric"
                             placeholder="0"
+                            className="tabular-nums"
                             value={field.value ?? ''}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === '' ? undefined : e.target.valueAsNumber,
-                              )
-                            }
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/\D/g, '')
+                              if (!digits) { field.onChange(''); return }
+                              const capped = Math.min(Number(digits), 100)
+                              field.onChange(String(capped))
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
