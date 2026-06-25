@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import customersData from "../../customers/data/customers.json";
+import { customerApi } from "@/lib/api/customer";
 
 interface Customer {
   id: string;
@@ -82,7 +82,7 @@ export function CheckoutSidebar({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Search customer records
+  // Search customer records dynamically from backend
   useEffect(() => {
     if (!customerQuery.trim()) {
       setCustomerResults([]);
@@ -90,17 +90,19 @@ export function CheckoutSidebar({
       return;
     }
 
-    const lowerQuery = customerQuery.toLowerCase();
-    const filtered = (customersData as Customer[]).filter((customer) => {
-      return (
-        customer.name.toLowerCase().includes(lowerQuery) ||
-        customer.phone.includes(lowerQuery) ||
-        customer.customerCode.toLowerCase().includes(lowerQuery)
-      );
-    });
+    const handler = setTimeout(async () => {
+      try {
+        const response = await customerApi.getList({ search: customerQuery, limit: 10 });
+        setCustomerResults(response.data);
+        setIsCustomerDropdownOpen(true);
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm khách hàng:", error);
+      }
+    }, 300);
 
-    setCustomerResults(filtered);
-    setIsCustomerDropdownOpen(true);
+    return () => {
+      clearTimeout(handler);
+    };
   }, [customerQuery]);
 
   // Click outside to close customer search dropdown
