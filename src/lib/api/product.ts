@@ -1,5 +1,6 @@
 // [API – Product]
 import client from '@/lib/api/client'
+import { useAuthStore } from '@/store/auth-store'
 import type {
   Product,
   ProductItem,
@@ -20,21 +21,48 @@ function mapId<T extends object>(doc: MongoDoc<T>): T & { id: string } {
   return { ...(rest as T), id: _id }
 }
 
+function mapProduct<T extends any>(prod: MongoDoc<T>): T & { id: string } {
+  const mapped = mapId(prod) as any
+  if (mapped.items && Array.isArray(mapped.items)) {
+    mapped.items = mapped.items.map((item: any) => mapId(item))
+  }
+  return mapped
+}
+
 export const productApi = {
   getList: async (params?: ProductQueryParams): Promise<ProductListResponse> => {
+    const state = useAuthStore.getState();
+    const locationKey = state.locationKey;
+    let locationParams: { locationId?: string; locationType?: string } = {};
+
+    if (locationKey && locationKey !== "all") {
+      const [type, id] = locationKey.split("-");
+      if ((type === "branch" || type === "warehouse") && id) {
+        locationParams = {
+          locationId: id,
+          locationType: type,
+        };
+      }
+    }
+
+    const mergedParams = {
+      ...locationParams,
+      ...params,
+    };
+
     const res = await client.get<{
       data: MongoDoc<Product>[]
       pagination: PaginationResponse
-    }>('/products', { params })
+    }>('/products', { params: mergedParams })
     return {
-      data: res.data.data.map(mapId),
+      data: res.data.data.map(mapProduct),
       pagination: res.data.pagination,
     }
   },
 
   getById: async (id: string): Promise<ProductDetailResponse> => {
-    const res = await client.get<{ data: ProductDetailResponse }>(`/products/${id}`)
-    return res.data.data
+    const res = await client.get<{ data: MongoDoc<ProductDetailResponse> }>(`/products/${id}`)
+    return mapProduct(res.data.data)
   },
 
   create: async (payload: ProductCreatePayload): Promise<Product> => {

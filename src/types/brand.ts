@@ -1,39 +1,36 @@
 // [Domain – Types]
-export type BrandStatus = 'ACTIVE' | 'INACTIVE'
-
 export interface Brand {
   id: string
-  brandCode: string
+  _id?: string
   name: string
-  country: string
-  description: string
-  productCount: number
-  status: BrandStatus
-  createdAt: string
+  description?: string
+  logo?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
-export interface BrandQueryParams {
-  keyword?: string
-  status?: BrandStatus
-  country?: string
-  page?: number
-  limit?: number
-}
-
-export interface BrandListResponse {
-  data: Brand[]
+export interface BrandPagination {
   total: number
   page: number
   limit: number
   totalPages: number
 }
 
+export interface BrandQueryParams {
+  search?: string
+  page?: number
+  limit?: number
+}
+
+export interface BrandListResponse {
+  data: Brand[]
+  pagination: BrandPagination
+}
+
 export interface BrandCreatePayload {
-  brandCode: string
   name: string
-  country?: string
   description?: string
-  status: BrandStatus
+  logo?: string
 }
 
 export type BrandUpdatePayload = Partial<BrandCreatePayload>

@@ -1,11 +1,9 @@
 // [Table – Columns Brand]
 import { type ColumnDef } from '@tanstack/react-table'
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { Brand } from '@/types/brand'
-import { STATUS_MAP } from '../../_constants/brand.constants'
 
 function SortableHeader({
   label,
@@ -64,24 +62,9 @@ export const brandsColumns: ColumnDef<Brand>[] = [
     size: 50,
   },
   {
-    accessorKey: 'brandCode',
-    header: ({ column }) => <SortableHeader label="Mã thương hiệu" column={column} />,
-    cell: ({ row }) => (
-      <span className="font-mono text-sm font-medium">{row.getValue('brandCode')}</span>
-    ),
-  },
-  {
     accessorKey: 'name',
     header: ({ column }) => <SortableHeader label="Tên thương hiệu" column={column} />,
     cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
-  },
-  {
-    accessorKey: 'country',
-    header: 'Xuất xứ',
-    cell: ({ row }) => (
-      <span className="text-sm">{row.getValue('country') || '—'}</span>
-    ),
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     accessorKey: 'description',
@@ -91,29 +74,6 @@ export const brandsColumns: ColumnDef<Brand>[] = [
         {row.getValue('description') || '—'}
       </span>
     ),
-  },
-  {
-    accessorKey: 'productCount',
-    header: ({ column }) => <SortableHeader label="Số hàng hóa" column={column} />,
-    cell: ({ row }) => (
-      <span className="tabular-nums">
-        {(row.getValue('productCount') as number).toLocaleString('vi-VN')}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Trạng thái',
-    cell: ({ row }) => {
-      const status = row.getValue('status') as Brand['status']
-      const { label, className } = STATUS_MAP[status]
-      return (
-        <Badge variant="secondary" className={className}>
-          {label}
-        </Badge>
-      )
-    },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: 'expand',

@@ -14,6 +14,7 @@ import { signupSchema, SignupInput } from "@/lib/validation";
 import { registerUser, loginUser } from "@/lib/api/auth";
 import { setTokens, setCachedUser } from "@/lib/auth";
 import { assignFreeTrial } from "@/lib/api/subscription";
+import { useAuthStore } from "@/store/auth-store";
 
 export function SignupForm2({
   className,
@@ -54,7 +55,8 @@ export function SignupForm2({
 
       if (accessToken) {
         setTokens({ accessToken, refreshToken });
-        setCachedUser(user);
+        // Fetch detailed user profile
+        await useAuthStore.getState().fetchMe();
 
         // 3. Post to the subscription free trial endpoint
         try {

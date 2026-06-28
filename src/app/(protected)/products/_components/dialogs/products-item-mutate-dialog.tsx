@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus, ShoppingBag } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { uploadImage } from '@/lib/api/upload'
 import {
   Dialog,
   DialogContent,
@@ -27,16 +28,18 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ProductItem } from '@/types/product'
 import { productApi } from '@/lib/api/product'
 import { productItemFormSchema, type ProductItemFormValues } from '../../_types/product.types'
+import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
 
 const EMPTY_VALUES: ProductItemFormValues = {
   productCode: '',
   sku: '',
   barcode: '',
-  retailPrice: 0,
-  costPrice: 0,
-  VAT: 0,
+  retailPrice: '',
+  costPrice: '',
+  VAT: '',
   warrantyPeriod: '',
   description: '',
+  images: [],
 }
 
 type Props =
@@ -59,6 +62,7 @@ export function ProductsItemMutateDialog(props: Props) {
   const { open, onOpenChange, onSuccess } = props
   const isEdit = props.mode === 'edit'
   const existingItem = props.mode === 'edit' ? props.item : undefined
+  const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductItemFormValues>({
     resolver: zodResolver(productItemFormSchema),
@@ -72,25 +76,48 @@ export function ProductsItemMutateDialog(props: Props) {
         productCode: existingItem.productCode,
         sku: existingItem.sku,
         barcode: existingItem.barcode ?? '',
-        retailPrice: existingItem.retailPrice,
-        costPrice: existingItem.costPrice,
-        VAT: existingItem.VAT ?? 0,
+        retailPrice: formatPriceAmount(existingItem.retailPrice),
+        costPrice: formatPriceAmount(existingItem.costPrice),
+        VAT: existingItem.VAT != null ? String(existingItem.VAT) : '',
         warrantyPeriod: existingItem.warrantyPeriod ?? '',
         description: existingItem.description ?? '',
+        images: existingItem.images ?? [],
       })
     } else {
       form.reset(EMPTY_VALUES)
     }
   }, [open, isEdit, existingItem, form])
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const url = await uploadImage(file)
+      form.setValue('images', [{ url, isThumbnail: true }])
+      toast.success('Tải ảnh lên thành công')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error(err.message || 'Tải ảnh lên thất bại')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function onSubmit(data: ProductItemFormValues) {
+    const payload = {
+      ...data,
+      costPrice: parsePriceAmount(data.costPrice),
+      retailPrice: parsePriceAmount(data.retailPrice),
+      VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
+    }
     try {
       let result: ProductItem
       if (props.mode === 'edit') {
-        result = await productApi.updateItem(props.item.id, data)
+        result = await productApi.updateItem(props.item.id, payload)
         toast.success('Cập nhật phiên bản thành công')
       } else {
-        result = await productApi.createItem(props.productId, data)
+        result = await productApi.createItem(props.productId, payload)
         toast.success('Thêm phiên bản thành công')
       }
       onSuccess(result)
@@ -114,6 +141,56 @@ export function ProductsItemMutateDialog(props: Props) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* === Tải ảnh phiên bản === */}
+            <div className="space-y-2">
+              <FormLabel>Hình ảnh phiên bản</FormLabel>
+              <div className="flex items-center gap-4">
+                <div className="size-20 rounded-lg border bg-muted flex items-center justify-center overflow-hidden relative shrink-0">
+                  {form.watch('images')?.[0]?.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={form.watch('images')?.[0]?.url}
+                      alt="Variant preview"
+                      className="object-cover size-full"
+                    />
+                  ) : (
+                    <ShoppingBag className="size-8 text-muted-foreground" />
+                  )}
+                  {uploading && (
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                      <span className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                      className="cursor-pointer max-w-xs"
+                    />
+                    {form.watch('images')?.[0]?.url && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => form.setValue('images', [])}
+                        disabled={uploading}
+                        className="cursor-pointer text-destructive border-destructive/20 hover:bg-destructive/10"
+                      >
+                        Xóa ảnh
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Hỗ trợ định dạng JPG, PNG. Dung lượng tối đa 5MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -158,11 +235,14 @@ export function ProductsItemMutateDialog(props: Props) {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
+                        inputMode="numeric"
                         placeholder="0"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        className="tabular-nums"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          field.onChange(digits ? formatPriceAmount(digits) : '')
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -179,11 +259,14 @@ export function ProductsItemMutateDialog(props: Props) {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
+                        inputMode="numeric"
                         placeholder="0"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        className="tabular-nums"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          field.onChange(digits ? formatPriceAmount(digits) : '')
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -198,16 +281,16 @@ export function ProductsItemMutateDialog(props: Props) {
                     <FormLabel>VAT (%)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
-                        max={100}
+                        inputMode="numeric"
                         placeholder="0"
+                        className="tabular-nums"
                         value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === '' ? undefined : e.target.valueAsNumber,
-                          )
-                        }
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          if (!digits) { field.onChange(''); return }
+                          const capped = Math.min(Number(digits), 100)
+                          field.onChange(String(capped))
+                        }}
                       />
                     </FormControl>
                     <FormMessage />

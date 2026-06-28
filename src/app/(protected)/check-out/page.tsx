@@ -11,6 +11,9 @@ import { CartItems } from "./components/cart-items";
 import { CheckoutSidebar } from "./components/checkout-sidebar";
 import { CustomerDialog } from "./components/customer-dialog";
 import { ReceiptDialog } from "./components/receipt-dialog";
+import { orderApi } from "@/lib/api/order";
+import { branchApi } from "@/lib/api/branch";
+import { getCachedUser } from "@/lib/auth";
 
 interface Customer {
   id: string;
@@ -64,6 +67,19 @@ export default function CheckOutPage() {
     createNewInvoice("1", "Hóa đơn 1"),
   ]);
   const [activeTabId, setActiveTabId] = useState<string>("1");
+  const [branches, setBranches] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await branchApi.getList({ limit: 100 });
+        setBranches(response.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách chi nhánh:", err);
+      }
+    };
+    fetchBranches();
+  }, []);
 
   // Modals state
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -224,33 +240,96 @@ export default function CheckOutPage() {
       return;
     }
 
+    if (!activeInvoice.selectedCustomer) {
+      toast.error("Vui lòng chọn hoặc thêm khách hàng trước khi thanh toán!");
+      return;
+    }
+
     if (activeInvoice.customerPay < grandTotal) {
       toast.error("Số tiền khách trả phải lớn hơn hoặc bằng tổng hóa đơn!");
       return;
     }
 
-    // Prepare printable receipt metadata
-    const orderDetails = {
-      orderCode: `HD-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: new Date().toISOString(),
-      branchName: "Chi nhánh A (Trụ sở chính)",
-      sellerName: "Quản trị viên (Admin)",
-      customer: activeInvoice.selectedCustomer,
-      items: activeInvoice.items,
+    // Resolve branchId
+    let resolvedBranchId = "";
+    if (typeof window !== "undefined") {
+      const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
+      const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
+      if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+        resolvedBranchId = activeSwitcherItemId;
+      }
+    }
+    
+    if (!resolvedBranchId) {
+      const cachedUser = getCachedUser() as any;
+      if (cachedUser?.branchId) {
+        resolvedBranchId = cachedUser.branchId;
+      }
+    }
+    
+    if (!resolvedBranchId && branches.length > 0) {
+      resolvedBranchId = branches[0]._id;
+    }
+
+    if (!resolvedBranchId) {
+      toast.error("Không xác định được chi nhánh hoạt động. Vui lòng chọn chi nhánh!");
+      return;
+    }
+
+    const payload = {
+      customerId: activeInvoice.selectedCustomer.id,
+      branchId: resolvedBranchId,
+      paymentMethod: activeInvoice.paymentMethod,
+      items: activeInvoice.items.map((item) => ({
+        productItemId: item.productItemId,
+        productName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discountAmount: item.discountAmount,
+      })),
       grandTotal,
       customerPay: activeInvoice.customerPay,
-      change: Math.max(0, activeInvoice.customerPay - grandTotal),
-      paymentMethod: activeInvoice.paymentMethod,
       note: activeInvoice.note,
     };
 
-    setReceiptOrder(orderDetails);
-    setIsReceiptOpen(true);
+    const checkoutPromise = orderApi.create(payload);
 
-    // Reset checkout active state
-    updateActiveInvoice(
-      createNewInvoice(activeInvoice.id, activeInvoice.tabName),
-    );
+    toast.promise(checkoutPromise, {
+      loading: "Đang xử lý thanh toán...",
+      success: (response) => {
+        const createdOrder = response.data.order;
+        const orderId = createdOrder.id || (createdOrder as any)._id || "";
+        
+        // Prepare printable receipt metadata
+        const orderDetails = {
+          orderCode: createdOrder.paymentReference || `HD-${orderId.slice(-6).toUpperCase()}`,
+          createdAt: createdOrder.createdAt || new Date().toISOString(),
+          branchName: branches.find((b) => b._id === resolvedBranchId)?.name || "Chi nhánh chính",
+          sellerName: getCachedUser()?.full_name || "Quản trị viên (Admin)",
+          customer: activeInvoice.selectedCustomer,
+          items: activeInvoice.items,
+          grandTotal,
+          customerPay: activeInvoice.customerPay,
+          change: createdOrder.change || Math.max(0, activeInvoice.customerPay - grandTotal),
+          paymentMethod: activeInvoice.paymentMethod,
+          note: activeInvoice.note,
+        };
+
+        setReceiptOrder(orderDetails);
+        setIsReceiptOpen(true);
+
+        // Reset checkout active state
+        updateActiveInvoice(
+          createNewInvoice(activeInvoice.id, activeInvoice.tabName),
+        );
+
+        return "Thanh toán đơn hàng thành công!";
+      },
+      error: (err: any) => {
+        console.error("Lỗi thanh toán:", err);
+        return err?.response?.data?.message || err?.message || "Thanh toán đơn hàng thất bại";
+      },
+    });
   };
 
   // Reset/Cancel order cart

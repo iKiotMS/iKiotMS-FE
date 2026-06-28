@@ -24,34 +24,29 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import type { Category } from '@/types/category'
 import { categoryFormSchema, type CategoryFormValues } from '../../_types/category.types'
 import { useCategories } from '../../_context/categories-provider'
 
 const EMPTY_VALUES: CategoryFormValues = {
   name: '',
-  categoryCode: '',
-  description: '',
-  status: 'ACTIVE',
+  description: undefined,
+  parentId: null,
+  imageUrl: undefined,
 }
 
 type CategoriesMutateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentRow?: Category
+  defaultParentId?: string | null
 }
 
 export function CategoriesMutateDialog({
   open,
   onOpenChange,
   currentRow,
+  defaultParentId,
 }: CategoriesMutateDialogProps) {
   const isEdit = !!currentRow
   const { handleAdd, handleEdit } = useCategories()
@@ -66,14 +61,16 @@ export function CategoriesMutateDialog({
     if (isEdit && currentRow) {
       form.reset({
         name: currentRow.name,
-        categoryCode: currentRow.categoryCode,
-        description: currentRow.description,
-        status: currentRow.status,
+        description: currentRow.description ?? undefined,
+        parentId: typeof currentRow.parentId === 'string'
+          ? currentRow.parentId
+          : (currentRow.parentId as any)?._id ?? null,
+        imageUrl: currentRow.imageUrl ?? undefined,
       })
     } else {
-      form.reset(EMPTY_VALUES)
+      form.reset({ ...EMPTY_VALUES, parentId: defaultParentId ?? null })
     }
-  }, [open, isEdit, currentRow, form])
+  }, [open, isEdit, currentRow, defaultParentId, form])
 
   async function onSubmit(data: CategoryFormValues) {
     const success = isEdit && currentRow
@@ -86,11 +83,13 @@ export function CategoriesMutateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Chỉnh sửa danh mục' : defaultParentId ? 'Thêm danh mục con' : 'Thêm danh mục mới'}
+          </DialogTitle>
           <DialogDescription>
             {isEdit
               ? 'Cập nhật thông tin danh mục. Nhấn Lưu khi hoàn tất.'
-              : 'Điền thông tin danh mục mới. Nhấn Lưu khi hoàn tất.'}
+              : 'Điền thông tin danh mục. Nhấn Lưu khi hoàn tất.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -112,45 +111,6 @@ export function CategoriesMutateDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="categoryCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Mã danh mục <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="VD: DM-001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trạng thái</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn trạng thái" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ACTIVE">Đang sử dụng</SelectItem>
-                        <SelectItem value="INACTIVE">Ngừng sử dụng</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
               name="description"
@@ -163,6 +123,7 @@ export function CategoriesMutateDialog({
                       className="resize-none"
                       rows={3}
                       {...field}
+                      value={field.value ?? ''}
                     />
                   </FormControl>
                   <FormMessage />

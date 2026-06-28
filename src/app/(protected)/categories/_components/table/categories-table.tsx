@@ -1,7 +1,7 @@
 // [Table – Orchestrator Category]
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -34,6 +34,11 @@ import { CategoriesEmpty } from '../categories-empty'
 export function CategoriesTable() {
   const { categories, setSelectedIds, selectionVersion } = useCategories()
 
+  const topLevelCategories = useMemo(
+    () => categories.filter((c) => !c.parentId),
+    [categories],
+  )
+
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -42,7 +47,7 @@ export function CategoriesTable() {
   const [expanded, setExpanded] = useState<ExpandedState>({})
 
   const table = useReactTable({
-    data: categories,
+    data: topLevelCategories,
     columns: categoriesColumns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

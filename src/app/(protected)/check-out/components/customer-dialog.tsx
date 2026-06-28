@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { customerApi } from "@/lib/api/customer";
 
 const customerSchema = z.object({
   name: z.string().min(2, { message: "Tên khách hàng phải có ít nhất 2 ký tự." }),
@@ -63,24 +64,28 @@ export function CustomerDialog({
     },
   });
 
-  const onSubmit = (data: CustomerFormValues) => {
-    // Generate a mock ID and customer code
-    const mockId = Math.random().toString(36).substring(2, 9);
-    const mockCode = `KH-${Math.floor(100 + Math.random() * 900)}`;
+  const onSubmit = async (data: CustomerFormValues) => {
+    try {
+      // 1. Call POST /customers to create the customer
+      const createdCustomer = await customerApi.create({
+        name: data.name,
+        phone: data.phone,
+        address: data.address || "",
+        gender: data.gender,
+      });
 
-    const newCustomer = {
-      id: mockId,
-      customerCode: mockCode,
-      name: data.name,
-      phone: data.phone,
-      address: data.address || "",
-      gender: data.gender,
-    };
+      // 2. Call GET /customers/:id to retrieve the details (as requested by user flow)
+      const fetchedCustomer = await customerApi.getById(createdCustomer.id);
 
-    onCustomerAdded(newCustomer);
-    toast.success(`Đã thêm thành công khách hàng ${data.name}`);
-    form.reset();
-    onOpenChange(false);
+      onCustomerAdded(fetchedCustomer);
+      toast.success(`Đã thêm thành công khách hàng ${data.name}`);
+      form.reset();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Lỗi khi thêm khách hàng:", error);
+      const msg = error?.response?.data?.message || error?.message || "Thêm khách hàng thất bại";
+      toast.error(msg);
+    }
   };
 
   return (
@@ -180,11 +185,16 @@ export function CustomerDialog({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 className="cursor-pointer"
+                disabled={form.formState.isSubmitting}
               >
                 Hủy bỏ
               </Button>
-              <Button type="submit" className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95">
-                Lưu khách hàng
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95"
+              >
+                {form.formState.isSubmitting ? "Đang lưu..." : "Lưu khách hàng"}
               </Button>
             </DialogFooter>
           </form>
