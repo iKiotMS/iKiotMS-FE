@@ -1,30 +1,40 @@
 // [Mutations – Brand]
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Brand } from '@/types/brand'
 import type { BrandFormValues } from '../_types/brand.types'
-import initialData from '../data/brands.json'
+import { brandApi } from '@/lib/api/brand'
 
 export function useBrandsMutations() {
-  const [brands, setBrands] = useState<Brand[]>(initialData as Brand[])
+  const [brands, setBrands] = useState<Brand[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  const fetchBrands = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await brandApi.getList({ limit: 100 })
+      setBrands(res.data)
+    } catch {
+      toast.error('Tải danh sách thương hiệu thất bại')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBrands()
+  }, [fetchBrands])
 
   async function handleAdd(data: BrandFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      const newBrand: Brand = {
-        id: Date.now().toString(),
-        brandCode: data.brandCode,
+      const brand = await brandApi.create({
         name: data.name,
-        country: data.country ?? '',
-        description: data.description ?? '',
-        productCount: 0,
-        status: data.status,
-        createdAt: new Date().toISOString().split('T')[0],
-      }
-      setBrands((prev) => [newBrand, ...prev])
+        description: data.description || undefined,
+      })
+      setBrands((prev) => [brand, ...prev])
       toast.success('Thêm thương hiệu thành công')
       return true
     } catch {
@@ -38,20 +48,11 @@ export function useBrandsMutations() {
   async function handleEdit(id: string, data: BrandFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      setBrands((prev) =>
-        prev.map((b) =>
-          b.id === id
-            ? {
-                ...b,
-                brandCode: data.brandCode,
-                name: data.name,
-                country: data.country ?? b.country,
-                description: data.description ?? b.description,
-                status: data.status,
-              }
-            : b,
-        ),
-      )
+      const updated = await brandApi.update(id, {
+        name: data.name,
+        description: data.description || undefined,
+      })
+      setBrands((prev) => prev.map((b) => (b.id === id ? updated : b)))
       toast.success('Cập nhật thương hiệu thành công')
       return true
     } catch {
@@ -65,6 +66,7 @@ export function useBrandsMutations() {
   async function handleDelete(id: string): Promise<boolean> {
     setIsLoading(true)
     try {
+      await brandApi.remove(id)
       setBrands((prev) => prev.filter((b) => b.id !== id))
       toast.success('Xóa thương hiệu thành công')
       return true
@@ -79,6 +81,7 @@ export function useBrandsMutations() {
   async function handleDeleteMany(ids: string[]): Promise<boolean> {
     setIsLoading(true)
     try {
+      await Promise.all(ids.map((id) => brandApi.remove(id)))
       setBrands((prev) => prev.filter((b) => !ids.includes(b.id)))
       toast.success(`Xóa ${ids.length} thương hiệu thành công`)
       return true

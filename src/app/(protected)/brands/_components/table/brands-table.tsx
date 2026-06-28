@@ -1,7 +1,7 @@
 // [Table – Orchestrator Brand]
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -41,11 +41,6 @@ export function BrandsTable() {
   const [globalFilter, setGlobalFilter] = useState('')
   const [expanded, setExpanded] = useState<ExpandedState>({})
 
-  const countries = useMemo(
-    () => [...new Set(brands.map((b) => b.country).filter(Boolean))],
-    [brands],
-  )
-
   const table = useReactTable({
     data: brands,
     columns: brandsColumns,
@@ -81,7 +76,7 @@ export function BrandsTable() {
 
   return (
     <div className="space-y-4">
-      <BrandsToolbar table={table} countries={countries} />
+      <BrandsToolbar table={table} />
 
       <div className="rounded-md border">
         <Table>

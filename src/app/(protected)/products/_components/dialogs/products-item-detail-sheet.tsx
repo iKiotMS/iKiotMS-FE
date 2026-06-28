@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils";
 import { formatVND, STATUS_MAP } from "../../_constants/product.constants";
 import { useProducts } from "../../_context/products-provider";
 import type { Product, ProductItem } from "@/types/product";
+import { getCachedUser } from "@/lib/auth";
+import { canUpdateProduct, canDeleteProduct } from "../../shared/product-permissions";
 
 const formatDate = (iso?: string) => {
   if (!iso) return "—";
@@ -90,6 +92,9 @@ export function ProductsItemDetailSheet({
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { branchOptions, warehouseOptions } = useProducts();
+  const role = getCachedUser()?.role;
+  const canEdit = canUpdateProduct(role);
+  const canDelete = canDeleteProduct(role);
 
   if (!item) return null;
 
@@ -283,50 +288,56 @@ export function ProductsItemDetailSheet({
         </ScrollArea>
 
         <SheetFooter className="px-6 py-4 border-t shrink-0 grid grid-cols-[auto_0.5fr_auto] items-center">
-          <Button
-            variant="destructive"
-            onClick={() => setConfirmDeleteOpen(true)}
-          >
-            <Trash2 className=" size-4" />
-            Xóa phiên bản
-          </Button>
+          {canDelete ? (
+            <Button
+              variant="destructive"
+              onClick={() => setConfirmDeleteOpen(true)}
+            >
+              <Trash2 className=" size-4" />
+              Xóa phiên bản
+            </Button>
+          ) : <span />}
           <div />
-          <Button variant="outline" onClick={onEdit}>
-            <Pencil className=" size-4" />
-            Chỉnh sửa
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={onEdit}>
+              <Pencil className=" size-4" />
+              Chỉnh sửa
+            </Button>
+          )}
         </SheetFooter>
 
-        <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Xóa phiên bản</DialogTitle>
-              <DialogDescription>
-                Bạn có chắc muốn xóa phiên bản{" "}
-                <strong className="text-foreground">{item.sku}</strong>? Hành
-                động này không thể hoàn tác.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setConfirmDeleteOpen(false)}
-              >
-                Hủy
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  setConfirmDeleteOpen(false);
-                  onDelete?.();
-                }}
-              >
-                <Trash2 className=" size-4" />
-                Xóa phiên bản
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {canDelete && (
+          <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Xóa phiên bản</DialogTitle>
+                <DialogDescription>
+                  Bạn có chắc muốn xóa phiên bản{" "}
+                  <strong className="text-foreground">{item.sku}</strong>? Hành
+                  động này không thể hoàn tác.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmDeleteOpen(false)}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setConfirmDeleteOpen(false);
+                    onDelete?.();
+                  }}
+                >
+                  <Trash2 className=" size-4" />
+                  Xóa phiên bản
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </SheetContent>
     </Sheet>
   );
