@@ -152,58 +152,50 @@ export function ScheduleMutateDialog({
         ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="userId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nhân viên</FormLabel>
-                    {staffSelectOptions.length > 0 ? (
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="cursor-pointer w-full">
-                            <SelectValue placeholder="Chọn nhân viên" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {staffSelectOptions.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
+            <FormField
+              control={form.control}
+              name="userId"
+              render={({ field }) => (
+                <FormItem className="min-w-0">
+                  <FormLabel>Nhân viên</FormLabel>
+                  {staffSelectOptions.length > 0 ? (
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <Input
-                          placeholder="Nhập ID nhân viên"
-                          {...field}
-                        />
+                        <SelectTrigger className="cursor-pointer w-full min-w-0 overflow-hidden">
+                          <SelectValue placeholder="Chọn nhân viên" />
+                        </SelectTrigger>
                       </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="workDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ngày làm</FormLabel>
+                      <SelectContent>
+                        {staffSelectOptions.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input placeholder="Nhập ID nhân viên" {...field} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="workDate"
+              render={({ field }) => (
+                <FormItem className="min-w-0 sm:max-w-[240px]">
+                  <FormLabel>Ngày làm</FormLabel>
+                  <FormControl>
+                    <Input type="date" className="w-full" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
