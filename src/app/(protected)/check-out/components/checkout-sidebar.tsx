@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { UserPlus, X, CreditCard, Coins, Check, FileText } from "lucide-react";
+import { UserPlus, X, Coins, Check, FileText, QrCode, Banknote } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -32,7 +32,7 @@ interface CheckoutSidebarProps {
   discount: number;
   discountType: "cash" | "percent";
   vatPercent: number;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
   selectedCustomer: Customer | null;
@@ -40,9 +40,7 @@ interface CheckoutSidebarProps {
   onDiscountChange: (discount: number) => void;
   onDiscountTypeChange: (type: "cash" | "percent") => void;
   onVatChange: (vat: number) => void;
-  onPaymentMethodChange: (
-    method: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY",
-  ) => void;
+  onPaymentMethodChange: (method: "CASH" | "SEPAY") => void;
   onCustomerPayChange: (pay: number) => void;
   onNoteChange: (note: string) => void;
   onCheckout: () => void;
@@ -352,50 +350,46 @@ export function CheckoutSidebar({
               Phương thức thanh toán
             </Label>
             <div className="grid grid-cols-2 gap-1.5">
-              {(["CASH", "BANK_TRANSFER", "MOMO", "VNPAY"] as const).map(
-                (method) => {
-                  const isSelected = paymentMethod === method;
-                  const methodLabel: Record<string, string> = {
-                    CASH: "Tiền mặt",
-                    BANK_TRANSFER: "Chuyển khoản",
-                    MOMO: "Ví MoMo",
-                    VNPAY: "Ví VNPay",
-                  };
-                  return (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => {
-                        onPaymentMethodChange(method);
-                        if (method !== "CASH") {
-                          onCustomerPayChange(grandTotal); // Auto-fill paid value for digital transfers
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center justify-between p-2 rounded-lg border text-left cursor-pointer transition-all duration-200",
-                        isSelected
-                          ? "bg-primary/5 border-primary text-primary font-bold shadow-xs"
-                          : "bg-background border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-                      )}
-                    >
-                      <span className="text-sm">{methodLabel[method]}</span>
-                      {isSelected && (
-                        <Check className="size-3.5 text-primary shrink-0" />
-                      )}
-                    </button>
-                  );
-                },
-              )}
+              {(
+                [
+                  { method: "CASH", label: "Tiền mặt", Icon: Banknote },
+                  { method: "SEPAY", label: "QR SePay", Icon: QrCode },
+                ] as const
+              ).map(({ method, label, Icon }) => {
+                const isSelected = paymentMethod === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => {
+                      onPaymentMethodChange(method);
+                      onCustomerPayChange(grandTotal);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border text-left cursor-pointer transition-all duration-200",
+                      isSelected
+                        ? "bg-primary/5 border-primary text-primary font-bold shadow-xs"
+                        : "bg-background border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    <span className="text-sm">{label}</span>
+                    {isSelected && (
+                      <Check className="size-3.5 text-primary shrink-0 ml-auto" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Customer Pay Input */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between items-center">
-              <Label className="font-semibold text-base text-muted-foreground">
-                Tiền khách đưa
-              </Label>
-              {paymentMethod === "CASH" && (
+          {/* Customer Pay Input — chỉ hiện khi CASH */}
+          {paymentMethod === "CASH" && (
+            <div className="space-y-1.5 pt-1">
+              <div className="flex justify-between items-center">
+                <Label className="font-semibold text-base text-muted-foreground">
+                  Tiền khách đưa
+                </Label>
                 <button
                   type="button"
                   onClick={() => onCustomerPayChange(grandTotal)}
@@ -403,48 +397,53 @@ export function CheckoutSidebar({
                 >
                   Đủ tiền (F4)
                 </button>
-              )}
-            </div>
-            <div className="relative">
-              <Coins className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="number"
-                value={customerPay}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  onCustomerPayChange(isNaN(val) || val < 0 ? 0 : val);
-                }}
-                disabled={paymentMethod !== "CASH"}
-                className="pl-8 h-10 text-right font-bold tabular-nums text-base text-foreground focus-visible:ring-primary"
-              />
-            </div>
-
-            {/* Quick Cash Buttons */}
-            {paymentMethod === "CASH" && uniqueCashSuggestions.length > 0 && (
-              <div className="grid grid-cols-2 gap-1">
-                {uniqueCashSuggestions.map((amount) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    onClick={() => handleQuickCash(amount)}
-                    className="py-1 px-1 border rounded text-sm text-center font-semibold text-foreground hover:bg-primary/5 hover:border-primary/30 transition-all cursor-pointer truncate tabular-nums bg-background"
-                  >
-                    {formatVND(amount)}
-                  </button>
-                ))}
               </div>
-            )}
-          </div>
+              <div className="relative">
+                <Coins className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={customerPay}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onCustomerPayChange(isNaN(val) || val < 0 ? 0 : val);
+                  }}
+                  className="pl-8 h-10 text-right font-bold tabular-nums text-base text-foreground focus-visible:ring-primary"
+                />
+              </div>
 
-          {/* Change Due */}
-          <div className="flex justify-between items-center pt-1 border-t border-dashed">
-            <span className="text-muted-foreground font-semibold text-base">
-              Tiền thừa trả khách
-            </span>
-            <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums">
-              {formatVND(changeDue)}
-            </span>
-          </div>
+              {uniqueCashSuggestions.length > 0 && (
+                <div className="grid grid-cols-2 gap-1">
+                  {uniqueCashSuggestions.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => handleQuickCash(amount)}
+                      className="py-1 px-1 border rounded text-sm text-center font-semibold text-foreground hover:bg-primary/5 hover:border-primary/30 transition-all cursor-pointer truncate tabular-nums bg-background"
+                    >
+                      {formatVND(amount)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-1 border-t border-dashed">
+                <span className="text-muted-foreground font-semibold text-base">
+                  Tiền thừa trả khách
+                </span>
+                <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatVND(changeDue)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* SEPAY hint */}
+          {paymentMethod === "SEPAY" && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm">
+              <QrCode className="size-4 shrink-0 mt-0.5" />
+              <span>Khách hàng sẽ quét mã QR để thanh toán đúng số tiền. Hệ thống tự xác nhận khi nhận được giao dịch.</span>
+            </div>
+          )}
 
           {/* Order Note */}
           <div className="space-y-1 pt-1">

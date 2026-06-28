@@ -42,10 +42,17 @@ export interface User {
   subscription?: {
     id: string;
     planName: string;
-    status: string;
+    planCode: "TRIAL" | "PLUS" | "PRO";
+    status: "TRIAL" | "ACTIVE" | "EXPIRED" | "PAST_DUE" | "CANCELLED";
     startDate: string;
     endDate: string;
+    trialEndDate?: string;
     autoRenew: boolean;
+    currentQuotaSnapshot?: {
+      maxBranches: number;
+      maxUsers: number;
+      maxProducts: number;
+    };
   };
 }
 

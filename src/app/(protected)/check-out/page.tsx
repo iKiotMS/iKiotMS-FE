@@ -11,6 +11,7 @@ import { CartItems } from "./components/cart-items";
 import { CheckoutSidebar } from "./components/checkout-sidebar";
 import { CustomerDialog } from "./components/customer-dialog";
 import { ReceiptDialog } from "./components/receipt-dialog";
+import { OrderQrDialog } from "./components/order-qr-dialog";
 import { orderApi } from "@/lib/api/order";
 import { branchApi } from "@/lib/api/branch";
 import { getCachedUser } from "@/lib/auth";
@@ -44,7 +45,7 @@ interface InvoiceState {
   discount: number;
   discountType: "cash" | "percent";
   vatPercent: number;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
 }
@@ -85,6 +86,14 @@ export default function CheckOutPage() {
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptOrder, setReceiptOrder] = useState<any | null>(null);
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [qrOrderData, setQrOrderData] = useState<{
+    orderId: string;
+    qrUrl: string;
+    paymentReference: string;
+    grandTotal: number;
+    receiptSnapshot: any;
+  } | null>(null);
 
   // Active invoice getter
   const activeInvoice = useMemo(() => {
@@ -245,7 +254,7 @@ export default function CheckOutPage() {
       return;
     }
 
-    if (activeInvoice.customerPay < grandTotal) {
+    if (activeInvoice.paymentMethod === "CASH" && activeInvoice.customerPay < grandTotal) {
       toast.error("Số tiền khách trả phải lớn hơn hoặc bằng tổng hóa đơn!");
       return;
     }
@@ -292,37 +301,55 @@ export default function CheckOutPage() {
       note: activeInvoice.note,
     };
 
+    const buildReceipt = (createdOrder: any, orderId: string) => ({
+      orderCode: createdOrder.paymentReference || `HD-${orderId.slice(-6).toUpperCase()}`,
+      createdAt: createdOrder.createdAt || new Date().toISOString(),
+      branchName: branches.find((b) => b._id === resolvedBranchId)?.name || "Chi nhánh chính",
+      sellerName: getCachedUser()?.full_name || "Quản trị viên (Admin)",
+      customer: activeInvoice.selectedCustomer,
+      items: activeInvoice.items.map((item) => ({
+        productName: item.name,
+        sku: item.sku,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discountAmount: item.discountAmount,
+      })),
+      grandTotal,
+      customerPay: activeInvoice.paymentMethod === "CASH" ? activeInvoice.customerPay : grandTotal,
+      change: activeInvoice.paymentMethod === "CASH"
+        ? (createdOrder.change ?? Math.max(0, activeInvoice.customerPay - grandTotal))
+        : 0,
+      paymentMethod: activeInvoice.paymentMethod,
+      note: activeInvoice.note,
+    });
+
     const checkoutPromise = orderApi.create(payload);
 
     toast.promise(checkoutPromise, {
-      loading: "Đang xử lý thanh toán...",
+      loading: "Đang xử lý...",
       success: (response) => {
         const createdOrder = response.data.order;
         const orderId = createdOrder.id || (createdOrder as any)._id || "";
-        
-        // Prepare printable receipt metadata
-        const orderDetails = {
-          orderCode: createdOrder.paymentReference || `HD-${orderId.slice(-6).toUpperCase()}`,
-          createdAt: createdOrder.createdAt || new Date().toISOString(),
-          branchName: branches.find((b) => b._id === resolvedBranchId)?.name || "Chi nhánh chính",
-          sellerName: getCachedUser()?.full_name || "Quản trị viên (Admin)",
-          customer: activeInvoice.selectedCustomer,
-          items: activeInvoice.items,
-          grandTotal,
-          customerPay: activeInvoice.customerPay,
-          change: createdOrder.change || Math.max(0, activeInvoice.customerPay - grandTotal),
-          paymentMethod: activeInvoice.paymentMethod,
-          note: activeInvoice.note,
-        };
+        const receipt = buildReceipt(createdOrder, orderId);
 
-        setReceiptOrder(orderDetails);
+        if (activeInvoice.paymentMethod === "SEPAY" && response.data.qrUrl) {
+          // SEPAY: hiện QR dialog, chờ xác nhận payment
+          setQrOrderData({
+            orderId,
+            qrUrl: response.data.qrUrl,
+            paymentReference: createdOrder.paymentReference || "",
+            grandTotal,
+            receiptSnapshot: receipt,
+          });
+          setIsQrDialogOpen(true);
+          updateActiveInvoice(createNewInvoice(activeInvoice.id, activeInvoice.tabName));
+          return "Đã tạo đơn! Mời khách quét mã QR.";
+        }
+
+        // CASH: hiện receipt ngay
+        setReceiptOrder(receipt);
         setIsReceiptOpen(true);
-
-        // Reset checkout active state
-        updateActiveInvoice(
-          createNewInvoice(activeInvoice.id, activeInvoice.tabName),
-        );
-
+        updateActiveInvoice(createNewInvoice(activeInvoice.id, activeInvoice.tabName));
         return "Thanh toán đơn hàng thành công!";
       },
       error: (err: any) => {
@@ -459,6 +486,22 @@ export default function CheckOutPage() {
         onOpenChange={setIsReceiptOpen}
         order={receiptOrder}
       />
+
+      {qrOrderData && (
+        <OrderQrDialog
+          open={isQrDialogOpen}
+          onOpenChange={setIsQrDialogOpen}
+          orderId={qrOrderData.orderId}
+          qrUrl={qrOrderData.qrUrl}
+          paymentReference={qrOrderData.paymentReference}
+          grandTotal={qrOrderData.grandTotal}
+          onPaymentConfirmed={() => {
+            setReceiptOrder(qrOrderData.receiptSnapshot);
+            setIsReceiptOpen(true);
+            setQrOrderData(null);
+          }}
+        />
+      )}
 
       {/* Interactive brand logo back button in bottom left corner */}
       <Link

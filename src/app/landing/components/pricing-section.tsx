@@ -5,55 +5,59 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useState } from 'react'
+import Link from 'next/link'
 
 const plans = [
   {
-    name: 'Gói Cơ Bản',
-    description: 'Khởi đầu lý tưởng cho 1 cửa hàng bán lẻ điện tử công nghệ.',
-    monthlyPrice: '199.000đ',
-    yearlyPrice: '149.000đ',
+    name: 'Dùng Thử',
+    planCode: 'TRIAL',
+    description: 'Khám phá toàn bộ tính năng iKiot miễn phí trong 7 ngày.',
+    monthlyPrice: 'Miễn phí',
+    yearlyPrice: 'Miễn phí',
     features: [
-      'Quản lý 1 cửa hàng (chi nhánh)',
-      'Bán hàng POS & hóa đơn cơ bản',
-      'Quản lý sản phẩm & tồn kho cơ bản',
-      'Hồ sơ tối đa 1.000 khách hàng',
-      'Báo cáo doanh thu trực quan'
+      'Dùng thử 7 ngày miễn phí',
+      'Tối đa 2 chi nhánh',
+      'Tối đa 100 sản phẩm',
+      'Tối đa 2 nhân viên',
+      'Bán hàng POS & báo cáo cơ bản',
     ],
-    cta: 'Dùng thử miễn phí',
-    popular: false
-  },
-  {
-    name: 'Gói Tăng Trưởng',
-    description: 'Phù hợp cho chuỗi vừa và nhỏ có nhu cầu đồng bộ chi nhánh.',
-    monthlyPrice: '499.000đ',
-    yearlyPrice: '399.000đ',
-    features: [
-      'Quản lý tối đa 5 chi nhánh',
-      'POS nâng cao (VAT, Khuyến mãi tự động)',
-      'Tồn kho real-time & Chuyển kho chi nhánh',
-      'Quản lý nhân viên & Phân ca làm việc',
-      'Báo cáo thống kê & Xuất Excel chuyên sâu'
-    ],
-    cta: 'Chọn gói Growth',
-    popular: true,
-    includesPrevious: 'Bao gồm gói Cơ Bản và'
-  },
-  {
-    name: 'Gói Doanh Nghiệp',
-    description: 'Giải pháp toàn diện tích hợp AI dự báo xu hướng & tư vấn chuỗi.',
-    monthlyPrice: '999.000đ',
-    yearlyPrice: '799.000đ',
-    features: [
-      'Không giới hạn số chi nhánh',
-      'Hợp nhất dữ liệu đa nguồn nâng cao',
-      'Tích hợp AI dự báo sản phẩm Hot Trend',
-      'AI gợi ý nhập hàng & chính sách bán',
-      'Hỗ trợ VIP 24/7 & cam kết SLA'
-    ],
-    cta: 'Liên hệ tư vấn',
+    cta: 'Bắt đầu dùng thử',
     popular: false,
-    includesPrevious: 'Bao gồm gói Tăng Trưởng và'
-  }
+  },
+  {
+    name: 'Plus',
+    planCode: 'PLUS',
+    description: 'Phù hợp cho chuỗi cửa hàng vừa và nhỏ có nhu cầu đồng bộ đa chi nhánh.',
+    monthlyPrice: '99.000đ',
+    yearlyPrice: '79.000đ',
+    features: [
+      'Tối đa 3 chi nhánh',
+      'Tối đa 1.000 sản phẩm',
+      'Tối đa 5 nhân viên',
+      'Quản lý kho & chuyển kho chi nhánh',
+      'Quản lý nhân sự & bảng lương',
+    ],
+    cta: 'Đăng ký gói Plus',
+    popular: true,
+    includesPrevious: 'Bao gồm gói Dùng Thử và',
+  },
+  {
+    name: 'Pro',
+    planCode: 'PRO',
+    description: 'Giải pháp toàn diện không giới hạn cho chuỗi cửa hàng lớn.',
+    monthlyPrice: '299.000đ',
+    yearlyPrice: '239.000đ',
+    features: [
+      'Không giới hạn chi nhánh',
+      'Không giới hạn sản phẩm',
+      'Không giới hạn nhân viên',
+      'Tất cả tính năng gói Plus',
+      'Hỗ trợ ưu tiên',
+    ],
+    cta: 'Đăng ký gói Pro',
+    popular: false,
+    includesPrevious: 'Bao gồm gói Plus và',
+  },
 ]
 
 export function PricingSection() {
@@ -69,7 +73,7 @@ export function PricingSection() {
             Bảng giá dịch vụ hợp lý
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Phù hợp với mọi quy mô từ 1 cửa hàng bán lẻ cho đến chuỗi phân phối điện tử lớn cần tích hợp AI dự báo xu hướng.
+            Phù hợp với mọi quy mô từ 1 cửa hàng bán lẻ cho đến chuỗi phân phối lớn.
           </p>
 
           {/* Billing Toggle */}
@@ -125,7 +129,9 @@ export function PricingSection() {
                       {isYearly ? plan.yearlyPrice : plan.monthlyPrice}
                     </div>
                     <div className="text-muted-foreground text-sm">
-                      Mỗi tháng (Thanh toán {isYearly ? 'hàng năm' : 'hàng tháng'})
+                      {plan.planCode === 'TRIAL'
+                        ? '7 ngày dùng thử'
+                        : `Mỗi tháng (Thanh toán ${isYearly ? 'hàng năm' : 'hàng tháng'})`}
                     </div>
                   </div>
 
@@ -138,8 +144,9 @@ export function PricingSection() {
                           : 'shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50'
                       }`}
                       variant={plan.popular ? 'default' : 'secondary'}
+                      asChild
                     >
-                      {plan.cta}
+                      <Link href="/sign-up">{plan.cta}</Link>
                     </Button>
                   </div>
 
@@ -168,7 +175,7 @@ export function PricingSection() {
         {/* Enterprise Note */}
         <div className="mt-16 text-center">
           <p className="text-muted-foreground">
-            Bạn cần gói tính năng tùy chỉnh hoặc có câu hỏi thắc mắc? {' '}
+            Bạn cần gói tính năng tùy chỉnh hoặc có câu hỏi thắc mắc?{' '}
             <Button variant="link" className="p-0 h-auto cursor-pointer" asChild>
               <a href="#contact">
                 Liên hệ với đội ngũ của chúng tôi
