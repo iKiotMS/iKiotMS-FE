@@ -88,6 +88,7 @@ type ScheduleContextType = {
   goToPreviousMonth: () => void;
   goToNextMonth: () => void;
   goToToday: () => void;
+  goToMonth: (date: Date) => void;
   selectedSchedule: WorkingSchedule | null;
   setSelectedSchedule: React.Dispatch<
     React.SetStateAction<WorkingSchedule | null>
@@ -320,6 +321,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
   const goToPreviousMonth = useCallback(() => {
     setSelectedDayDate(null);
+    setSelectedSchedule(null);
     setCalendarMonth((prev) => {
       const next = subMonths(prev, 1);
       const range = getMonthRange(next);
@@ -330,6 +332,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
   const goToNextMonth = useCallback(() => {
     setSelectedDayDate(null);
+    setSelectedSchedule(null);
     setCalendarMonth((prev) => {
       const next = addMonths(prev, 1);
       const range = getMonthRange(next);
@@ -340,9 +343,19 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
   const goToToday = useCallback(() => {
     setSelectedDayDate(null);
+    setSelectedSchedule(null);
     const today = new Date();
     const range = getMonthRange(today);
     setCalendarMonth(today);
+    setListQuery((q) => ({ ...q, ...range, page: 1 }));
+  }, []);
+
+  const goToMonth = useCallback((date: Date) => {
+    setSelectedDayDate(null);
+    setSelectedSchedule(null);
+    const monthDate = startOfMonth(date);
+    const range = getMonthRange(monthDate);
+    setCalendarMonth(monthDate);
     setListQuery((q) => ({ ...q, ...range, page: 1 }));
   }, []);
 
@@ -379,6 +392,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         goToPreviousMonth,
         goToNextMonth,
         goToToday,
+        goToMonth,
         selectedSchedule,
         setSelectedSchedule,
         selectedDayDate,

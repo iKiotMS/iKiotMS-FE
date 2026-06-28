@@ -12,8 +12,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -28,6 +27,7 @@ import { getAttendanceStatusDisplay } from "@/app/(protected)/staffs/shared/atte
 import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
 import { sortSchedulesForDay } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
+import { ScheduleMonthPicker } from "./schedule-month-picker";
 import { useSchedule } from "./schedule-provider";
 
 const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -54,9 +54,11 @@ function attendanceDotClass(status?: string): string {
 
 function ScheduleDayChip({
   schedule,
+  isSelected,
   onClick,
 }: {
   schedule: WorkingSchedule;
+  isSelected: boolean;
   onClick: () => void;
 }) {
   const status = SCHEDULE_STATUS_MAP[schedule.status];
@@ -71,6 +73,7 @@ function ScheduleDayChip({
       className={cn(
         "w-full rounded px-1.5 py-0.5 text-left text-[11px] leading-tight truncate cursor-pointer",
         "border transition-colors hover:opacity-90 flex items-center gap-1",
+        isSelected && "ring-2 ring-primary ring-offset-1",
         status.variant === "success" &&
           "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
         status.variant === "info" &&
@@ -100,11 +103,10 @@ export function ScheduleCalendar() {
     isInitialLoading,
     isFetching,
     calendarMonth,
-    goToPreviousMonth,
-    goToNextMonth,
-    goToToday,
     setSelectedSchedule,
     setSelectedDayDate,
+    selectedSchedule,
+    selectedDayDate,
     staffOptions,
     listQuery,
     updateStatusFilter,
@@ -146,42 +148,20 @@ export function ScheduleCalendar() {
 
   const isLoading = isInitialLoading || isFetching;
 
-  function openDayDialog(dateKey: string) {
+  function openDayPanel(dateKey: string) {
     setSelectedDayDate(dateKey);
+    setSelectedSchedule(null);
+  }
+
+  function selectSchedule(schedule: WorkingSchedule, dateKey: string) {
+    setSelectedDayDate(dateKey);
+    setSelectedSchedule(schedule);
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="cursor-pointer size-9"
-            onClick={goToPreviousMonth}
-            disabled={isLoading}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="cursor-pointer min-w-[160px] font-semibold capitalize"
-            onClick={goToToday}
-            disabled={isLoading}
-          >
-            {format(calendarMonth, "MMMM yyyy", { locale: vi })}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="cursor-pointer size-9"
-            onClick={goToNextMonth}
-            disabled={isLoading}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        <ScheduleMonthPicker disabled={isLoading} />
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-48 max-w-xs">
@@ -264,16 +244,19 @@ export function ScheduleCalendar() {
             const visible = daySchedules.slice(0, MAX_VISIBLE_PER_DAY);
             const hiddenCount = daySchedules.length - visible.length;
 
+            const isDaySelected = selectedDayDate === dateKey;
+
             return (
               <div
                 key={dateKey}
                 onClick={() => {
-                  if (daySchedules.length > 0) openDayDialog(dateKey);
+                  if (daySchedules.length > 0) openDayPanel(dateKey);
                 }}
                 className={cn(
                   "min-h-[110px] border-b border-r p-1.5 flex flex-col gap-1",
                   !inMonth && "bg-muted/20",
                   today && "bg-primary/5",
+                  isDaySelected && "bg-primary/10 ring-1 ring-inset ring-primary/30",
                   daySchedules.length > 0 &&
                     "cursor-pointer hover:bg-muted/30 transition-colors",
                 )}
@@ -293,7 +276,7 @@ export function ScheduleCalendar() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        openDayDialog(dateKey);
+                        openDayPanel(dateKey);
                       }}
                       className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
                       title="Xem tất cả ca trong ngày"
@@ -311,7 +294,8 @@ export function ScheduleCalendar() {
                       <ScheduleDayChip
                         key={schedule._id}
                         schedule={schedule}
-                        onClick={() => setSelectedSchedule(schedule)}
+                        isSelected={selectedSchedule?._id === schedule._id}
+                        onClick={() => selectSchedule(schedule, dateKey)}
                       />
                     ))}
                     {hiddenCount > 0 && (
@@ -320,7 +304,7 @@ export function ScheduleCalendar() {
                         className="w-full rounded px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10 cursor-pointer text-left transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openDayDialog(dateKey);
+                          openDayPanel(dateKey);
                         }}
                       >
                         +{hiddenCount} ca khác

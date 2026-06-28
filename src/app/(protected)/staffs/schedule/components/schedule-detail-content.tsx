@@ -269,22 +269,19 @@ export function ScheduleDetailContent({
             Lịch đã hoàn thành — không thể chỉnh sửa hoặc xóa.
           </div>
         ) : (
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              className="cursor-pointer sm:min-w-[120px]"
-              onClick={onEdit}
-            >
-              <Pencil className="mr-2 size-4" />
-              Chỉnh sửa
-            </Button>
+          <div className="flex items-center justify-between gap-2">
             <Button
               variant="destructive"
-              className="cursor-pointer sm:min-w-[120px]"
+              size="sm"
+              className="cursor-pointer"
               onClick={onDelete}
             >
               <Trash2 className="mr-2 size-4" />
               Xóa ca làm
+            </Button>
+            <Button size="sm" className="cursor-pointer" onClick={onEdit}>
+              <Pencil className="mr-2 size-4" />
+              Chỉnh sửa
             </Button>
           </div>
         )}

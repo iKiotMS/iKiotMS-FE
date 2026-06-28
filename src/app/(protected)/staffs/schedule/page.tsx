@@ -5,8 +5,7 @@ import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScheduleButtonGroup } from "./components/schedule-button-group";
 import { ScheduleCalendar } from "./components/schedule-calendar";
-import { ScheduleDayDialog } from "./components/schedule-day-dialog";
-import { ScheduleDetailDialog } from "./components/schedule-detail-dialog";
+import { ScheduleDetailPanel } from "./components/schedule-detail-panel";
 import { ScheduleDialogs } from "./components/schedule-dialogs";
 import { ScheduleProvider } from "./components/schedule-provider";
 
@@ -31,11 +30,15 @@ export default function StaffSchedulePage() {
             <ScheduleButtonGroup />
           </div>
         </div>
-        <ScheduleCalendar />
+
+        <div className="relative min-h-[640px] overflow-hidden rounded-xl border bg-background">
+          <div className="p-4 lg:p-5">
+            <ScheduleCalendar />
+          </div>
+          <ScheduleDetailPanel />
+        </div>
       </div>
 
-      <ScheduleDayDialog />
-      <ScheduleDetailDialog />
       <ScheduleDialogs />
     </ScheduleProvider>
   );
