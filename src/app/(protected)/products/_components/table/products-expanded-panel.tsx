@@ -20,6 +20,12 @@ import Image from "next/image";
 import { ProductsEmpty } from "../products-empty";
 import { ProductsItemMutateDialog } from "../dialogs/products-item-mutate-dialog";
 import { ProductsItemDetailSheet } from "../dialogs/products-item-detail-sheet";
+import { getCachedUser } from "@/lib/auth";
+import {
+  canUpdateProduct,
+  canDeleteProduct,
+  canCreateProduct,
+} from "../../shared/product-permissions";
 
 type ProductsExpandedPanelProps = {
   product: Product;
@@ -31,6 +37,10 @@ export function ProductsExpandedPanel({
   isExpanded,
 }: ProductsExpandedPanelProps) {
   const { setOpen, setCurrentRow } = useProducts();
+  const role = getCachedUser()?.role;
+  const canEdit = canUpdateProduct(role);
+  const canDelete = canDeleteProduct(role);
+  const canAdd = canCreateProduct(role);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<ProductDetailResponse | null>(null);
   const [editingItem, setEditingItem] = useState<ProductItem | null>(null);
@@ -223,45 +233,51 @@ export function ProductsExpandedPanel({
         )}
 
         <div className="flex items-center justify-between mt-3">
-          <Button
-            variant="destructive"
-            size="sm"
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentRow(product);
-              setOpen("delete");
-            }}
-          >
-            <Trash2 className="mr-2 size-4" />
-            Xóa hàng hóa
-          </Button>
-
-          <div className="flex items-center gap-2">
+          {canDelete ? (
             <Button
-              size="sm"
-              variant="outline"
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setAddOpen(true);
-              }}
-            >
-              <Plus className="mr-2 size-4" />
-              Thêm phiên bản
-            </Button>
-            <Button
+              variant="destructive"
               size="sm"
               className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 setCurrentRow(product);
-                setOpen("edit");
+                setOpen("delete");
               }}
             >
-              <Pencil className="mr-2 size-4" />
-              Chỉnh sửa
+              <Trash2 className="mr-2 size-4" />
+              Xóa hàng hóa
             </Button>
+          ) : <span />}
+
+          <div className="flex items-center gap-2">
+            {canAdd && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAddOpen(true);
+                }}
+              >
+                <Plus className="mr-2 size-4" />
+                Thêm phiên bản
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                size="sm"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentRow(product);
+                  setOpen("edit");
+                }}
+              >
+                <Pencil className="mr-2 size-4" />
+                Chỉnh sửa
+              </Button>
+            )}
           </div>
         </div>
       </div>

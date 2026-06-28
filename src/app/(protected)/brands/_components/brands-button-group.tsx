@@ -4,12 +4,18 @@
 import { Download, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBrands } from '../_context/brands-provider'
+import { getCachedUser } from '@/lib/auth'
+import { canCreateBrand, canDeleteBrand } from '../shared/brand-permissions'
 
 export function BrandsButtonGroup() {
   const { setOpen, selectedIds } = useBrands()
+  const role = getCachedUser()?.role
+  const canWrite = canCreateBrand(role)
+  const canDelete = canDeleteBrand(role)
+
   return (
     <div className="flex shrink-0 items-center gap-2">
-      {selectedIds.length > 0 && (
+      {canDelete && selectedIds.length > 0 && (
         <Button
           variant="destructive"
           size="sm"
@@ -24,10 +30,12 @@ export function BrandsButtonGroup() {
         <Download className="mr-2 size-4" />
         Xuất file
       </Button>
-      <Button size="sm" className="cursor-pointer" onClick={() => setOpen('add')}>
-        <Plus className="mr-2 size-4" />
-        Thêm thương hiệu
-      </Button>
+      {canWrite && (
+        <Button size="sm" className="cursor-pointer" onClick={() => setOpen('add')}>
+          <Plus className="mr-2 size-4" />
+          Thêm thương hiệu
+        </Button>
+      )}
     </div>
   )
 }

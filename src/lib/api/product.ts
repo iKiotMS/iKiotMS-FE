@@ -1,5 +1,6 @@
 // [API – Product]
 import client from '@/lib/api/client'
+import { useAuthStore } from '@/store/auth-store'
 import type {
   Product,
   ProductItem,
@@ -30,10 +31,29 @@ function mapProduct<T extends any>(prod: MongoDoc<T>): T & { id: string } {
 
 export const productApi = {
   getList: async (params?: ProductQueryParams): Promise<ProductListResponse> => {
+    const state = useAuthStore.getState();
+    const locationKey = state.locationKey;
+    let locationParams: { locationId?: string; locationType?: string } = {};
+
+    if (locationKey && locationKey !== "all") {
+      const [type, id] = locationKey.split("-");
+      if ((type === "branch" || type === "warehouse") && id) {
+        locationParams = {
+          locationId: id,
+          locationType: type,
+        };
+      }
+    }
+
+    const mergedParams = {
+      ...locationParams,
+      ...params,
+    };
+
     const res = await client.get<{
       data: MongoDoc<Product>[]
       pagination: PaginationResponse
-    }>('/products', { params })
+    }>('/products', { params: mergedParams })
     return {
       data: res.data.data.map(mapProduct),
       pagination: res.data.pagination,

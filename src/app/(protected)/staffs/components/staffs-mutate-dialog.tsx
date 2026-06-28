@@ -32,11 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Staff, StaffGender, StaffProfilePayload, StaffRole, StaffSalaryType } from "@/types/staff";
-import {
-  formatVndAmount,
-  parseVndAmount,
-} from "@/app/(protected)/staffs/shared/salary-format";
+import type { Staff, StaffGender, StaffProfilePayload, StaffRole } from "@/types/staff";
 import {
   isValidIdentificationId,
   parseIdentificationId,
@@ -60,11 +56,6 @@ const GENDER_OPTIONS: { value: StaffGender; label: string }[] = [
   { value: "MALE", label: "Nam" },
   { value: "FEMALE", label: "Nữ" },
   { value: "OTHER", label: "Khác" },
-];
-
-const SALARY_TYPE_OPTIONS: { value: StaffSalaryType; label: string }[] = [
-  { value: "FULL_TIME", label: "Toàn thời gian" },
-  { value: "PART_TIME", label: "Bán thời gian" },
 ];
 
 const dobInputBounds = getDobInputBounds();
@@ -112,8 +103,6 @@ const profileFieldsSchema = {
   gender: z.enum(["MALE", "FEMALE", "OTHER", ""]).optional(),
   dob: z.string().optional(),
   taxNumber: z.string().optional(),
-  baseSalary: z.string().optional(),
-  salaryType: z.enum(["FULL_TIME", "PART_TIME", ""]).optional(),
 };
 
 function buildProfilePayload(data: {
@@ -143,13 +132,6 @@ function buildProfilePayload(data: {
     .some(([, value]) => Boolean(value));
 
   return hasExplicitAvatar || hasOtherValue ? profile : undefined;
-}
-
-function buildSalaryPayload(baseSalary?: string, salaryType?: string) {
-  return {
-    baseSalary: parseVndAmount(baseSalary),
-    salaryType: (salaryType as StaffSalaryType) || undefined,
-  };
 }
 
 function resolveBranchIdForRole(
@@ -255,8 +237,6 @@ const EMPTY_CREATE_VALUES: CreateFormValues = {
   gender: "",
   dob: "",
   taxNumber: "",
-  baseSalary: "",
-  salaryType: "",
   newPassword: "",
   reEnterPassword: "",
 };
@@ -386,11 +366,6 @@ export function StaffsMutateDialog({
         address: currentRow.profile?.address ?? "",
         gender: currentRow.profile?.gender ?? "",
         dob: toDateInputValue(currentRow.profile?.dob),
-        baseSalary:
-          currentRow.baseSalary !== undefined
-            ? formatVndAmount(currentRow.baseSalary)
-            : "",
-        salaryType: currentRow.salaryType ?? "",
         taxNumber: currentRow.profile?.taxNumber ?? "",
         accountNote: currentRow.accountNote ?? "",
       });
@@ -419,7 +394,6 @@ export function StaffsMutateDialog({
     try {
       if (isEdit && currentRow) {
         const editData = data as EditFormValues;
-        const salary = buildSalaryPayload(editData.baseSalary, editData.salaryType);
         await handleEdit(currentRow._id, {
           firstName: editData.firstName,
           lastName: editData.lastName,
@@ -431,8 +405,6 @@ export function StaffsMutateDialog({
             editData.warehouseId,
           ),
           hireDate: normalizeDateInput(editData.hireDate),
-          baseSalary: salary.baseSalary,
-          salaryType: salary.salaryType,
           profile: buildProfilePayload({
             ...editData,
             avatarUrl,
@@ -441,10 +413,6 @@ export function StaffsMutateDialog({
         });
       } else {
         const createData = data as CreateFormValues;
-        const salary = buildSalaryPayload(
-          createData.baseSalary,
-          createData.salaryType,
-        );
         await handleAdd({
           firstName: createData.firstName,
           lastName: createData.lastName,
@@ -457,8 +425,6 @@ export function StaffsMutateDialog({
             createData.warehouseId,
           ),
           hireDate: normalizeDateInput(createData.hireDate),
-          baseSalary: salary.baseSalary,
-          salaryType: salary.salaryType,
           profile: buildProfilePayload({
             ...createData,
             avatarUrl: avatarUrl ?? undefined,
@@ -773,70 +739,18 @@ export function StaffsMutateDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="dob"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ngày sinh</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        min={dobInputBounds.min}
-                        max={dobInputBounds.max}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="salaryType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Loại lương</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value || ""}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn loại lương" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {SALARY_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
-              name="baseSalary"
+              name="dob"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Lương cơ bản (VND)</FormLabel>
+                  <FormLabel>Ngày sinh</FormLabel>
                   <FormControl>
                     <Input
-                      inputMode="numeric"
-                      placeholder="8.000.000"
-                      className="tabular-nums"
-                      value={field.value ?? ""}
-                      onChange={(event) => {
-                        const digits = event.target.value.replace(/\D/g, "");
-                        field.onChange(digits ? formatVndAmount(digits) : "");
-                      }}
+                      type="date"
+                      min={dobInputBounds.min}
+                      max={dobInputBounds.max}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

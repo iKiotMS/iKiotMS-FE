@@ -24,23 +24,14 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import type { Brand } from '@/types/brand'
 import { brandFormSchema, type BrandFormValues } from '../../_types/brand.types'
 import { useBrands } from '../../_context/brands-provider'
 
 const EMPTY_VALUES: BrandFormValues = {
   name: '',
-  brandCode: '',
-  country: '',
-  description: '',
-  status: 'ACTIVE',
+  description: undefined,
+  logo: undefined,
 }
 
 type BrandsMutateDialogProps = {
@@ -63,10 +54,8 @@ export function BrandsMutateDialog({ open, onOpenChange, currentRow }: BrandsMut
     if (isEdit && currentRow) {
       form.reset({
         name: currentRow.name,
-        brandCode: currentRow.brandCode,
-        country: currentRow.country,
-        description: currentRow.description,
-        status: currentRow.status,
+        description: currentRow.description ?? undefined,
+        logo: currentRow.logo ?? undefined,
       })
     } else {
       form.reset(EMPTY_VALUES)
@@ -110,59 +99,6 @@ export function BrandsMutateDialog({ open, onOpenChange, currentRow }: BrandsMut
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="brandCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Mã thương hiệu <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="VD: TH-001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Xuất xứ</FormLabel>
-                    <FormControl>
-                      <Input placeholder="VD: Việt Nam" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Trạng thái</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full">
-                        <SelectValue placeholder="Chọn trạng thái" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="ACTIVE">Đang sử dụng</SelectItem>
-                      <SelectItem value="INACTIVE">Ngừng sử dụng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="description"
@@ -175,6 +111,7 @@ export function BrandsMutateDialog({ open, onOpenChange, currentRow }: BrandsMut
                       className="resize-none"
                       rows={3}
                       {...field}
+                      value={field.value ?? ''}
                     />
                   </FormControl>
                   <FormMessage />

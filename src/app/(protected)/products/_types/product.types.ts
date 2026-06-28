@@ -6,7 +6,8 @@ export type ProductsDialogType = 'add' | 'edit' | 'delete' | 'deleteMany'
 // Schema cho form tạo/chỉnh sửa Product (item fields optional — validate thủ công khi create)
 export const productFormSchema = z.object({
   name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
-  categoryName: z.string().optional(),
+  brandId: z.string().optional().nullable(),
+  categoryId: z.string().optional().nullable(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']),
   images: z
     .array(

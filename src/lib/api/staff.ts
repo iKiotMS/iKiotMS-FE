@@ -65,8 +65,6 @@ function buildCreateBody(payload: CreateStaffPayload) {
     branchId: payload.branchId ?? undefined,
     warehouseId: payload.warehouseId ?? undefined,
     hireDate: normalizeDateInput(payload.hireDate),
-    baseSalary: payload.baseSalary,
-    salaryType: payload.salaryType,
     firstName: payload.firstName,
     lastName: payload.lastName,
     avatarUrl: payload.profile?.avatarUrl || undefined,
@@ -86,8 +84,6 @@ function buildUpdateBody(payload: UpdateStaffPayload) {
   if (payload.hireDate !== undefined) {
     data.hireDate = normalizeDateInput(payload.hireDate) ?? payload.hireDate;
   }
-  if (payload.baseSalary !== undefined) data.baseSalary = payload.baseSalary;
-  if (payload.salaryType !== undefined) data.salaryType = payload.salaryType;
   if (payload.accountNote !== undefined) {
     data.accountNote = payload.accountNote.trim();
   }

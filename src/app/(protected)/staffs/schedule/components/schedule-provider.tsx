@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import {
+  addMonths,
+  endOfMonth,
+  format,
+  startOfMonth,
+  subMonths,
+} from "date-fns";
 import { toast } from "sonner";
 import {
   shiftTemplateApi,
@@ -14,7 +21,7 @@ import {
 } from "@/lib/api/staff-mapper";
 import type {
   CreateWorkingSchedulePayload,
-  ScheduleListQuery,
+  ScheduleCalendarFilters,
   ScheduleStatus,
   ShiftTemplate,
   ShiftTemplateOption,
@@ -25,22 +32,36 @@ import type {
 
 type ScheduleDialogType = "add" | "edit" | "delete" | "shiftTemplate";
 
-const DEFAULT_LIST_QUERY: ScheduleListQuery = {
-  page: 1,
-  recordPerPage: 10,
+function getMonthRange(date: Date) {
+  return {
+    startDate: format(startOfMonth(date), "yyyy-MM-dd"),
+    endDate: format(endOfMonth(date), "yyyy-MM-dd"),
+  };
+}
+
+const DEFAULT_CALENDAR_MONTH = new Date();
+
+const DEFAULT_FILTERS: ScheduleCalendarFilters = {
   userId: "all",
   status: "all",
-  startDate: "",
-  endDate: "",
+  ...getMonthRange(DEFAULT_CALENDAR_MONTH),
 };
+
+function clearPanelSelection(
+  setSelectedSchedule: React.Dispatch<
+    React.SetStateAction<WorkingSchedule | null>
+  >,
+  setSelectedDayDate: React.Dispatch<React.SetStateAction<string | null>>,
+) {
+  setSelectedDayDate(null);
+  setSelectedSchedule(null);
+}
 
 type ScheduleContextType = {
   schedules: WorkingSchedule[];
   isInitialLoading: boolean;
   isFetching: boolean;
-  total: number;
-  totalPages: number;
-  listQuery: ScheduleListQuery;
+  filters: ScheduleCalendarFilters;
   open: ScheduleDialogType | null;
   setOpen: (value: ScheduleDialogType | null) => void;
   currentRow: WorkingSchedule | null;
@@ -65,10 +86,17 @@ type ScheduleContextType = {
   staffOptions: { value: string; label: string }[];
   updateStatusFilter: (status: ScheduleStatus | "all") => void;
   updateUserFilter: (userId: string) => void;
-  updateStartDateFilter: (startDate: string) => void;
-  updateEndDateFilter: (endDate: string) => void;
-  updatePage: (page: number) => void;
-  updatePageSize: (recordPerPage: number) => void;
+  calendarMonth: Date;
+  goToPreviousMonth: () => void;
+  goToNextMonth: () => void;
+  goToToday: () => void;
+  goToMonth: (date: Date) => void;
+  selectedSchedule: WorkingSchedule | null;
+  setSelectedSchedule: React.Dispatch<
+    React.SetStateAction<WorkingSchedule | null>
+  >;
+  selectedDayDate: string | null;
+  setSelectedDayDate: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 const ScheduleContext = React.createContext<ScheduleContextType | null>(null);
@@ -77,10 +105,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [schedules, setSchedules] = useState<WorkingSchedule[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [listQuery, setListQuery] = useState<ScheduleListQuery>(
-    DEFAULT_LIST_QUERY,
+  const [filters, setFilters] = useState<ScheduleCalendarFilters>(
+    DEFAULT_FILTERS,
   );
   const [open, setOpen] = useState<ScheduleDialogType | null>(null);
   const [currentRow, setCurrentRow] = useState<WorkingSchedule | null>(null);
@@ -91,6 +117,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [staffOptions, setStaffOptions] = useState<
     { value: string; label: string }[]
   >([]);
+  const [calendarMonth, setCalendarMonth] = useState(
+    () => DEFAULT_CALENDAR_MONTH,
+  );
+  const [selectedSchedule, setSelectedSchedule] =
+    useState<WorkingSchedule | null>(null);
+  const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
 
   const refreshShiftTemplates = useCallback(async () => {
     try {
@@ -108,27 +140,37 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const fetchSchedules = useCallback(async () => {
     setIsFetching(true);
     try {
-      const response = await workingScheduleApi.getList({
-        page: listQuery.page,
-        recordPerPage: listQuery.recordPerPage,
-        userId: listQuery.userId === "all" ? undefined : listQuery.userId,
-        status: listQuery.status === "all" ? undefined : listQuery.status,
-        startDate: listQuery.startDate || undefined,
-        endDate: listQuery.endDate || undefined,
-      });
-      setSchedules(response.data);
-      setTotal(response.total);
-      setTotalPages(response.totalPages);
+      const baseParams = {
+        recordPerPage: 100,
+        userId: filters.userId === "all" ? undefined : filters.userId,
+        status: filters.status === "all" ? undefined : filters.status,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+      };
+
+      let page = 1;
+      let allData: WorkingSchedule[] = [];
+      let pages = 1;
+
+      do {
+        const response = await workingScheduleApi.getList({
+          ...baseParams,
+          page,
+        });
+        allData = allData.concat(response.data);
+        pages = response.totalPages;
+        page += 1;
+      } while (page <= pages);
+
+      setSchedules(allData);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       setSchedules([]);
-      setTotal(0);
-      setTotalPages(1);
     } finally {
       setIsFetching(false);
       setIsInitialLoading(false);
     }
-  }, [listQuery]);
+  }, [filters.userId, filters.status, filters.startDate, filters.endDate]);
 
   const fetchScheduleById = useCallback(async (id: string) => {
     try {
@@ -182,6 +224,11 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       await workingScheduleApi.update(id, payload);
       toast.success("Đã cập nhật lịch làm việc");
       await fetchSchedules();
+      const fresh = await fetchScheduleById(id);
+      if (fresh) {
+        setSelectedSchedule((prev) => (prev?._id === id ? fresh : prev));
+        setCurrentRow((prev) => (prev?._id === id ? fresh : prev));
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -192,6 +239,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     try {
       await workingScheduleApi.remove(id);
       toast.success("Đã xóa lịch làm việc");
+      setSelectedSchedule((prev) => (prev?._id === id ? null : prev));
+      setCurrentRow((prev) => (prev?._id === id ? null : prev));
       await fetchSchedules();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -238,27 +287,49 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateStatusFilter = useCallback((status: ScheduleStatus | "all") => {
-    setListQuery((prev) => ({ ...prev, status, page: 1 }));
+    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    setFilters((prev) => ({ ...prev, status }));
   }, []);
 
   const updateUserFilter = useCallback((userId: string) => {
-    setListQuery((prev) => ({ ...prev, userId, page: 1 }));
+    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    setFilters((prev) => ({ ...prev, userId }));
   }, []);
 
-  const updateStartDateFilter = useCallback((startDate: string) => {
-    setListQuery((prev) => ({ ...prev, startDate, page: 1 }));
+  const goToPreviousMonth = useCallback(() => {
+    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    setCalendarMonth((prev) => {
+      const next = subMonths(prev, 1);
+      const range = getMonthRange(next);
+      setFilters((current) => ({ ...current, ...range }));
+      return next;
+    });
   }, []);
 
-  const updateEndDateFilter = useCallback((endDate: string) => {
-    setListQuery((prev) => ({ ...prev, endDate, page: 1 }));
+  const goToNextMonth = useCallback(() => {
+    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    setCalendarMonth((prev) => {
+      const next = addMonths(prev, 1);
+      const range = getMonthRange(next);
+      setFilters((current) => ({ ...current, ...range }));
+      return next;
+    });
   }, []);
 
-  const updatePage = useCallback((page: number) => {
-    setListQuery((prev) => ({ ...prev, page }));
+  const goToToday = useCallback(() => {
+    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    const today = new Date();
+    const range = getMonthRange(today);
+    setCalendarMonth(today);
+    setFilters((current) => ({ ...current, ...range }));
   }, []);
 
-  const updatePageSize = useCallback((recordPerPage: number) => {
-    setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
+  const goToMonth = useCallback((date: Date) => {
+    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    const monthDate = startOfMonth(date);
+    const range = getMonthRange(monthDate);
+    setCalendarMonth(monthDate);
+    setFilters((current) => ({ ...current, ...range }));
   }, []);
 
   return (
@@ -267,9 +338,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         schedules,
         isInitialLoading,
         isFetching,
-        total,
-        totalPages,
-        listQuery,
+        filters,
         open,
         setOpen,
         currentRow,
@@ -286,10 +355,15 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         staffOptions,
         updateStatusFilter,
         updateUserFilter,
-        updateStartDateFilter,
-        updateEndDateFilter,
-        updatePage,
-        updatePageSize,
+        calendarMonth,
+        goToPreviousMonth,
+        goToNextMonth,
+        goToToday,
+        goToMonth,
+        selectedSchedule,
+        setSelectedSchedule,
+        selectedDayDate,
+        setSelectedDayDate,
       }}
     >
       {children}

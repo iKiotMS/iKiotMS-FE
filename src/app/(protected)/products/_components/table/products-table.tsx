@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -24,14 +24,15 @@ import {
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { useProducts } from '../../_context/products-provider'
-import { productsColumns } from './products-columns'
+import { getProductsColumns } from './products-columns'
 import { ProductsToolbar } from './products-toolbar'
 import { ProductsPagination } from './products-pagination'
 import { ProductsExpandedPanel } from './products-expanded-panel'
 import { ProductsEmpty } from '../products-empty'
 
 export function ProductsTable() {
-  const { products, setSelectedIds, selectionVersion } = useProducts()
+  const { products, setSelectedIds, selectionVersion, brands, categories } = useProducts()
+  const columns = useMemo(() => getProductsColumns(brands, categories), [brands, categories])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -42,7 +43,7 @@ export function ProductsTable() {
 
   const table = useReactTable({
     data: products,
-    columns: productsColumns,
+    columns,
     getRowId: (row) => row.id,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -144,7 +145,7 @@ export function ProductsTable() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={productsColumns.length}>
+                <TableCell colSpan={columns.length}>
                   <ProductsEmpty />
                 </TableCell>
               </TableRow>

@@ -1,5 +1,36 @@
 export type ScheduleStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
+export type AttendanceStatus =
+  | "NOT_CHECKED_IN"
+  | "CHECKED_IN"
+  | "CHECKED_OUT"
+  | "LATE"
+  | "ABSENT"
+  | string;
+
+export interface AttendanceLocation {
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+  distance?: number;
+  verificationStatus?: string;
+}
+
+export interface AttendanceSummary {
+  _id?: string;
+  status: AttendanceStatus;
+  actualCheckinAt?: string | null;
+  actualCheckoutAt?: string | null;
+}
+
+export interface AttendanceDetail extends AttendanceSummary {
+  checkInLocation?: AttendanceLocation | null;
+  checkOutLocation?: AttendanceLocation | null;
+  workedMinutes?: number | null;
+  overtimeMinute?: number | null;
+  lateMinutes?: number | null;
+}
+
 export interface ShiftTemplate {
   _id: string;
   name: string;
@@ -23,7 +54,7 @@ export interface ApiWorkingSchedule {
     | {
         _id: string;
         phoneNumber: string;
-        profile?: { firstName?: string; lastName?: string };
+        profile?: { firstName?: string; lastName?: string; avatarUrl?: string };
         role: string;
       }
     | string;
@@ -32,6 +63,7 @@ export interface ApiWorkingSchedule {
   startAt: string;
   endAt: string;
   status: ScheduleStatus | "DELETED";
+  attendance?: AttendanceSummary | AttendanceDetail;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +74,7 @@ export interface WorkingSchedule {
   tenantId: string;
   userId: string;
   staffName: string;
+  staffAvatarUrl?: string | null;
   staffPhone: string;
   shiftTemplateId: string;
   shiftName: string;
@@ -49,6 +82,7 @@ export interface WorkingSchedule {
   endTime: string;
   workDate: string;
   status: ScheduleStatus;
+  attendance: AttendanceDetail;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,9 +132,7 @@ export interface WorkingScheduleListResponse {
   totalPages: number;
 }
 
-export interface ScheduleListQuery {
-  page: number;
-  recordPerPage: number;
+export interface ScheduleCalendarFilters {
   userId: string;
   status: ScheduleStatus | "all";
   startDate: string;
