@@ -75,15 +75,15 @@ export function HeroSection() {
             {/* Top background glow effect - positioned above the image */}
             <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
 
-            <div className="relative rounded-xl border bg-card shadow-2xl">
-              {/* Light mode dashboard image */}
-              <Image
-                src="/dashboard-light.png"
-                alt="Dashboard Preview - Light Mode"
-                width={1200}
-                height={800}
-                className="w-full rounded-xl object-cover block dark:hidden"
-                priority
+            <div className="relative rounded-xl border bg-card shadow-2xl overflow-hidden">
+              {/* Light mode dashboard video */}
+              <video
+                src="/ikiot-tvc.mp4"
+                className="w-full rounded-xl object-cover block dark:hidden aspect-video"
+                autoPlay
+                muted
+                loop
+                playsInline
               />
 
               {/* Dark mode dashboard image */}
@@ -96,11 +96,11 @@ export function HeroSection() {
                 priority
               />
 
-              {/* Bottom fade effect - gradient overlay that fades the image to background */}
-              <div className="absolute bottom-0 left-0 w-full h-32 md:h-40 lg:h-48 bg-gradient-to-b from-background/0 via-background/70 to-background rounded-b-xl"></div>
+              {/* Bottom fade effect - gradient overlay that fades the image to background (only in dark mode) */}
+              <div className="absolute bottom-0 left-0 w-full h-32 md:h-40 lg:h-48 bg-gradient-to-b from-background/0 via-background/70 to-background rounded-b-xl hidden dark:block"></div>
 
-              {/* Overlay play button for demo */}
-              <div className="absolute inset-0 flex items-center justify-center">
+              {/* Overlay play button for demo (only in dark mode) */}
+              <div className="absolute inset-0 items-center justify-center hidden dark:flex">
                 <Button
                   size="lg"
                   className="rounded-full h-16 w-16 p-0 cursor-pointer hover:scale-105 transition-transform"

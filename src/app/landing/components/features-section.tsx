@@ -102,8 +102,8 @@ export function FeaturesSection() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16 mb-24">
           {/* Left Image */}
           <Image3D
-            lightSrc="/feature-1-light.png"
-            darkSrc="/feature-1-dark.png"
+            lightSrc="/quan-ly-ton-kho-1.jpg"
+            darkSrc="/quan-ly-ton-kho-1.jpg"
             alt="Vận hành cửa hàng và tồn kho"
             direction="left"
           />
@@ -204,8 +204,8 @@ export function FeaturesSection() {
 
           {/* Right Image */}
           <Image3D
-            lightSrc="/feature-2-light.png"
-            darkSrc="/feature-2-dark.png"
+            lightSrc="/bo-phan-cham-soc-khach-hang.jpg"
+            darkSrc="/bo-phan-cham-soc-khach-hang.jpg"
             alt="Quản trị khách hàng và báo cáo"
             direction="right"
             className="order-1 lg:order-2"
