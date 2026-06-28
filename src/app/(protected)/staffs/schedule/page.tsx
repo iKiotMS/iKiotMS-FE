@@ -4,9 +4,11 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScheduleButtonGroup } from "./components/schedule-button-group";
+import { ScheduleCalendar } from "./components/schedule-calendar";
+import { ScheduleDayDialog } from "./components/schedule-day-dialog";
+import { ScheduleDetailDialog } from "./components/schedule-detail-dialog";
 import { ScheduleDialogs } from "./components/schedule-dialogs";
 import { ScheduleProvider } from "./components/schedule-provider";
-import { ScheduleTable } from "./components/schedule-table";
 
 export default function StaffSchedulePage() {
   return (
@@ -19,7 +21,7 @@ export default function StaffSchedulePage() {
               <h1 className="text-2xl font-bold tracking-tight">Lịch làm việc</h1>
             </div>
             <p className="text-muted-foreground text-sm mt-1">
-              Phân ca theo ngày cho nhân viên dựa trên ca mẫu
+              Phân ca theo ngày và theo dõi chấm công nhân viên
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -29,9 +31,11 @@ export default function StaffSchedulePage() {
             <ScheduleButtonGroup />
           </div>
         </div>
-        <ScheduleTable />
+        <ScheduleCalendar />
       </div>
 
+      <ScheduleDayDialog />
+      <ScheduleDetailDialog />
       <ScheduleDialogs />
     </ScheduleProvider>
   );

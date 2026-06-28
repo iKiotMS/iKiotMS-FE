@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import {
+  addMonths,
+  endOfMonth,
+  format,
+  startOfMonth,
+  subMonths,
+} from "date-fns";
 import { toast } from "sonner";
 import {
   shiftTemplateApi,
@@ -25,13 +32,21 @@ import type {
 
 type ScheduleDialogType = "add" | "edit" | "delete" | "shiftTemplate";
 
+function getMonthRange(date: Date) {
+  return {
+    startDate: format(startOfMonth(date), "yyyy-MM-dd"),
+    endDate: format(endOfMonth(date), "yyyy-MM-dd"),
+  };
+}
+
+const DEFAULT_CALENDAR_MONTH = new Date();
+
 const DEFAULT_LIST_QUERY: ScheduleListQuery = {
   page: 1,
-  recordPerPage: 10,
+  recordPerPage: 100,
   userId: "all",
   status: "all",
-  startDate: "",
-  endDate: "",
+  ...getMonthRange(DEFAULT_CALENDAR_MONTH),
 };
 
 type ScheduleContextType = {
@@ -69,6 +84,16 @@ type ScheduleContextType = {
   updateEndDateFilter: (endDate: string) => void;
   updatePage: (page: number) => void;
   updatePageSize: (recordPerPage: number) => void;
+  calendarMonth: Date;
+  goToPreviousMonth: () => void;
+  goToNextMonth: () => void;
+  goToToday: () => void;
+  selectedSchedule: WorkingSchedule | null;
+  setSelectedSchedule: React.Dispatch<
+    React.SetStateAction<WorkingSchedule | null>
+  >;
+  selectedDayDate: string | null;
+  setSelectedDayDate: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 const ScheduleContext = React.createContext<ScheduleContextType | null>(null);
@@ -91,6 +116,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [staffOptions, setStaffOptions] = useState<
     { value: string; label: string }[]
   >([]);
+  const [calendarMonth, setCalendarMonth] = useState(
+    () => DEFAULT_CALENDAR_MONTH,
+  );
+  const [selectedSchedule, setSelectedSchedule] =
+    useState<WorkingSchedule | null>(null);
+  const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
 
   const refreshShiftTemplates = useCallback(async () => {
     try {
@@ -108,17 +139,33 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const fetchSchedules = useCallback(async () => {
     setIsFetching(true);
     try {
-      const response = await workingScheduleApi.getList({
-        page: listQuery.page,
-        recordPerPage: listQuery.recordPerPage,
+      const baseParams = {
+        recordPerPage: 100,
         userId: listQuery.userId === "all" ? undefined : listQuery.userId,
         status: listQuery.status === "all" ? undefined : listQuery.status,
         startDate: listQuery.startDate || undefined,
         endDate: listQuery.endDate || undefined,
-      });
-      setSchedules(response.data);
-      setTotal(response.total);
-      setTotalPages(response.totalPages);
+      };
+
+      let page = 1;
+      let allData: WorkingSchedule[] = [];
+      let totalCount = 0;
+      let pages = 1;
+
+      do {
+        const response = await workingScheduleApi.getList({
+          ...baseParams,
+          page,
+        });
+        allData = allData.concat(response.data);
+        totalCount = response.total;
+        pages = response.totalPages;
+        page += 1;
+      } while (page <= pages);
+
+      setSchedules(allData);
+      setTotal(totalCount);
+      setTotalPages(pages);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       setSchedules([]);
@@ -128,7 +175,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       setIsFetching(false);
       setIsInitialLoading(false);
     }
-  }, [listQuery]);
+  }, [
+    listQuery.userId,
+    listQuery.status,
+    listQuery.startDate,
+    listQuery.endDate,
+  ]);
 
   const fetchScheduleById = useCallback(async (id: string) => {
     try {
@@ -182,6 +234,10 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       await workingScheduleApi.update(id, payload);
       toast.success("Đã cập nhật lịch làm việc");
       await fetchSchedules();
+      const fresh = await fetchScheduleById(id);
+      if (fresh) {
+        setSelectedSchedule((prev) => (prev?._id === id ? fresh : prev));
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -192,6 +248,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     try {
       await workingScheduleApi.remove(id);
       toast.success("Đã xóa lịch làm việc");
+      setSelectedSchedule((prev) => (prev?._id === id ? null : prev));
       await fetchSchedules();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -261,6 +318,34 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
   }, []);
 
+  const goToPreviousMonth = useCallback(() => {
+    setSelectedDayDate(null);
+    setCalendarMonth((prev) => {
+      const next = subMonths(prev, 1);
+      const range = getMonthRange(next);
+      setListQuery((q) => ({ ...q, ...range, page: 1 }));
+      return next;
+    });
+  }, []);
+
+  const goToNextMonth = useCallback(() => {
+    setSelectedDayDate(null);
+    setCalendarMonth((prev) => {
+      const next = addMonths(prev, 1);
+      const range = getMonthRange(next);
+      setListQuery((q) => ({ ...q, ...range, page: 1 }));
+      return next;
+    });
+  }, []);
+
+  const goToToday = useCallback(() => {
+    setSelectedDayDate(null);
+    const today = new Date();
+    const range = getMonthRange(today);
+    setCalendarMonth(today);
+    setListQuery((q) => ({ ...q, ...range, page: 1 }));
+  }, []);
+
   return (
     <ScheduleContext.Provider
       value={{
@@ -290,6 +375,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         updateEndDateFilter,
         updatePage,
         updatePageSize,
+        calendarMonth,
+        goToPreviousMonth,
+        goToNextMonth,
+        goToToday,
+        selectedSchedule,
+        setSelectedSchedule,
+        selectedDayDate,
+        setSelectedDayDate,
       }}
     >
       {children}

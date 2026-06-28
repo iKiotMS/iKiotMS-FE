@@ -5,6 +5,8 @@ import {
 } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type {
   ApiWorkingSchedule,
+  AttendanceDetail,
+  AttendanceLocation,
   ShiftTemplate,
   ShiftTemplateOption,
   WorkingSchedule,
@@ -22,7 +24,10 @@ function resolveStaffName(userId: ApiWorkingSchedule["userId"]): string {
   return name || userId.phoneNumber;
 }
 
-function resolveShiftTimes(raw: ApiWorkingSchedule, shiftTemplate: ShiftTemplate | null) {
+function resolveShiftTimes(
+  raw: ApiWorkingSchedule,
+  shiftTemplate: ShiftTemplate | null,
+) {
   if (raw.startAt && raw.endAt) {
     return {
       startTime: extractUtcTimeFromIso(raw.startAt),
@@ -33,6 +38,46 @@ function resolveShiftTimes(raw: ApiWorkingSchedule, shiftTemplate: ShiftTemplate
   return {
     startTime: shiftTemplate?.startTime ?? "",
     endTime: shiftTemplate?.endTime ?? "",
+  };
+}
+
+function mapAttendanceLocation(value: unknown): AttendanceLocation | null {
+  if (!value || typeof value !== "object") return null;
+  const loc = value as Record<string, unknown>;
+  return {
+    latitude: typeof loc.latitude === "number" ? loc.latitude : undefined,
+    longitude: typeof loc.longitude === "number" ? loc.longitude : undefined,
+    accuracy: typeof loc.accuracy === "number" ? loc.accuracy : undefined,
+    distance: typeof loc.distance === "number" ? loc.distance : undefined,
+    verificationStatus:
+      typeof loc.verificationStatus === "string"
+        ? loc.verificationStatus
+        : undefined,
+  };
+}
+
+function mapAttendance(
+  att: ApiWorkingSchedule["attendance"],
+): AttendanceDetail {
+  return {
+    _id: att?._id,
+    status: att?.status ?? "NOT_CHECKED_IN",
+    actualCheckinAt: att?.actualCheckinAt ?? null,
+    actualCheckoutAt: att?.actualCheckoutAt ?? null,
+    checkInLocation:
+      att && "checkInLocation" in att
+        ? mapAttendanceLocation(att.checkInLocation)
+        : null,
+    checkOutLocation:
+      att && "checkOutLocation" in att
+        ? mapAttendanceLocation(att.checkOutLocation)
+        : null,
+    workedMinutes:
+      att && "workedMinutes" in att ? (att.workedMinutes ?? null) : null,
+    overtimeMinute:
+      att && "overtimeMinute" in att ? (att.overtimeMinute ?? null) : null,
+    lateMinutes:
+      att && "lateMinutes" in att ? (att.lateMinutes ?? null) : null,
   };
 }
 
@@ -59,6 +104,7 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     endTime,
     workDate,
     status: raw.status as WorkingSchedule["status"],
+    attendance: mapAttendance(raw.attendance),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

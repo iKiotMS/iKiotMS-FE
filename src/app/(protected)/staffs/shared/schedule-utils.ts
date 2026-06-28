@@ -1,4 +1,4 @@
-import type { ScheduleStatus } from "@/types/working-schedule";
+import type { ScheduleStatus, WorkingSchedule } from "@/types/working-schedule";
 
 export function isScheduleLocked(status: ScheduleStatus): boolean {
   return status === "COMPLETED";
@@ -20,4 +20,14 @@ export function extractUtcTimeFromIso(iso?: string): string {
 export function formatShiftTimeRange(startTime: string, endTime: string): string {
   const range = `${startTime} - ${endTime}`;
   return isOvernightShift(startTime, endTime) ? `${range} (qua đêm)` : range;
+}
+
+export function sortSchedulesForDay(
+  schedules: WorkingSchedule[],
+): WorkingSchedule[] {
+  return [...schedules].sort((a, b) => {
+    const timeCmp = a.startTime.localeCompare(b.startTime);
+    if (timeCmp !== 0) return timeCmp;
+    return a.staffName.localeCompare(b.staffName, "vi");
+  });
 }
