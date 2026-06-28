@@ -77,8 +77,9 @@ client.interceptors.response.use(
       originalRequest.url?.includes("/auth/forgot-password") ||
       originalRequest.url?.includes("/auth/reset-password");
 
+    // Chỉ refresh token khi 401. 403 thường là thiếu quyền/subscription — retry không giúp.
     if (
-      (error.response?.status === 401 || error.response?.status === 403) &&
+      error.response?.status === 401 &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {

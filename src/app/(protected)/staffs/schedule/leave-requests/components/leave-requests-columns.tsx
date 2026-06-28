@@ -1,6 +1,4 @@
 import { type ColumnDef } from "@tanstack/react-table";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 import {
   ChevronDown,
   ChevronRight,
@@ -14,6 +12,7 @@ import {
   LEAVE_STATUS_MAP,
   LEAVE_TYPE_MAP,
 } from "@/app/(protected)/staffs/shared/leave-request-status";
+import { formatLeaveDate } from "@/lib/api/leave-request-mapper";
 import type { LeaveRequest } from "@/types/leave-request";
 
 function SortableHeader({
@@ -90,10 +89,12 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     accessorKey: "type",
     header: "Loại nghỉ",
     cell: ({ row }) => {
-      const config = LEAVE_TYPE_MAP[row.original.type];
+      const config = LEAVE_TYPE_MAP[row.original.type] ?? {
+        label: row.original.type,
+        variant: "secondary" as const,
+      };
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: "duration",
@@ -101,9 +102,8 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     cell: ({ row }) => (
       <div className="flex flex-col text-sm">
         <span>
-          {format(new Date(row.original.fromDate), "dd/MM/yyyy", { locale: vi })}{" "}
-          -{" "}
-          {format(new Date(row.original.toDate), "dd/MM/yyyy", { locale: vi })}
+          {formatLeaveDate(row.original.fromDate)} -{" "}
+          {formatLeaveDate(row.original.toDate)}
         </span>
         <span className="text-muted-foreground">
           {row.original.totalDays} ngày
@@ -124,10 +124,12 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const config = LEAVE_STATUS_MAP[row.original.status];
+      const config = LEAVE_STATUS_MAP[row.original.status] ?? {
+        label: row.original.status,
+        variant: "secondary" as const,
+      };
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: "expand",

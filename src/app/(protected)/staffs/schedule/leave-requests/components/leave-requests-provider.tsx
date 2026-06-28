@@ -1,133 +1,224 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { leaveRequestApi } from "@/lib/api/leave-request";
+import { staffApi } from "@/lib/api/staff";
+import { getApiErrorMessage } from "@/lib/api/staff-mapper";
+import { useAuth } from "@/hooks/use-auth";
 import type {
-  CreateLeaveRequestPayload,
+  CreateEmergencyLeavePayload,
+  LeaveListQuery,
   LeaveRequest,
   LeaveRequestStatus,
-  ReviewLeaveRequestPayload,
+  LeaveRequestType,
 } from "@/types/leave-request";
 
 export type LeaveRequestsDialogType = "create";
 
-type LeaveRequestsContextType = {
-  leaveRequests: LeaveRequest[];
-  isLoading: boolean;
-  open: LeaveRequestsDialogType | null;
-  setOpen: (value: LeaveRequestsDialogType | null) => void;
-  fetchLeaveRequests: () => Promise<void>;
-  handleCreate: (payload: CreateLeaveRequestPayload) => Promise<void>;
-  handleReview: (
-    id: string,
-    payload: ReviewLeaveRequestPayload,
-  ) => Promise<void>;
+const DEFAULT_LIST_QUERY: LeaveListQuery = {
+  page: 1,
+  recordPerPage: 10,
+  status: "all",
+  leaveType: "all",
+  keyword: "",
 };
 
-const LeaveRequestsContext = React.createContext<LeaveRequestsContextType | null>(
-  null,
-);
+type LeaveRequestsContextType = {
+  leaveRequests: LeaveRequest[];
+  isInitialLoading: boolean;
+  isFetching: boolean;
+  total: number;
+  totalPages: number;
+  listQuery: LeaveListQuery;
+  staffOptions: { value: string; label: string }[];
+  open: LeaveRequestsDialogType | null;
+  setOpen: (value: LeaveRequestsDialogType | null) => void;
+  handleCreate: (payload: CreateEmergencyLeavePayload) => Promise<void>;
+  handleApprove: (id: string, reviewNote?: string) => Promise<void>;
+  handleReject: (id: string, reviewNote: string) => Promise<void>;
+  updateStatusFilter: (status: LeaveRequestStatus | "all") => void;
+  updateLeaveTypeFilter: (leaveType: LeaveRequestType | "all") => void;
+  updateKeywordFilter: (keyword: string) => void;
+  updatePage: (page: number) => void;
+  updatePageSize: (recordPerPage: number) => void;
+};
+
+const LeaveRequestsContext =
+  React.createContext<LeaveRequestsContextType | null>(null);
+
+function isUserContextReady(
+  role?: string | null,
+  branchId?: string | null,
+  warehouseId?: string | null,
+): boolean {
+  if (!role) return false;
+  if (role === "BRANCH_MANAGER") return !!branchId;
+  if (role === "WAREHOUSE_MANAGER") return !!warehouseId;
+  return true;
+}
 
 export function LeaveRequestsProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState<LeaveRequestsDialogType | null>(null);
-  const mockData = useMemo(() => MOCK_LEAVE_REQUESTS, []);
+  const { user } = useAuth();
+  const role = user?.role;
+  const branchId = user?.branchId;
+  const warehouseId = user?.warehouseId;
 
-  const fetchLeaveRequests = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await leaveRequestApi.getList({ page: 1, limit: 50 });
-      setLeaveRequests(response?.data ?? []);
-    } catch {
-      setLeaveRequests(mockData);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [mockData]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [listQuery, setListQuery] = useState<LeaveListQuery>(DEFAULT_LIST_QUERY);
+  const [open, setOpen] = useState<LeaveRequestsDialogType | null>(null);
+  const [staffOptions, setStaffOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+
+  const contextReady = isUserContextReady(role, branchId, warehouseId);
 
   useEffect(() => {
-    fetchLeaveRequests();
+    void staffApi
+      .getAllForOptions()
+      .then((staffList) => {
+        setStaffOptions(
+          staffList
+            .filter((staff) => staff.role === "STAFF" && staff.status === "ACTIVE")
+            .map((staff) => ({
+              value: staff._id,
+              label: staff.fullName,
+            })),
+        );
+      })
+      .catch(() => {
+        setStaffOptions([]);
+      });
+  }, []);
+
+  const fetchLeaveRequests = useCallback(async () => {
+    if (!contextReady || !role) {
+      setIsInitialLoading(false);
+      return;
+    }
+
+    setIsFetching(true);
+    try {
+      const response = await leaveRequestApi.getListForUser(
+        { role, branchId, warehouseId },
+        {
+          page: listQuery.page,
+          recordPerPage: listQuery.recordPerPage,
+          status: listQuery.status === "all" ? undefined : listQuery.status,
+          leaveType:
+            listQuery.leaveType === "all" ? undefined : listQuery.leaveType,
+          keyword: listQuery.keyword || undefined,
+        },
+      );
+      setLeaveRequests(response.data);
+      setTotal(response.total);
+      setTotalPages(response.totalPages);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setLeaveRequests([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setIsFetching(false);
+      setIsInitialLoading(false);
+    }
+  }, [
+    contextReady,
+    role,
+    branchId,
+    warehouseId,
+    listQuery.page,
+    listQuery.recordPerPage,
+    listQuery.status,
+    listQuery.leaveType,
+    listQuery.keyword,
+  ]);
+
+  useEffect(() => {
+    void fetchLeaveRequests();
   }, [fetchLeaveRequests]);
 
-  async function handleCreate(payload: CreateLeaveRequestPayload) {
+  async function handleCreate(payload: CreateEmergencyLeavePayload) {
     try {
-      await leaveRequestApi.create(payload);
+      await leaveRequestApi.createEmergency(payload);
       toast.success("Đã tạo đơn nghỉ phép");
       await fetchLeaveRequests();
-    } catch {
-      const staff = STAFF_MAP[payload.userId] ?? "Nhân viên";
-      const branch = BRANCH_MAP[payload.branchId] ?? "Không xác định";
-      const totalDays = calculateDays(payload.fromDate, payload.toDate);
-      const now = new Date().toISOString();
-      const fallback: LeaveRequest = {
-        _id: Date.now().toString(),
-        tenantId: "tenant-1",
-        branchId: payload.branchId,
-        branchName: branch,
-        userId: payload.userId,
-        staffName: staff,
-        type: payload.type,
-        reason: payload.reason,
-        fromDate: payload.fromDate,
-        toDate: payload.toDate,
-        totalDays,
-        status: "PENDING",
-        createdAt: now,
-        updatedAt: now,
-      };
-      setLeaveRequests((prev) => [fallback, ...prev]);
-      toast.success("Đã tạo đơn nghỉ phép (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
 
-  async function handleReview(id: string, payload: ReviewLeaveRequestPayload) {
+  async function handleApprove(id: string, reviewNote?: string) {
     try {
-      await leaveRequestApi.review(id, payload);
-      toast.success(
-        payload.status === "APPROVED"
-          ? "Đã duyệt đơn nghỉ phép"
-          : "Đã từ chối đơn nghỉ phép",
-      );
+      await leaveRequestApi.approve(id, reviewNote);
+      toast.success("Đã duyệt đơn nghỉ phép");
       await fetchLeaveRequests();
-    } catch {
-      setLeaveRequests((prev) =>
-        prev.map((item) =>
-          item._id === id
-            ? {
-                ...item,
-                status: payload.status as LeaveRequestStatus,
-                reviewNote: payload.reviewNote,
-                reviewedByName: "Bạn",
-                reviewedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }
-            : item,
-        ),
-      );
-      toast.success(
-        payload.status === "APPROVED"
-          ? "Đã duyệt đơn nghỉ phép (mock mode)"
-          : "Đã từ chối đơn nghỉ phép (mock mode)",
-      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
+  }
+
+  async function handleReject(id: string, reviewNote: string) {
+    try {
+      await leaveRequestApi.reject(id, reviewNote);
+      toast.success("Đã từ chối đơn nghỉ phép");
+      await fetchLeaveRequests();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  function updateStatusFilter(status: LeaveRequestStatus | "all") {
+    setListQuery((prev) => ({ ...prev, status, page: 1 }));
+  }
+
+  function updateLeaveTypeFilter(leaveType: LeaveRequestType | "all") {
+    setListQuery((prev) => ({ ...prev, leaveType, page: 1 }));
+  }
+
+  function updateKeywordFilter(keyword: string) {
+    setListQuery((prev) => ({ ...prev, keyword, page: 1 }));
+  }
+
+  function updatePage(page: number) {
+    setListQuery((prev) => ({ ...prev, page }));
+  }
+
+  function updatePageSize(recordPerPage: number) {
+    setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
   }
 
   return (
     <LeaveRequestsContext.Provider
       value={{
         leaveRequests,
-        isLoading,
+        isInitialLoading,
+        isFetching,
+        total,
+        totalPages,
+        listQuery,
+        staffOptions,
         open,
         setOpen,
-        fetchLeaveRequests,
         handleCreate,
-        handleReview,
+        handleApprove,
+        handleReject,
+        updateStatusFilter,
+        updateLeaveTypeFilter,
+        updateKeywordFilter,
+        updatePage,
+        updatePageSize,
       }}
     >
       {children}
@@ -143,68 +234,4 @@ export function useLeaveRequests() {
     );
   }
   return ctx;
-}
-
-export const STAFF_OPTIONS = [
-  { value: "staff-001", label: "Nguyễn An" },
-  { value: "staff-002", label: "Trần Bình" },
-  { value: "staff-003", label: "Lê Chi" },
-] as const;
-
-export const BRANCH_OPTIONS = [
-  { value: "branch-1", label: "Chi nhánh Quận 1" },
-  { value: "branch-2", label: "Chi nhánh Quận 3" },
-  { value: "branch-3", label: "Chi nhánh Gò Vấp" },
-] as const;
-
-const STAFF_MAP = Object.fromEntries(
-  STAFF_OPTIONS.map((item) => [item.value, item.label]),
-);
-const BRANCH_MAP = Object.fromEntries(
-  BRANCH_OPTIONS.map((item) => [item.value, item.label]),
-);
-
-const MOCK_LEAVE_REQUESTS: LeaveRequest[] = [
-  {
-    _id: "lr-001",
-    tenantId: "tenant-1",
-    branchId: "branch-1",
-    branchName: "Chi nhánh Quận 1",
-    userId: "staff-001",
-    staffName: "Nguyễn An",
-    type: "SICK",
-    reason: "Bị sốt, cần nghỉ để điều trị",
-    fromDate: "2026-06-18",
-    toDate: "2026-06-19",
-    totalDays: 2,
-    status: "PENDING",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    _id: "lr-002",
-    tenantId: "tenant-1",
-    branchId: "branch-2",
-    branchName: "Chi nhánh Quận 3",
-    userId: "staff-002",
-    staffName: "Trần Bình",
-    type: "ANNUAL",
-    reason: "Nghỉ phép năm",
-    fromDate: "2026-06-22",
-    toDate: "2026-06-23",
-    totalDays: 2,
-    status: "APPROVED",
-    reviewedByName: "Lê Quản Lý",
-    reviewedAt: new Date().toISOString(),
-    reviewNote: "Đã sắp xếp người thay ca",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-function calculateDays(fromDate: string, toDate: string) {
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  const diffMs = to.getTime() - from.getTime();
-  return Math.floor(diffMs / 86400000) + 1;
 }

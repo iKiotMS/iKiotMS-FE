@@ -1,8 +1,6 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 import {
   Building2,
   CalendarDays,
@@ -21,6 +19,9 @@ import {
   LEAVE_STATUS_MAP,
   LEAVE_TYPE_MAP,
 } from "@/app/(protected)/staffs/shared/leave-request-status";
+import { canReviewLeaveRequest } from "@/app/(protected)/staffs/shared/leave-permissions";
+import { formatLeaveDate } from "@/lib/api/leave-request-mapper";
+import { useAuth } from "@/hooks/use-auth";
 import type { LeaveRequest } from "@/types/leave-request";
 import { useLeaveRequests } from "./leave-requests-provider";
 
@@ -51,11 +52,16 @@ export function LeaveRequestsExpandedPanel({
   request: LeaveRequest;
   isExpanded: boolean;
 }) {
-  const { handleReview } = useLeaveRequests();
+  const { user } = useAuth();
+  const { handleApprove, handleReject } = useLeaveRequests();
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState("");
+  const [rejectNote, setRejectNote] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const wasExpandedRef = useRef(false);
+
+  const canReview = canReviewLeaveRequest(user?.role);
 
   useLayoutEffect(() => {
     if (isExpanded && !wasExpandedRef.current) {
@@ -67,31 +73,43 @@ export function LeaveRequestsExpandedPanel({
     if (!isExpanded) {
       wasExpandedRef.current = false;
       setNote("");
+      setRejectNote("");
       setShowRejectForm(false);
     }
   }, [isExpanded]);
 
-  const status = LEAVE_STATUS_MAP[request.status];
-  const type = LEAVE_TYPE_MAP[request.type];
+  const status = LEAVE_STATUS_MAP[request.status] ?? {
+    label: request.status,
+    variant: "secondary" as const,
+  };
+  const type = LEAVE_TYPE_MAP[request.type] ?? {
+    label: request.type,
+    variant: "secondary" as const,
+  };
   const isPending = request.status === "PENDING";
 
   const onApprove = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await handleReview(request._id, {
-      status: "APPROVED",
-      reviewNote: note || undefined,
-    });
-    setNote("");
+    setSubmitting(true);
+    try {
+      await handleApprove(request._id, note || undefined);
+      setNote("");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const onReject = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await handleReview(request._id, {
-      status: "REJECTED",
-      reviewNote: note || undefined,
-    });
-    setNote("");
-    setShowRejectForm(false);
+    if (!rejectNote.trim()) return;
+    setSubmitting(true);
+    try {
+      await handleReject(request._id, rejectNote.trim());
+      setRejectNote("");
+      setShowRejectForm(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -115,12 +133,6 @@ export function LeaveRequestsExpandedPanel({
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
         <Badge variant={type.variant}>{type.label}</Badge>
-        {request.reviewedByName && (
-          <span className="text-sm text-muted-foreground">
-            {request.status === "APPROVED" ? "Duyệt bởi" : "Từ chối bởi"}:{" "}
-            <strong>{request.reviewedByName}</strong>
-          </span>
-        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-4">
@@ -131,18 +143,18 @@ export function LeaveRequestsExpandedPanel({
         />
         <InfoItem
           icon={<Building2 className="size-4" />}
-          label="Chi nhánh"
+          label="Đơn vị"
           value={request.branchName}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Từ ngày"
-          value={format(new Date(request.fromDate), "dd/MM/yyyy", { locale: vi })}
+          value={formatLeaveDate(request.fromDate)}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Đến ngày"
-          value={format(new Date(request.toDate), "dd/MM/yyyy", { locale: vi })}
+          value={formatLeaveDate(request.toDate)}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
@@ -152,17 +164,13 @@ export function LeaveRequestsExpandedPanel({
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày tạo"
-          value={format(new Date(request.createdAt), "dd/MM/yyyy HH:mm", {
-            locale: vi,
-          })}
+          value={formatLeaveDate(request.createdAt, true)}
         />
         {request.reviewedAt && (
           <InfoItem
             icon={<CalendarDays className="size-4" />}
             label="Ngày xử lý"
-            value={format(new Date(request.reviewedAt), "dd/MM/yyyy HH:mm", {
-              locale: vi,
-            })}
+            value={formatLeaveDate(request.reviewedAt, true)}
           />
         )}
         <InfoItem
@@ -189,10 +197,10 @@ export function LeaveRequestsExpandedPanel({
         </div>
       )}
 
-      {isPending && !showRejectForm && (
+      {isPending && canReview && !showRejectForm && (
         <div className="space-y-3">
           <div>
-            <Label className="text-sm">Ghi chú duyệt/từ chối (tuỳ chọn)</Label>
+            <Label className="text-sm">Ghi chú duyệt (tuỳ chọn)</Label>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -203,7 +211,11 @@ export function LeaveRequestsExpandedPanel({
             />
           </div>
           <div className="flex gap-3">
-            <Button className="flex-1 cursor-pointer" onClick={onApprove}>
+            <Button
+              className="flex-1 cursor-pointer"
+              onClick={onApprove}
+              disabled={submitting}
+            >
               <CheckCircle className="mr-2 size-4" />
               Duyệt đơn
             </Button>
@@ -214,6 +226,7 @@ export function LeaveRequestsExpandedPanel({
                 e.stopPropagation();
                 setShowRejectForm(true);
               }}
+              disabled={submitting}
             >
               <XCircle className="mr-2 size-4" />
               Từ chối
@@ -222,14 +235,14 @@ export function LeaveRequestsExpandedPanel({
         </div>
       )}
 
-      {isPending && showRejectForm && (
+      {isPending && canReview && showRejectForm && (
         <div className="space-y-3 rounded-lg border p-4">
           <h4 className="text-sm font-semibold">Từ chối đơn nghỉ phép</h4>
           <div>
-            <Label className="text-sm">Ghi chú từ chối (tuỳ chọn)</Label>
+            <Label className="text-sm">Ghi chú từ chối (bắt buộc)</Label>
             <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              value={rejectNote}
+              onChange={(e) => setRejectNote(e.target.value)}
               placeholder="Nhập lý do từ chối..."
               className="mt-1 resize-none"
               rows={2}
@@ -241,6 +254,7 @@ export function LeaveRequestsExpandedPanel({
               variant="destructive"
               className="flex-1 cursor-pointer"
               onClick={onReject}
+              disabled={submitting || !rejectNote.trim()}
             >
               Xác nhận từ chối
             </Button>
@@ -251,6 +265,7 @@ export function LeaveRequestsExpandedPanel({
                 e.stopPropagation();
                 setShowRejectForm(false);
               }}
+              disabled={submitting}
             >
               Huỷ
             </Button>
