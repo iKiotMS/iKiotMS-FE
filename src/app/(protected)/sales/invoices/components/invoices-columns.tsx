@@ -37,7 +37,7 @@ export interface Invoice {
     email: string;
     role: string;
   };
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY" | "SEPAY";
   grandTotal: number;
   customerPay: number;
   change: number;
@@ -86,6 +86,7 @@ export const PAYMENT_METHOD_MAP: Record<Invoice["paymentMethod"], string> = {
   BANK_TRANSFER: "Chuyển khoản",
   MOMO: "Ví MoMo",
   VNPAY: "Ví VNPay",
+  SEPAY: "Cổng SePay",
 };
 
 function SortableHeader({

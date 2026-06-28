@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CreditCard, FileText, Package2, ShieldCheck, User2 } from "lucide-react";
+import {
+  CreditCard,
+  FileText,
+  Package2,
+  ShieldCheck,
+  User2,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type Invoice, PAYMENT_METHOD_MAP } from "./invoices-columns";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface InvoicesExpandedPanelProps {
   invoice: Invoice;
@@ -62,13 +69,22 @@ export function InvoicesExpandedPanel({
   }
 
   // Calculated values
-  const totalQuantity = invoice.items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalQuantity = invoice.items.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
 
   return (
-    <div className="bg-muted/20 border-b px-6 py-6 space-y-6 animate-in fade-in-0 duration-200">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left Side: Invoice Items List */}
-        <div className="lg:col-span-2 space-y-4">
+    <div className="bg-muted/20 border-b px-6 pb-6 pt-3 space-y-6 animate-in fade-in-0 duration-200">
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList>
+          <TabsTrigger value="products">Danh sách sản phẩm</TabsTrigger>
+          <TabsTrigger value="details">
+            Thông tin khách hàng & Thanh toán
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products" className="space-y-4 outline-none">
           <div className="flex items-center gap-2 text-sm font-semibold text-primary">
             <Package2 className="size-4" />
             <span>Danh sách sản phẩm ({invoice.items.length})</span>
@@ -88,9 +104,13 @@ export function InvoicesExpandedPanel({
               </TableHeader>
               <TableBody>
                 {invoice.items.map((item, index) => {
-                  const itemTotal = item.quantity * item.unitPrice - item.discountAmount;
+                  const itemTotal =
+                    item.quantity * item.unitPrice - item.discountAmount;
                   return (
-                    <TableRow key={item.productItemId} className="hover:bg-muted/30">
+                    <TableRow
+                      key={item.productItemId}
+                      className="hover:bg-muted/30"
+                    >
                       <TableCell className="text-center font-medium text-muted-foreground text-xs">
                         {index + 1}
                       </TableCell>
@@ -104,7 +124,9 @@ export function InvoicesExpandedPanel({
                         {formatVND(item.unitPrice)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-red-500 text-xs font-medium">
-                        {item.discountAmount > 0 ? `-${formatVND(item.discountAmount)}` : "—"}
+                        {item.discountAmount > 0
+                          ? `-${formatVND(item.discountAmount)}`
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-sm text-foreground">
                         {formatVND(itemTotal)}
@@ -114,7 +136,10 @@ export function InvoicesExpandedPanel({
                 })}
                 {/* Total Quantity Row */}
                 <TableRow className="bg-muted/20 font-medium hover:bg-muted/20">
-                  <TableCell colSpan={2} className="text-left font-semibold text-sm">
+                  <TableCell
+                    colSpan={2}
+                    className="text-left font-semibold text-sm"
+                  >
                     Tổng tiền hàng
                   </TableCell>
                   <TableCell className="text-right font-bold tabular-nums text-sm">
@@ -134,15 +159,21 @@ export function InvoicesExpandedPanel({
             <div className="flex gap-2 p-3 bg-primary/5 rounded-lg border border-primary/10 text-sm">
               <FileText className="size-4 mt-0.5 text-primary shrink-0" />
               <div className="space-y-1">
-                <p className="font-semibold text-primary/90 text-xs uppercase tracking-wider">Ghi chú đơn hàng</p>
-                <p className="text-muted-foreground text-xs leading-relaxed">{invoice.note}</p>
+                <p className="font-semibold text-primary/90 text-xs uppercase tracking-wider">
+                  Ghi chú đơn hàng
+                </p>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {invoice.note}
+                </p>
               </div>
             </div>
           )}
-        </div>
+        </TabsContent>
 
-        {/* Right Side: Customer, Seller, and Payment Info */}
-        <div className="space-y-4">
+        <TabsContent
+          value="details"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start outline-none"
+        >
           {/* Customer & Seller Details Card */}
           <Card className="shadow-sm">
             <CardContent className="p-4 space-y-4 text-xs">
@@ -150,18 +181,24 @@ export function InvoicesExpandedPanel({
                 <User2 className="size-4 text-muted-foreground" />
                 <span>Thông tin khách hàng</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 font-medium">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Mã khách hàng:</span>
-                  <span className="font-mono font-medium">{invoice.customer.code}</span>
+                  <span className="font-mono font-medium">
+                    {invoice.customer.code}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tên khách hàng:</span>
-                  <span className="font-medium text-right">{invoice.customer.name}</span>
+                  <span className="font-semibold text-right">
+                    {invoice.customer.name}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Số điện thoại:</span>
-                  <span className="font-mono text-right">{invoice.customer.phone}</span>
+                  <span className="font-mono text-right">
+                    {invoice.customer.phone}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Giới tính:</span>
@@ -173,28 +210,32 @@ export function InvoicesExpandedPanel({
                         : "Khác"}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1 mt-1 pt-1 border-t border-muted/50">
-                  <span className="text-muted-foreground">Địa chỉ nhận hàng:</span>
-                  <span className="text-muted-foreground text-right leading-normal">{invoice.customer.address}</span>
-                </div>
               </div>
 
               <div className="flex items-center gap-2 font-semibold text-sm text-foreground pt-2 pb-1 border-b">
                 <ShieldCheck className="size-4 text-muted-foreground" />
                 <span>Thông tin người bán</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 font-medium">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Nhân viên bán hàng:</span>
-                  <span className="font-medium">{invoice.seller.name}</span>
+                  <span className="text-muted-foreground">
+                    Nhân viên bán hàng:
+                  </span>
+                  <span className="font-semibold">{invoice.seller.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email nhân viên:</span>
-                  <span className="text-muted-foreground font-mono">{invoice.seller.email}</span>
+                  <span className="text-muted-foreground">
+                    Email nhân viên:
+                  </span>
+                  <span className="text-muted-foreground font-mono">
+                    {invoice.seller.email || "—"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Chức năng:</span>
-                  <span className="text-muted-foreground">{invoice.seller.role}</span>
+                  <span className="text-muted-foreground">
+                    {invoice.seller.role}
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -210,34 +251,36 @@ export function InvoicesExpandedPanel({
               <div className="space-y-2 font-medium">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Hình thức mua hàng:</span>
-                  <span className="text-foreground text-right">
+                  <span className="text-foreground text-right font-semibold">
                     {PAYMENT_METHOD_MAP[invoice.paymentMethod]}
                   </span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Cần thanh toán:</span>
-                  <span className="text-foreground font-semibold tabular-nums">
+                  <span className="text-foreground font-bold tabular-nums">
                     {formatVND(invoice.grandTotal)}
                   </span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Khách thanh toán:</span>
-                  <span className="text-green-600 dark:text-green-400 font-semibold tabular-nums">
+                  <span className="text-green-600 dark:text-green-400 font-bold tabular-nums">
                     {formatVND(invoice.customerPay)}
                   </span>
                 </div>
                 <Separator className="my-1 bg-primary/10" />
                 <div className="flex justify-between font-bold text-sm">
-                  <span className="text-primary">Tiền thừa trả khách:</span>
-                  <span className="text-primary tabular-nums">
+                  <span className="text-primary font-bold">
+                    Tiền thừa trả khách:
+                  </span>
+                  <span className="text-primary font-bold tabular-nums">
                     {formatVND(invoice.change)}
                   </span>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
