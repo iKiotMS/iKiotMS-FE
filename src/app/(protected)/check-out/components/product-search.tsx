@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCheckoutProducts } from "../_hooks/use-checkout-products";
 import { productApi } from "@/lib/api/product";
+import { useAuthStore } from "@/store/auth-store";
 
 interface Product {
   id: string;
@@ -42,8 +43,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Fetch search results from the custom API hook
   const { products, loading } = useCheckoutProducts(query);
+  const locationKey = useAuthStore((state) => state.locationKey);
 
-  // Fetch initial active products for quick purchase on mount
+  // Fetch initial active products for quick purchase on mount or location changes
   useEffect(() => {
     productApi
       .getList({ limit: 10, status: "ACTIVE" })
@@ -75,7 +77,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       .catch((err) => {
         console.error("Failed to load quick items:", err);
       });
-  }, []);
+  }, [locationKey]);
 
   // Map API products response to flat list of variants (ProductItems)
   const results = useMemo(() => {

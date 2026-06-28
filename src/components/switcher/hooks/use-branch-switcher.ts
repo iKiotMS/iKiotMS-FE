@@ -8,6 +8,7 @@ import type { Warehouse as DWBWarehouse } from "@/types/warehouse";
 import { getCachedUser } from "@/lib/auth";
 import { type BranchFormValues } from "../branch-form-dialog";
 import { type WarehouseFormValues } from "../warehouse-form-dialog";
+import { useAuthStore } from "@/store/auth-store";
 
 export type SwitcherItem = {
   id: string;
@@ -27,6 +28,9 @@ export function useBranchSwitcher() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] =
     React.useState(false);
+
+  const locationKey = useAuthStore((state) => state.locationKey);
+  const setLocationKey = useAuthStore((state) => state.setLocationKey);
 
   // Edit branch states
   const [editingBranch, setEditingBranch] = React.useState<Branch | null>(null);
@@ -86,85 +90,25 @@ export function useBranchSwitcher() {
 
         setDbBranches(fetchedBranches);
         setDbWarehouses(fetchedWarehouses);
-
-        const savedId = localStorage.getItem("activeSwitcherItemId");
-        const savedType = localStorage.getItem("activeSwitcherItemType");
-
-        if (savedId && savedType) {
-          if (savedId === "all-branches" && savedType === "branch") {
-            setActiveItem({
-              id: "all-branches",
-              name: "Tổng",
-              address: "all",
-              type: "branch",
-            });
-            return;
-          }
-          if (savedType === "branch") {
-            const match = fetchedBranches.find((b) => b._id === savedId);
-            if (match) {
-              setActiveItem(mapBranchToItem(match));
-              return;
-            }
-          } else if (savedType === "warehouse") {
-            const match = fetchedWarehouses.find((w) => w._id === savedId);
-            if (match) {
-              setActiveItem(mapWarehouseToItem(match));
-              return;
-            }
-          }
-        }
-
-        // Default fallback to virtual "Tổng" (All-branches)
-        setActiveItem({
-          id: "all-branches",
-          name: "Tổng",
-          address: "all",
-          type: "branch",
-        });
       } else {
-        // Non-TENANT_OWNER user: show only their branch or warehouse
+        // Non-TENANT_OWNER user: fetch their specific assigned branch or warehouse to show name/address
         if (user?.branchId) {
           try {
             const branch = await branchApi.getById(user.branchId);
             if (branch) {
-              setActiveItem(mapBranchToItem(branch));
-            } else {
-              setActiveItem({
-                id: user.branchId,
-                name: "Chi nhánh",
-                address: "Địa chỉ chi nhánh",
-                type: "branch",
-              });
+              setDbBranches([branch]);
             }
-          } catch {
-            setActiveItem({
-              id: user.branchId,
-              name: "Chi nhánh",
-              address: "Địa chỉ chi nhánh",
-              type: "branch",
-            });
+          } catch (e) {
+            console.error("Failed to load user branch details", e);
           }
         } else if (user?.warehouseId) {
           try {
             const warehouse = await warehouseApi.getById(user.warehouseId);
             if (warehouse) {
-              setActiveItem(mapWarehouseToItem(warehouse));
-            } else {
-              setActiveItem({
-                id: user.warehouseId,
-                name: "Kho hàng",
-                address: "Địa chỉ kho hàng",
-                type: "warehouse",
-              });
+              setDbWarehouses([warehouse]);
             }
-          } catch {
-            setActiveItem({
-              id: user.warehouseId,
-              name: "Kho hàng",
-              address: "Địa chỉ kho hàng",
-              type: "warehouse",
-            });
+          } catch (e) {
+            console.error("Failed to load user warehouse details", e);
           }
         }
       }
@@ -173,18 +117,65 @@ export function useBranchSwitcher() {
     } finally {
       setLoading(false);
     }
-  }, [mapBranchToItem, mapWarehouseToItem]);
+  }, []);
 
   React.useEffect(() => {
     fetchBranches();
-  }, []);
+  }, [fetchBranches]);
+
+  // Synchronize activeItem with the global locationKey
+  React.useEffect(() => {
+    if (!locationKey) {
+      setActiveItem(null);
+      return;
+    }
+
+    if (locationKey === "all") {
+      setActiveItem({
+        id: "all-branches",
+        name: "Tổng",
+        address: "all",
+        type: "branch",
+      });
+      return;
+    }
+
+    const [type, id] = locationKey.split("-");
+    if (type === "branch") {
+      const match = dbBranches.find((b) => b._id === id);
+      if (match) {
+        setActiveItem(mapBranchToItem(match));
+      } else {
+        setActiveItem({
+          id,
+          name: "Chi nhánh",
+          address: "",
+          type: "branch",
+        });
+      }
+    } else if (type === "warehouse") {
+      const match = dbWarehouses.find((w) => w._id === id);
+      if (match) {
+        setActiveItem(mapWarehouseToItem(match));
+      } else {
+        setActiveItem({
+          id,
+          name: "Kho hàng",
+          address: "",
+          type: "warehouse",
+        });
+      }
+    }
+  }, [locationKey, dbBranches, dbWarehouses, mapBranchToItem, mapWarehouseToItem]);
 
   const handleSelect = (item: SwitcherItem) => {
     if (item.status === "INACTIVE") {
       toast.warning(`Chi nhánh/kho hàng "${item.name}" đã bị ngừng hoạt động!`);
       return;
     }
-    setActiveItem(item);
+    const key = item.id === "all-branches" ? "all" : `${item.type}-${item.id}`;
+    setLocationKey(key);
+    // Backward compatibility:
     localStorage.setItem("activeSwitcherItemId", item.id);
     localStorage.setItem("activeSwitcherItemType", item.type);
     toast.success(`Đã chuyển sang: ${item.name}`);
