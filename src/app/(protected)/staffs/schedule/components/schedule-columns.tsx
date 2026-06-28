@@ -10,10 +10,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import {
-  SCHEDULE_STATUS_MAP,
-  SHIFT_TYPE_MAP,
-} from "@/app/(protected)/staffs/shared/schedule-status";
+import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
+import { formatShiftTimeRange } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 
 function SortableHeader({
@@ -73,11 +71,11 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
     size: 50,
   },
   {
-    accessorKey: "date",
+    accessorKey: "workDate",
     header: ({ column }) => <SortableHeader label="Ngày làm" column={column} />,
     cell: ({ row }) => (
       <span className="font-medium">
-        {format(new Date(row.original.date), "dd/MM/yyyy", { locale: vi })}
+        {format(new Date(row.original.workDate), "dd/MM/yyyy", { locale: vi })}
       </span>
     ),
   },
@@ -90,26 +88,24 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
       <div className="flex flex-col">
         <span className="font-medium">{row.original.staffName}</span>
         <span className="text-xs text-muted-foreground">
-          {row.original.branchName}
+          {row.original.staffPhone}
         </span>
       </div>
     ),
   },
   {
-    accessorKey: "shiftType",
+    accessorKey: "shiftName",
     header: "Ca làm",
-    cell: ({ row }) => {
-      const config = SHIFT_TYPE_MAP[row.original.shiftType];
-      return <Badge variant={config.variant}>{config.label}</Badge>;
-    },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
+    cell: ({ row }) => (
+      <Badge variant="outline">{row.original.shiftName}</Badge>
+    ),
   },
   {
     id: "shiftTime",
     header: "Khung giờ",
     cell: ({ row }) => (
       <span className="font-mono text-sm">
-        {row.original.startTime} - {row.original.endTime}
+        {formatShiftTimeRange(row.original.startTime, row.original.endTime)}
       </span>
     ),
   },
@@ -120,16 +116,6 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
       const config = SCHEDULE_STATUS_MAP[row.original.status];
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
-  },
-  {
-    accessorKey: "note",
-    header: "Ghi chú",
-    cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground line-clamp-1">
-        {row.original.note || "—"}
-      </span>
-    ),
   },
   {
     id: "expand",
@@ -147,5 +133,3 @@ export const scheduleColumns: ColumnDef<WorkingSchedule>[] = [
     enableHiding: false,
   },
 ];
-
-export { SHIFT_TYPE_MAP as SHIFT_LABELS, SCHEDULE_STATUS_MAP as STATUS_MAP };

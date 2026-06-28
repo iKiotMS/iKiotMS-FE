@@ -1,21 +1,56 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { staffApi } from "@/lib/api/staff";
+import { branchApi } from "@/lib/api/branch";
+import { warehouseApi } from "@/lib/api/warehouse";
+import {
+  getApiErrorMessage,
+  getStaffRoleLabel,
+} from "@/lib/api/staff-mapper";
 import type {
+  CreateStaffAccountPayload,
   CreateStaffPayload,
   Staff,
+  StaffListQuery,
   StaffRole,
+  StaffRoleOption,
   StaffStatus,
   UpdateStaffPayload,
 } from "@/types/staff";
 
-type StaffsDialogType = "add" | "edit" | "delete";
+type StaffsDialogType =
+  | "add"
+  | "edit"
+  | "delete"
+  | "deactivate"
+  | "activate"
+  | "password";
+
+const DEFAULT_LIST_QUERY: StaffListQuery = {
+  page: 1,
+  recordPerPage: 10,
+  keyword: "",
+  role: "all",
+  status: "all",
+  branchId: "all",
+  warehouseId: "all",
+};
 
 type StaffsContextType = {
   staffs: Staff[];
-  isLoading: boolean;
+  isInitialLoading: boolean;
+  isFetching: boolean;
+  total: number;
+  totalPages: number;
+  listQuery: StaffListQuery;
+  keywordInput: string;
+  setKeywordInput: (value: string) => void;
+  setListQuery: React.Dispatch<React.SetStateAction<StaffListQuery>>;
+  roleOptions: StaffRoleOption[];
+  branchOptions: { value: string; label: string }[];
+  warehouseOptions: { value: string; label: string }[];
   open: StaffsDialogType | null;
   setOpen: (value: StaffsDialogType | null) => void;
   currentRow: Staff | null;
@@ -24,61 +59,187 @@ type StaffsContextType = {
   handleAdd: (payload: CreateStaffPayload) => Promise<void>;
   handleEdit: (id: string, payload: UpdateStaffPayload) => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
+  handleDeactivate: (id: string) => Promise<void>;
+  handleActivate: (id: string, payload: CreateStaffAccountPayload) => Promise<void>;
+  handleUpdatePassword: (
+    id: string,
+    payload: CreateStaffAccountPayload,
+  ) => Promise<void>;
+  updateRoleFilter: (role: StaffRole | "all") => void;
+  updateStatusFilter: (status: StaffStatus | "all") => void;
+  updateBranchFilter: (branchId: string) => void;
+  updateWarehouseFilter: (warehouseId: string) => void;
+  updatePage: (page: number) => void;
+  updatePageSize: (recordPerPage: number) => void;
 };
 
 const StaffsContext = React.createContext<StaffsContextType | null>(null);
 
+const DEFAULT_ROLE_OPTIONS: StaffRoleOption[] = [
+  { value: "STAFF", label: "Nhân viên bán hàng" },
+  { value: "WAREHOUSE_MANAGER", label: "Quản lý kho" },
+  { value: "BRANCH_MANAGER", label: "Quản lý chi nhánh" },
+];
+
 export function StaffsProvider({ children }: { children: React.ReactNode }) {
   const [staffs, setStaffs] = useState<Staff[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [listQuery, setListQuery] = useState<StaffListQuery>(DEFAULT_LIST_QUERY);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [roleOptions, setRoleOptions] = useState<StaffRoleOption[]>(
+    DEFAULT_ROLE_OPTIONS,
+  );
+  const [branchOptions, setBranchOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [warehouseOptions, setWarehouseOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [open, setOpen] = useState<StaffsDialogType | null>(null);
   const [currentRow, setCurrentRow] = useState<Staff | null>(null);
 
-  const mockData = useMemo(() => MOCK_STAFFS, []);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setListQuery((prev) => {
+        if (prev.keyword === keywordInput) return prev;
+        return { ...prev, keyword: keywordInput, page: 1 };
+      });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [keywordInput]);
+
+  useEffect(() => {
+    async function loadFilterOptions() {
+      try {
+        const response = await branchApi.getList({ limit: 100 });
+        setBranchOptions(
+          (response.data ?? []).map((branch) => ({
+            value: branch._id,
+            label: branch.name,
+          })),
+        );
+      } catch {
+        setBranchOptions([]);
+      }
+      try {
+        const response = await warehouseApi.getList({ limit: 100 });
+        setWarehouseOptions(
+          (response.data ?? []).map((warehouse) => ({
+            value: warehouse._id,
+            label: warehouse.name,
+          })),
+        );
+      } catch {
+        setWarehouseOptions([]);
+      }
+    }
+
+    loadFilterOptions();
+  }, []);
 
   const fetchStaffs = useCallback(async () => {
-    setIsLoading(true);
+    setIsFetching(true);
     try {
-      const response = await staffApi.getList({ page: 1, limit: 50 });
-      setStaffs(response?.data ?? []);
-    } catch {
-      setStaffs(mockData);
+      const response = await staffApi.getList({
+        page: listQuery.page,
+        recordPerPage: listQuery.recordPerPage,
+        keyword: listQuery.keyword || undefined,
+        role: listQuery.role === "all" ? undefined : listQuery.role,
+        status: listQuery.status === "all" ? undefined : listQuery.status,
+        branchId: listQuery.branchId === "all" ? undefined : listQuery.branchId,
+        warehouseId:
+          listQuery.warehouseId === "all" ? undefined : listQuery.warehouseId,
+      });
+      setStaffs(response.data);
+      setTotal(response.total);
+      setTotalPages(response.totalPages);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setStaffs([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
+      setIsInitialLoading(false);
     }
-  }, [mockData]);
+  }, [listQuery]);
+
+  const fetchRoles = useCallback(async () => {
+    try {
+      const roles = await staffApi.getRoles();
+      if (roles.length > 0) {
+        setRoleOptions(
+          roles.map((role) => ({
+            value: role.value,
+            label: getStaffRoleLabel(role.value),
+          })),
+        );
+      }
+    } catch {
+      setRoleOptions(DEFAULT_ROLE_OPTIONS);
+    }
+  }, []);
 
   useEffect(() => {
     fetchStaffs();
   }, [fetchStaffs]);
 
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
+
+  function updateRoleFilter(role: StaffRole | "all") {
+    setListQuery((prev) => ({ ...prev, role, page: 1 }));
+  }
+
+  function updateStatusFilter(status: StaffStatus | "all") {
+    setListQuery((prev) => ({ ...prev, status, page: 1 }));
+  }
+
+  function updateBranchFilter(branchId: string) {
+    setListQuery((prev) => ({ ...prev, branchId, page: 1 }));
+  }
+
+  function updateWarehouseFilter(warehouseId: string) {
+    setListQuery((prev) => ({ ...prev, warehouseId, page: 1 }));
+  }
+
+  function updatePage(page: number) {
+    setListQuery((prev) => ({ ...prev, page }));
+  }
+
+  function updatePageSize(recordPerPage: number) {
+    setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
+  }
+
   async function handleAdd(payload: CreateStaffPayload) {
     try {
-      await staffApi.create(payload);
-      toast.success("Đã thêm nhân viên");
+      const created = await staffApi.create(payload);
+
+      if (payload.newPassword && payload.reEnterPassword) {
+        try {
+          await staffApi.createAccount(created._id, {
+            newPassword: payload.newPassword,
+            reEnterPassword: payload.reEnterPassword,
+          });
+          toast.success("Đã thêm nhân viên");
+        } catch {
+          toast.warning(
+            "Đã tạo nhân viên nhưng chưa kích hoạt tài khoản. Bạn có thể kích hoạt sau.",
+          );
+        }
+      } else {
+        toast.success("Đã thêm nhân viên");
+      }
+
       await fetchStaffs();
-    } catch {
-      const branchName = BRANCH_MAP[payload.branchId] ?? "Không xác định";
-      const fullName = `${payload.lastName} ${payload.firstName}`.trim();
-      const now = new Date().toISOString();
-      const fallbackStaff: Staff = {
-        _id: Date.now().toString(),
-        tenantId: "tenant-1",
-        branchId: payload.branchId,
-        branchName,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        fullName,
-        phoneNumber: payload.phoneNumber,
-        email: payload.email,
-        role: payload.role,
-        status: payload.status ?? "ACTIVE",
-        joinedAt: now,
-        createdAt: now,
-        updatedAt: now,
-      };
-      setStaffs((prev) => [fallbackStaff, ...prev]);
-      toast.success("Đã thêm nhân viên (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
 
@@ -87,37 +248,61 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       await staffApi.update(id, payload);
       toast.success("Đã cập nhật nhân viên");
       await fetchStaffs();
-    } catch {
-      setStaffs((prev) =>
-        prev.map((staff) => {
-          if (staff._id !== id) return staff;
-          const firstName = payload.firstName ?? staff.firstName;
-          const lastName = payload.lastName ?? staff.lastName;
-          const branchId = payload.branchId ?? staff.branchId;
-          return {
-            ...staff,
-            ...payload,
-            firstName,
-            lastName,
-            branchId,
-            branchName: BRANCH_MAP[branchId] ?? staff.branchName,
-            fullName: `${lastName} ${firstName}`.trim(),
-            updatedAt: new Date().toISOString(),
-          };
-        }),
-      );
-      toast.success("Đã cập nhật nhân viên (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
 
   async function handleDelete(id: string) {
     try {
       await staffApi.remove(id);
+      setStaffs((prev) => prev.filter((staff) => staff._id !== id));
+      setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa nhân viên");
       await fetchStaffs();
-    } catch {
-      setStaffs((prev) => prev.filter((staff) => staff._id !== id));
-      toast.success("Đã xóa nhân viên (mock mode)");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleDeactivate(id: string) {
+    try {
+      await staffApi.deactivateAccount(id);
+      toast.success("Đã khóa tài khoản nhân viên");
+      await fetchStaffs();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleActivate(
+    id: string,
+    payload: CreateStaffAccountPayload,
+  ) {
+    try {
+      await staffApi.createAccount(id, payload);
+      toast.success("Đã kích hoạt tài khoản nhân viên");
+      await fetchStaffs();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleUpdatePassword(
+    id: string,
+    payload: CreateStaffAccountPayload,
+  ) {
+    try {
+      await staffApi.updatePassword(id, payload);
+      toast.success("Đã đổi mật khẩu");
+      await fetchStaffs();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
     }
   }
 
@@ -125,7 +310,17 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     <StaffsContext.Provider
       value={{
         staffs,
-        isLoading,
+        isInitialLoading,
+        isFetching,
+        total,
+        totalPages,
+        listQuery,
+        keywordInput,
+        setKeywordInput,
+        setListQuery,
+        roleOptions,
+        branchOptions,
+        warehouseOptions,
         open,
         setOpen,
         currentRow,
@@ -134,6 +329,15 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
         handleAdd,
         handleEdit,
         handleDelete,
+        handleDeactivate,
+        handleActivate,
+        handleUpdatePassword,
+        updateRoleFilter,
+        updateStatusFilter,
+        updateBranchFilter,
+        updateWarehouseFilter,
+        updatePage,
+        updatePageSize,
       }}
     >
       {children}
@@ -145,75 +349,4 @@ export function useStaffs() {
   const ctx = React.useContext(StaffsContext);
   if (!ctx) throw new Error("useStaffs must be used within <StaffsProvider>");
   return ctx;
-}
-
-const BRANCH_MAP: Record<string, string> = {
-  "branch-1": "Chi nhánh Quận 1",
-  "branch-2": "Chi nhánh Quận 3",
-  "branch-3": "Chi nhánh Gò Vấp",
-};
-
-const MOCK_STAFFS: Staff[] = [
-  createMockStaff(
-    "staff-001",
-    "Nguyễn",
-    "An",
-    "0901234567",
-    "an.nguyen@ikiot.vn",
-    "SALE_STAFF",
-    "ACTIVE",
-    "branch-1",
-    "2025-10-10T08:00:00Z",
-  ),
-  createMockStaff(
-    "staff-002",
-    "Trần",
-    "Bình",
-    "0902345678",
-    "binh.tran@ikiot.vn",
-    "WAREHOUSE_MANAGER",
-    "ACTIVE",
-    "branch-2",
-    "2025-07-20T08:00:00Z",
-  ),
-  createMockStaff(
-    "staff-003",
-    "Lê",
-    "Chi",
-    "0903456789",
-    "chi.le@ikiot.vn",
-    "BRANCH_MANAGER",
-    "INACTIVE",
-    "branch-3",
-    "2024-12-01T08:00:00Z",
-  ),
-];
-
-function createMockStaff(
-  id: string,
-  lastName: string,
-  firstName: string,
-  phoneNumber: string,
-  email: string,
-  role: StaffRole,
-  status: StaffStatus,
-  branchId: string,
-  joinedAt: string,
-): Staff {
-  return {
-    _id: id,
-    tenantId: "tenant-1",
-    branchId,
-    branchName: BRANCH_MAP[branchId] ?? "Không xác định",
-    firstName,
-    lastName,
-    fullName: `${lastName} ${firstName}`.trim(),
-    phoneNumber,
-    email,
-    role,
-    status,
-    joinedAt,
-    createdAt: joinedAt,
-    updatedAt: joinedAt,
-  };
 }

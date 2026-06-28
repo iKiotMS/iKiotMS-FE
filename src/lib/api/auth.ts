@@ -74,3 +74,11 @@ export async function logout(): Promise<void> {
   clearTokens();
   clearCachedUser();
 }
+
+/**
+ * Get current authenticated user profile
+ */
+export async function getMe() {
+  const response = await client.get<{ success: boolean; data: any }>("/auth/me");
+  return response.data.data;
+}

@@ -19,7 +19,7 @@ export default function StaffSchedulePage() {
               <h1 className="text-2xl font-bold tracking-tight">Lịch làm việc</h1>
             </div>
             <p className="text-muted-foreground text-sm mt-1">
-              Phân ca theo ngày cho nhân viên tại từng chi nhánh
+              Phân ca theo ngày cho nhân viên dựa trên ca mẫu
             </p>
           </div>
           <div className="flex items-center gap-2">

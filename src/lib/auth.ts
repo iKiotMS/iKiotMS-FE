@@ -24,6 +24,25 @@ export interface User {
   created_at?: string;
   updated_at?: string;
   role?: string;
+  phoneNumber?: string;
+  status?: string;
+  tenantId?: string;
+  branchId?: string;
+  warehouseId?: string;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+    dob?: string;
+  };
+  subscription?: {
+    id: string;
+    planName: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    autoRenew: boolean;
+  };
 }
 
 /**

@@ -1,11 +1,18 @@
 "use client";
 
+import { StaffsAccountDialog } from "./staffs-account-dialog";
+import { StaffsDeactivateDialog } from "./staffs-deactivate-dialog";
 import { StaffsDeleteDialog } from "./staffs-delete-dialog";
 import { StaffsMutateDialog } from "./staffs-mutate-dialog";
 import { useStaffs } from "./staffs-provider";
 
 export function StaffsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useStaffs();
+
+  function closeDialog() {
+    setOpen(null);
+    setCurrentRow(null);
+  }
 
   return (
     <>
@@ -21,10 +28,7 @@ export function StaffsDialogs() {
           key="staff-edit"
           open={open === "edit"}
           onOpenChange={(value) => {
-            if (!value) {
-              setOpen(null);
-              setCurrentRow(null);
-            }
+            if (!value) closeDialog();
           }}
           currentRow={currentRow}
         />
@@ -32,12 +36,32 @@ export function StaffsDialogs() {
       <StaffsDeleteDialog
         open={open === "delete"}
         onOpenChange={(value) => {
-          if (!value) {
-            setOpen(null);
-            setCurrentRow(null);
-          }
+          if (!value) closeDialog();
         }}
         currentRow={currentRow}
+      />
+      <StaffsDeactivateDialog
+        open={open === "deactivate"}
+        onOpenChange={(value) => {
+          if (!value) closeDialog();
+        }}
+        currentRow={currentRow}
+      />
+      <StaffsAccountDialog
+        open={open === "activate"}
+        onOpenChange={(value) => {
+          if (!value) closeDialog();
+        }}
+        currentRow={currentRow}
+        mode="activate"
+      />
+      <StaffsAccountDialog
+        open={open === "password"}
+        onOpenChange={(value) => {
+          if (!value) closeDialog();
+        }}
+        currentRow={currentRow}
+        mode="password"
       />
     </>
   );

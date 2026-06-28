@@ -256,24 +256,11 @@ const data = {
   ],
 };
 
-const branches = [
-  { name: "Tổng", logo: Logo, address: "all" },
-  { name: "Chi nhánh A", logo: Logo, address: "123 Nguyễn Trãi, Q1, TP.HCM" },
-  { name: "Chi nhánh B", logo: Logo, address: "456 Lê Lợi, Q1, TP.HCM" },
-  { name: "Chi nhánh C", logo: Logo, address: "789 Hai Bà Trưng, Q1, TP.HCM" },
-];
-
-const warehouses = [
-  { name: "Tổng", logo: Logo, address: "all" },
-  { name: "Kho 1", logo: Logo, address: "123 Nguyễn Trãi, Q1, TP.HCM" },
-  { name: "Kho 2", logo: Logo, address: "456 Lê Lợi, Q1, TP.HCM" },
-];
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        <BranchSwitcher branches={branches} warehouses={warehouses} />
+        <BranchSwitcher />
       </SidebarHeader>
 
       <SidebarContent>

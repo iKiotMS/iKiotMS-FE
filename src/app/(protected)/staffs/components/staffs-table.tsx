@@ -2,16 +2,11 @@
 
 import { Fragment, useState } from "react";
 import {
-  type ColumnFiltersState,
   type ExpandedState,
-  type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { Funnel, Search } from "lucide-react";
@@ -47,6 +42,7 @@ import { StaffsExpandedPanel } from "./staffs-expanded-panel";
 import { useStaffs } from "./staffs-provider";
 
 const COLUMN_LABELS: Record<string, string> = {
+  avatar: "Ảnh",
   fullName: "Nhân viên",
   phoneNumber: "Số điện thoại",
   role: "Vai trò",
@@ -56,40 +52,51 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 
 export function StaffsTable() {
-  const { staffs, isLoading } = useStaffs();
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const {
+    staffs,
+    isInitialLoading,
+    isFetching,
+    total,
+    totalPages,
+    listQuery,
+    keywordInput,
+    setKeywordInput,
+    roleOptions,
+    branchOptions,
+    warehouseOptions,
+    updateRoleFilter,
+    updateStatusFilter,
+    updateBranchFilter,
+    updateWarehouseFilter,
+    updatePage,
+    updatePageSize,
+  } = useStaffs();
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useReactTable({
     data: staffs,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    pageCount: totalPages,
+    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
     onExpandedChange: setExpanded,
     state: {
-      sorting,
-      columnFilters,
       columnVisibility,
-      rowSelection,
-      globalFilter,
       expanded,
+      pagination: {
+        pageIndex: listQuery.page - 1,
+        pageSize: listQuery.recordPerPage,
+      },
     },
   });
 
-  const roleFilter = table.getColumn("role")?.getFilterValue() as string;
-  const statusFilter = table.getColumn("status")?.getFilterValue() as string;
+  const rangeStart =
+    total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
+  const rangeEnd = Math.min(listQuery.page * listQuery.recordPerPage, total);
 
   return (
     <div className="space-y-4">
@@ -99,16 +106,16 @@ export function StaffsTable() {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Tìm tên, số điện thoại, email..."
-              value={globalFilter ?? ""}
-              onChange={(e) => setGlobalFilter(String(e.target.value))}
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
               className="pl-9 h-9"
             />
           </div>
 
           <Select
-            value={roleFilter || ""}
+            value={listQuery.role}
             onValueChange={(value) =>
-              table.getColumn("role")?.setFilterValue(value === "all" ? "" : value)
+              updateRoleFilter(value as typeof listQuery.role)
             }
           >
             <SelectTrigger className="cursor-pointer w-48 h-9 text-sm">
@@ -116,18 +123,18 @@ export function StaffsTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả vai trò</SelectItem>
-              <SelectItem value="SALE_STAFF">Nhân viên bán hàng</SelectItem>
-              <SelectItem value="WAREHOUSE_MANAGER">Quản lý kho</SelectItem>
-              <SelectItem value="BRANCH_MANAGER">Quản lý chi nhánh</SelectItem>
+              {roleOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
           <Select
-            value={statusFilter || ""}
+            value={listQuery.status}
             onValueChange={(value) =>
-              table
-                .getColumn("status")
-                ?.setFilterValue(value === "all" ? "" : value)
+              updateStatusFilter(value as typeof listQuery.status)
             }
           >
             <SelectTrigger className="cursor-pointer w-40 h-9 text-sm">
@@ -137,8 +144,47 @@ export function StaffsTable() {
               <SelectItem value="all">Tất cả trạng thái</SelectItem>
               <SelectItem value="ACTIVE">Đang làm việc</SelectItem>
               <SelectItem value="INACTIVE">Ngừng làm việc</SelectItem>
+              <SelectItem value="SUSPENDED">Tạm khóa</SelectItem>
             </SelectContent>
           </Select>
+
+          {branchOptions.length > 0 && (
+            <Select
+              value={listQuery.branchId}
+              onValueChange={updateBranchFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Chi nhánh" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả chi nhánh</SelectItem>
+                {branchOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {warehouseOptions.length > 0 && (
+            <Select
+              value={listQuery.warehouseId}
+              onValueChange={updateWarehouseFilter}
+            >
+              <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
+                <SelectValue placeholder="Kho hàng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả kho</SelectItem>
+                {warehouseOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <DropdownMenu>
@@ -165,7 +211,12 @@ export function StaffsTable() {
         </DropdownMenu>
       </div>
 
-      <div className="rounded-md border">
+      <div
+        className={cn(
+          "rounded-md border relative transition-opacity",
+          isFetching && staffs.length > 0 && "opacity-60",
+        )}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -184,7 +235,7 @@ export function StaffsTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isInitialLoading ? (
               Array.from({ length: 6 }).map((_, index) => (
                 <TableRow key={index}>
                   {columns.map((_, cellIndex) => (
@@ -198,7 +249,6 @@ export function StaffsTable() {
               table.getRowModel().rows.map((row) => (
                 <Fragment key={row.id}>
                   <TableRow
-                    data-state={row.getIsSelected() ? "selected" : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
                       "cursor-pointer",
@@ -207,14 +257,7 @@ export function StaffsTable() {
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        onClick={
-                          cell.column.id === "select"
-                            ? (e) => e.stopPropagation()
-                            : undefined
-                        }
-                      >
+                      <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
@@ -267,11 +310,11 @@ export function StaffsTable() {
         <div className="flex items-center space-x-2">
           <Label className="text-sm font-medium">Hiển thị</Label>
           <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+            value={`${listQuery.recordPerPage}`}
+            onValueChange={(value) => updatePageSize(Number(value))}
           >
             <SelectTrigger className="w-20 cursor-pointer">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue placeholder={listQuery.recordPerPage} />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50].map((pageSize) => (
@@ -283,22 +326,22 @@ export function StaffsTable() {
           </Select>
         </div>
         <div className="hidden sm:block text-sm text-muted-foreground">
-          Đã chọn {table.getFilteredSelectedRowModel().rows.length} /{" "}
-          {table.getFilteredRowModel().rows.length} nhân viên
+          {total === 0
+            ? "Không có nhân viên"
+            : `Hiển thị ${rangeStart}–${rangeEnd} / ${total} nhân viên`}
         </div>
         <div className="flex items-center space-x-2">
           <span className="hidden sm:block text-sm font-medium">
             Trang{" "}
             <strong>
-              {table.getState().pagination.pageIndex + 1} /{" "}
-              {table.getPageCount() || 1}
+              {listQuery.page} / {totalPages || 1}
             </strong>
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => updatePage(listQuery.page - 1)}
+            disabled={listQuery.page <= 1 || isFetching}
             className="cursor-pointer"
           >
             Trước
@@ -306,8 +349,8 @@ export function StaffsTable() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => updatePage(listQuery.page + 1)}
+            disabled={listQuery.page >= totalPages || isFetching}
             className="cursor-pointer"
           >
             Tiếp

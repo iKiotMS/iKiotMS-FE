@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,16 +26,29 @@ export function StaffsDeleteDialog({
   currentRow,
 }: StaffsDeleteDialogProps) {
   const { handleDelete } = useStaffs();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   async function onConfirm() {
-    if (currentRow) {
+    if (!currentRow || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
       await handleDelete(currentRow._id);
+      onOpenChange(false);
+    } catch {
+      // Error toast handled in provider; keep dialog open for retry.
+    } finally {
+      setIsDeleting(false);
     }
-    onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!isDeleting) onOpenChange(value);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Xóa nhân viên</DialogTitle>
@@ -43,13 +57,15 @@ export function StaffsDeleteDialog({
             <strong className="text-foreground">
               {currentRow?.fullName ?? ""}
             </strong>
-            ? Hành động này không thể hoàn tác.
+            ? Hồ sơ nhân viên sẽ bị đánh dấu xóa và không còn hiển thị trong
+            danh sách.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
           <Button
             variant="outline"
             className="cursor-pointer"
+            disabled={isDeleting}
             onClick={() => onOpenChange(false)}
           >
             Hủy
@@ -57,10 +73,11 @@ export function StaffsDeleteDialog({
           <Button
             variant="destructive"
             className="cursor-pointer"
+            disabled={isDeleting}
             onClick={onConfirm}
           >
             <Trash2 className="mr-2 size-4" />
-            Xóa
+            {isDeleting ? "Đang xóa..." : "Xóa"}
           </Button>
         </DialogFooter>
       </DialogContent>

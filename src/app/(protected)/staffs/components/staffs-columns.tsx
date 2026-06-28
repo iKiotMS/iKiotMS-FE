@@ -1,82 +1,41 @@
 import { type ColumnDef } from "@tanstack/react-table";
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  ChevronsUpDown,
-} from "lucide-react";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
+import { ChevronRight } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
+  formatStaffDate,
+  getStaffInitials,
+} from "@/app/(protected)/staffs/shared/staff-format";
+import {
   STAFF_ROLE_MAP,
-  STAFF_STATUS_MAP,
+  getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
 import type { Staff } from "@/types/staff";
 
-function SortableHeader({
-  label,
-  column,
-}: {
-  label: string;
-  column: {
-    getIsSorted: () => false | "asc" | "desc";
-    toggleSorting: (desc?: boolean) => void;
-  };
-}) {
-  const sorted = column.getIsSorted();
-  return (
-    <button
-      className="flex items-center gap-1 cursor-pointer hover:text-foreground"
-      onClick={() => column.toggleSorting(sorted === "asc")}
-    >
-      {label}
-      {sorted === "asc" ? (
-        <ChevronUp className="size-3" />
-      ) : sorted === "desc" ? (
-        <ChevronDown className="size-3" />
-      ) : (
-        <ChevronsUpDown className="size-3 text-muted-foreground" />
-      )}
-    </button>
-  );
-}
-
 export const staffsColumns: ColumnDef<Staff>[] = [
   {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center px-2">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center px-2">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn dòng"
-        />
-      </div>
-    ),
+    id: "avatar",
+    header: "Ảnh",
+    cell: ({ row }) => {
+      const staff = row.original;
+      return (
+        <Avatar className="size-9">
+          {staff.profile?.avatarUrl ? (
+            <AvatarImage src={staff.profile.avatarUrl} alt={staff.fullName} />
+          ) : null}
+          <AvatarFallback className="text-xs">
+            {getStaffInitials(staff.fullName)}
+          </AvatarFallback>
+        </Avatar>
+      );
+    },
     enableSorting: false,
-    enableHiding: false,
-    size: 50,
+    size: 56,
   },
   {
     accessorKey: "fullName",
-    header: ({ column }) => (
-      <SortableHeader label="Nhân viên" column={column} />
-    ),
+    header: "Nhân viên",
     cell: ({ row }) => (
       <div className="flex flex-col">
         <span className="font-medium">{row.original.fullName}</span>
@@ -85,6 +44,7 @@ export const staffsColumns: ColumnDef<Staff>[] = [
         </span>
       </div>
     ),
+    enableSorting: false,
   },
   {
     accessorKey: "phoneNumber",
@@ -92,40 +52,44 @@ export const staffsColumns: ColumnDef<Staff>[] = [
     cell: ({ row }) => (
       <span className="font-mono text-sm">{row.original.phoneNumber}</span>
     ),
+    enableSorting: false,
   },
   {
     accessorKey: "role",
     header: "Vai trò",
     cell: ({ row }) => {
-      const config = STAFF_ROLE_MAP[row.original.role];
+      const config = STAFF_ROLE_MAP[row.original.role] ?? {
+        label: row.original.role,
+        variant: "outline" as const,
+      };
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
+    enableSorting: false,
   },
   {
     accessorKey: "branchName",
     header: "Chi nhánh",
     cell: ({ row }) => <span>{row.original.branchName}</span>,
+    enableSorting: false,
   },
   {
     accessorKey: "joinedAt",
-    header: ({ column }) => (
-      <SortableHeader label="Ngày vào làm" column={column} />
-    ),
+    header: "Ngày vào làm",
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground">
-        {format(new Date(row.original.joinedAt), "dd/MM/yyyy", { locale: vi })}
+        {formatStaffDate(row.original.joinedAt)}
       </span>
     ),
+    enableSorting: false,
   },
   {
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const config = STAFF_STATUS_MAP[row.original.status];
+      const config = getStaffStatusDisplay(row.original.status);
       return <Badge variant={config.variant}>{config.label}</Badge>;
     },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
+    enableSorting: false,
   },
   {
     id: "expand",
@@ -144,4 +108,4 @@ export const staffsColumns: ColumnDef<Staff>[] = [
   },
 ];
 
-export { STAFF_ROLE_MAP as ROLE_LABELS, STAFF_STATUS_MAP as STATUS_MAP };
+export { STAFF_ROLE_MAP as ROLE_LABELS };
