@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { productApi } from '@/lib/api/product'
 import type { Product } from '@/types/product'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/store/auth-store'
 
 export function useCheckoutProducts(searchQuery: string) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
+  const locationKey = useAuthStore((state) => state.locationKey)
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -27,7 +29,7 @@ export function useCheckoutProducts(searchQuery: string) {
     }, 300)
 
     return () => clearTimeout(delayDebounceFn)
-  }, [searchQuery])
+  }, [searchQuery, locationKey])
 
   return { products, loading }
 }

@@ -7,17 +7,19 @@ import type { Product } from '@/types/product'
 import type { ProductFormValues } from '../_types/product.types'
 import { productApi } from '@/lib/api/product'
 import { parsePriceAmount } from '../_constants/product.constants'
+import { useAuthStore } from '@/store/auth-store'
 
 export function useProductsMutations() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const locationKey = useAuthStore((state) => state.locationKey)
 
   useEffect(() => {
     productApi
       .getList()
       .then((res) => setProducts(res.data))
       .catch(() => toast.error('Tải danh sách hàng hóa thất bại'))
-  }, [])
+  }, [locationKey])
 
   async function handleAdd(data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)
