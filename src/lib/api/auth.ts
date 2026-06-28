@@ -79,6 +79,31 @@ export async function logout(): Promise<void> {
  * Get current authenticated user profile
  */
 export async function getMe() {
-  const response = await client.get<{ success: boolean; data: any }>("/auth/me");
+  const response = await client.get<{ success: boolean; data: any }>(
+    "/auth/me",
+  );
+  return response.data.data;
+}
+
+/**
+ * Update current authenticated user profile
+ */
+export async function updateMe(payload: {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  profile?: {
+    avatarUrl?: string;
+    address?: string;
+    gender?: string;
+    dob?: string;
+    taxNumber?: string;
+    identificationId?: string;
+  };
+}) {
+  const response = await client.patch<{ success: boolean; data: any }>(
+    "/auth/me",
+    payload,
+  );
   return response.data.data;
 }

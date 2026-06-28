@@ -34,6 +34,10 @@ export interface User {
     lastName?: string;
     avatarUrl?: string;
     dob?: string;
+    taxNumber?: string;
+    identificationId?: string;
+    address?: string;
+    gender?: "MALE" | "FEMALE" | "OTHER";
   };
   subscription?: {
     id: string;

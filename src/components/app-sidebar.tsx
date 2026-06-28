@@ -32,6 +32,8 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 
+import { useAuthStore } from "@/store/auth-store";
+
 const data = {
   user: {
     name: "iKiot",
@@ -257,6 +259,23 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuthStore();
+
+  const formattedUser = React.useMemo(() => {
+    if (!user) {
+      return data.user;
+    }
+    const name = [user.profile?.lastName, user.profile?.firstName]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || user.email;
+    return {
+      name,
+      email: user.email,
+      avatar: user.profile?.avatarUrl || "",
+    };
+  }, [user]);
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -271,7 +290,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarFooter>
         <SidebarNotification />
-        <NavUser user={data.user} />
+        <NavUser user={formattedUser} />
       </SidebarFooter>
     </Sidebar>
   );
