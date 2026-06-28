@@ -54,29 +54,24 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
     intervalRef.current = setInterval(tick, 1000)
 
     // Socket: lắng nghe subscription:activated từ room "tenant:<tenantId>"
-    const tenantId = user?.tenantId
-    if (tenantId) {
-      const room = `tenant:${tenantId}`
+    const socket = getSocket()
+    const room = user?.tenantId ? `tenant:${user.tenantId}` : null
+
+    const handleActivated = async () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      setPaymentState("paid")
+      await fetchMe()
+      toast.success(`Nâng cấp lên gói ${invoice.plan.planName} thành công!`)
+    }
+
+    if (room) {
       joinRoom(room)
-
-      const handleActivated = async () => {
-        if (intervalRef.current) clearInterval(intervalRef.current)
-        setPaymentState("paid")
-        await fetchMe()
-        toast.success(`Nâng cấp lên gói ${invoice.plan.planName} thành công!`)
-      }
-
-      const socket = getSocket()
       socket.on("subscription:activated", handleActivated)
-
-      return () => {
-        if (intervalRef.current) clearInterval(intervalRef.current)
-        socket.off("subscription:activated", handleActivated)
-      }
     }
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
+      socket.off("subscription:activated", handleActivated)
     }
   }, [open, invoice])
 
@@ -163,7 +158,7 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
 
             <Separator />
 
-            {/* Countdown + polling indicator */}
+            {/* Countdown + waiting indicator */}
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin" />

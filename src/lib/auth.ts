@@ -42,7 +42,7 @@ export interface User {
   subscription?: {
     id: string;
     planName: string;
-    planCode: "TRIAL" | "PLUS" | "PRO";
+    planCode: "TRIAL" | "PLUS" | "PRO" | "PLUS_YEARLY" | "PRO_YEARLY";
     status: "TRIAL" | "ACTIVE" | "EXPIRED" | "PAST_DUE" | "CANCELLED";
     startDate: string;
     endDate: string;
