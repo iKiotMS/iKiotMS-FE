@@ -33,12 +33,7 @@ import {
 } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { cn } from "@/lib/utils";
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
-}
+import { ScheduleStaffAvatar } from "./schedule-staff-avatar";
 
 function InfoItem({
   icon,
@@ -99,7 +94,7 @@ export function ScheduleDetailContent({
 
   if (loading) {
     return (
-      <div className="px-6 py-5 space-y-4">
+      <div className="px-5 py-5 space-y-4">
         <Skeleton className="h-16 w-full" />
         <div className="grid grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -114,19 +109,17 @@ export function ScheduleDetailContent({
     <div>
       <div
         className={cn(
-          "border-b bg-gradient-to-br px-6 pt-6 pb-5",
+          "border-b bg-gradient-to-br px-5 pt-5 pb-4",
           accent.gradient,
         )}
       >
         <div className="flex items-start gap-4">
-          <div
-            className={cn(
-              "flex size-14 shrink-0 items-center justify-center rounded-full bg-background text-lg font-bold shadow-sm ring-2",
-              accent.ring,
-            )}
-          >
-            {getInitials(data.staffName)}
-          </div>
+          <ScheduleStaffAvatar
+            name={data.staffName}
+            avatarUrl={data.staffAvatarUrl}
+            className={cn("size-[3.25rem] shadow-sm ring-2 bg-background", accent.ring)}
+            fallbackClassName="text-base font-bold"
+          />
           <div className="min-w-0 flex-1 pt-0.5">
             <h2 className="truncate text-lg font-semibold">{data.staffName}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -142,8 +135,8 @@ export function ScheduleDetailContent({
         </div>
       </div>
 
-      <div className="space-y-4 px-6 py-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+      <div className="space-y-4 px-5 py-5">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           <InfoItem
             icon={<CalendarDays className="size-4" />}
             label="Ngày làm"
@@ -173,7 +166,7 @@ export function ScheduleDetailContent({
             <Fingerprint className="size-4 text-primary" />
             Chấm công
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <InfoItem
               icon={<Clock className="size-4" />}
               label="Check-in thực tế"
@@ -210,20 +203,24 @@ export function ScheduleDetailContent({
               }
             />
             {hasAttendanceLocation(data.attendance?.checkInLocation) && (
-              <InfoItem
-                icon={<MapPin className="size-4" />}
-                label="Vị trí check-in"
-                value={formatAttendanceLocation(data.attendance.checkInLocation)}
-              />
+              <div className="col-span-2">
+                <InfoItem
+                  icon={<MapPin className="size-4" />}
+                  label="Vị trí check-in"
+                  value={formatAttendanceLocation(data.attendance.checkInLocation)}
+                />
+              </div>
             )}
             {hasAttendanceLocation(data.attendance?.checkOutLocation) && (
-              <InfoItem
-                icon={<MapPin className="size-4" />}
-                label="Vị trí check-out"
-                value={formatAttendanceLocation(
-                  data.attendance.checkOutLocation,
-                )}
-              />
+              <div className="col-span-2">
+                <InfoItem
+                  icon={<MapPin className="size-4" />}
+                  label="Vị trí check-out"
+                  value={formatAttendanceLocation(
+                    data.attendance.checkOutLocation,
+                  )}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -232,7 +229,7 @@ export function ScheduleDetailContent({
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Thông tin hệ thống
           </p>
-          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
               <dt className="text-xs text-muted-foreground">Ngày tạo</dt>
               <dd className="font-medium">
@@ -249,7 +246,7 @@ export function ScheduleDetailContent({
                 })}
               </dd>
             </div>
-            <div>
+            <div className="col-span-2">
               <dt className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Hash className="size-3" />
                 Mã lịch
@@ -262,7 +259,7 @@ export function ScheduleDetailContent({
         </div>
       </div>
 
-      <div className="border-t bg-muted/20 px-6 py-4">
+      <div className="border-t bg-muted/20 px-5 py-4">
         {isLocked ? (
           <div className="flex items-center gap-2 rounded-lg border border-dashed bg-background/60 px-4 py-3 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" />

@@ -54,7 +54,7 @@ export interface ApiWorkingSchedule {
     | {
         _id: string;
         phoneNumber: string;
-        profile?: { firstName?: string; lastName?: string };
+        profile?: { firstName?: string; lastName?: string; avatarUrl?: string };
         role: string;
       }
     | string;
@@ -74,6 +74,7 @@ export interface WorkingSchedule {
   tenantId: string;
   userId: string;
   staffName: string;
+  staffAvatarUrl?: string | null;
   staffPhone: string;
   shiftTemplateId: string;
   shiftName: string;
@@ -131,9 +132,7 @@ export interface WorkingScheduleListResponse {
   totalPages: number;
 }
 
-export interface ScheduleListQuery {
-  page: number;
-  recordPerPage: number;
+export interface ScheduleCalendarFilters {
   userId: string;
   status: ScheduleStatus | "all";
   startDate: string;

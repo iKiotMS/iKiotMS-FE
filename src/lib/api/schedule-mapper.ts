@@ -24,6 +24,13 @@ function resolveStaffName(userId: ApiWorkingSchedule["userId"]): string {
   return name || userId.phoneNumber;
 }
 
+function resolveStaffAvatarUrl(
+  userId: ApiWorkingSchedule["userId"],
+): string | null {
+  if (!userId || typeof userId === "string") return null;
+  return userId.profile?.avatarUrl?.trim() || null;
+}
+
 function resolveShiftTimes(
   raw: ApiWorkingSchedule,
   shiftTemplate: ShiftTemplate | null,
@@ -96,6 +103,7 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     tenantId: String(raw.tenantId),
     userId: resolveId(raw.userId as { _id: string } | string),
     staffName: resolveStaffName(raw.userId),
+    staffAvatarUrl: resolveStaffAvatarUrl(raw.userId),
     staffPhone:
       typeof raw.userId === "string" ? "" : (raw.userId?.phoneNumber ?? ""),
     shiftTemplateId: resolveId(raw.shiftTemplateId),

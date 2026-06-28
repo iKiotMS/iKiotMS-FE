@@ -108,7 +108,7 @@ export function ScheduleCalendar() {
     selectedSchedule,
     selectedDayDate,
     staffOptions,
-    listQuery,
+    filters,
     updateStatusFilter,
     updateUserFilter,
   } = useSchedule();
@@ -174,7 +174,7 @@ export function ScheduleCalendar() {
             />
           </div>
           {staffOptions.length > 0 && (
-            <Select value={listQuery.userId} onValueChange={updateUserFilter}>
+            <Select value={filters.userId} onValueChange={updateUserFilter}>
               <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
                 <SelectValue placeholder="Nhân viên" />
               </SelectTrigger>
@@ -189,9 +189,9 @@ export function ScheduleCalendar() {
             </Select>
           )}
           <Select
-            value={listQuery.status}
+            value={filters.status}
             onValueChange={(value) =>
-              updateStatusFilter(value as typeof listQuery.status)
+              updateStatusFilter(value as typeof filters.status)
             }
           >
             <SelectTrigger className="cursor-pointer w-36 h-9 text-sm">
