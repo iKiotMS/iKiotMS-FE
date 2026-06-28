@@ -37,10 +37,12 @@ import type { Product } from '@/types/product'
 import { productFormSchema, type ProductFormValues } from '../../_types/product.types'
 import { useProducts } from '../../_context/products-provider'
 import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
+import { CascadeSelect } from '@/components/ui/cascade-select'
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
-  categoryName: '',
+  brandId: null,
+  categoryId: null,
   status: 'ACTIVE',
   images: [],
   productCode: '',
@@ -61,7 +63,7 @@ type ProductsMutateDialogProps = {
 
 export function ProductsMutateDialog({ open, onOpenChange, currentRow }: ProductsMutateDialogProps) {
   const isEdit = !!currentRow
-  const { handleAdd, handleEdit } = useProducts()
+  const { handleAdd, handleEdit, brands, categories } = useProducts()
   const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductFormValues>({
@@ -74,7 +76,8 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
     if (isEdit && currentRow) {
       form.reset({
         name: currentRow.name,
-        categoryName: currentRow.categoryName ?? '',
+        brandId: currentRow.brandId ?? null,
+        categoryId: currentRow.categoryId ?? null,
         status: currentRow.status,
         images: currentRow.images ?? [],
       })
@@ -209,13 +212,30 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="categoryName"
+                name="brandId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Danh mục</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nhập tên danh mục" {...field} />
-                    </FormControl>
+                    <FormLabel>Thương hiệu</FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                      value={field.value ?? '__none__'}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="cursor-pointer w-full">
+                          <SelectValue placeholder="Chọn thương hiệu" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          <span className="text-muted-foreground">Không có</span>
+                        </SelectItem>
+                        {brands.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -223,27 +243,54 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
 
               <FormField
                 control={form.control}
-                name="status"
+                name="categoryId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Trạng thái</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn trạng thái" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ACTIVE">Đang kinh doanh</SelectItem>
-                        <SelectItem value="INACTIVE">Ngừng kinh doanh</SelectItem>
-                        <SelectItem value="DISCONTINUED">Ngừng sản xuất</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Danh mục</FormLabel>
+                    <FormControl>
+                      <CascadeSelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        items={categories.map((c) => ({
+                          id: c.id,
+                          label: c.name,
+                          parentId: !c.parentId
+                            ? null
+                            : typeof c.parentId === 'string'
+                              ? c.parentId
+                              : (c.parentId as { _id: string })._id,
+                        }))}
+                        placeholder="Chọn danh mục"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Trạng thái</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cursor-pointer w-full">
+                        <SelectValue placeholder="Chọn trạng thái" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Đang kinh doanh</SelectItem>
+                      <SelectItem value="INACTIVE">Ngừng kinh doanh</SelectItem>
+                      <SelectItem value="DISCONTINUED">Ngừng sản xuất</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {!isEdit && (
               <>

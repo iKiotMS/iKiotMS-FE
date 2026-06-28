@@ -26,7 +26,8 @@ export function useProductsMutations() {
     try {
       const product = await productApi.create({
         name: data.name,
-        categoryName: data.categoryName,
+        brandId: data.brandId ?? undefined,
+        categoryId: data.categoryId ?? undefined,
         status: data.status,
         images: data.images,
         items: [
@@ -59,7 +60,8 @@ export function useProductsMutations() {
     try {
       const product = await productApi.update(id, {
         name: data.name,
-        categoryName: data.categoryName,
+        brandId: data.brandId ?? undefined,
+        categoryId: data.categoryId ?? undefined,
         status: data.status,
         images: data.images,
       })
