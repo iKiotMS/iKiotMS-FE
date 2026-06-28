@@ -7,6 +7,10 @@ import type { ProductsDialogType, ProductFormValues } from '../_types/product.ty
 import { useProductsMutations } from '../_hooks/use-products-mutations'
 import { branchApi } from '@/lib/api/branch'
 import { warehouseApi } from '@/lib/api/warehouse'
+import { brandApi } from '@/lib/api/brand'
+import { categoryApi } from '@/lib/api/category'
+import type { Brand } from '@/types/brand'
+import type { Category } from '@/types/category'
 
 type LocationOption = { value: string; label: string }
 
@@ -26,6 +30,8 @@ type ProductsContextType = {
   selectionVersion: number
   branchOptions: LocationOption[]
   warehouseOptions: LocationOption[]
+  brands: Brand[]
+  categories: Category[]
 }
 
 const ProductsContext = React.createContext<ProductsContextType | null>(null)
@@ -39,6 +45,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [selectionVersion, setSelectionVersion] = useState(0)
   const [branchOptions, setBranchOptions] = useState<LocationOption[]>([])
   const [warehouseOptions, setWarehouseOptions] = useState<LocationOption[]>([])
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
 
   useEffect(() => {
     async function loadLocationOptions() {
@@ -53,6 +61,18 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         setWarehouseOptions((res.data ?? []).map((w) => ({ value: w._id, label: w.name })))
       } catch {
         setWarehouseOptions([])
+      }
+      try {
+        const res = await brandApi.getList({ limit: 200 })
+        setBrands(res.data)
+      } catch {
+        setBrands([])
+      }
+      try {
+        const res = await categoryApi.getList({ limit: 200 })
+        setCategories(res.data)
+      } catch {
+        setCategories([])
       }
     }
     loadLocationOptions()
@@ -85,6 +105,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         selectionVersion,
         branchOptions,
         warehouseOptions,
+        brands,
+        categories,
       }}
     >
       {children}

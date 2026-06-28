@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { Funnel, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CascadeSelect } from '@/components/ui/cascade-select'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -20,22 +21,32 @@ import {
 } from '@/components/ui/select'
 import { COLUMN_LABELS } from '../../_constants/product.constants'
 import type { Product } from '@/types/product'
+import { useProducts } from '../../_context/products-provider'
 
 type ProductsToolbarProps = {
   table: Table<Product>
 }
 
 export function ProductsToolbar({ table }: ProductsToolbarProps) {
-  const categoryFilter = table.getColumn('categoryName')?.getFilterValue() as string
-  const statusFilter = table.getColumn('status')?.getFilterValue() as string
+  const { brands, categories } = useProducts()
 
-  const categories = useMemo(() => {
-    const all = table
-      .getCoreRowModel()
-      .rows.map((r) => r.original.categoryName)
-      .filter((c): c is string => !!c)
-    return [...new Set(all)].sort()
-  }, [table])
+  const brandFilter = table.getColumn('brandId')?.getFilterValue() as string | undefined
+  const categoryFilter = table.getColumn('categoryId')?.getFilterValue() as string | undefined
+  const statusFilter = table.getColumn('status')?.getFilterValue() as string | undefined
+
+  const categoryItems = useMemo(
+    () =>
+      categories.map((c) => ({
+        id: c.id,
+        label: c.name,
+        parentId: !c.parentId
+          ? null
+          : typeof c.parentId === 'string'
+            ? c.parentId
+            : (c.parentId as { _id: string })._id,
+      })),
+    [categories],
+  )
 
   return (
     <div className="flex items-center justify-between">
@@ -51,23 +62,33 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
         </div>
 
         <Select
-          value={categoryFilter || ''}
+          value={brandFilter ?? ''}
           onValueChange={(value) =>
-            table.getColumn('categoryName')?.setFilterValue(value === 'all' ? '' : value)
+            table.getColumn('brandId')?.setFilterValue(value === 'all' ? '' : value)
           }
         >
           <SelectTrigger className="cursor-pointer w-36 h-9 text-sm">
-            <SelectValue placeholder="Danh mục" />
+            <SelectValue placeholder="Thương hiệu" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả danh mục</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
+            <SelectItem value="all">Tất cả thương hiệu</SelectItem>
+            {brands.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        <CascadeSelect
+          items={categoryItems}
+          value={categoryFilter ?? null}
+          onValueChange={(val) =>
+            table.getColumn('categoryId')?.setFilterValue(val ?? '')
+          }
+          placeholder="Danh mục"
+          className="w-36 h-9 text-sm cursor-pointer"
+        />
 
         <Select
           onValueChange={(value) => {
@@ -87,7 +108,7 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
         </Select>
 
         <Select
-          value={statusFilter || ''}
+          value={statusFilter ?? ''}
           onValueChange={(value) =>
             table.getColumn('status')?.setFilterValue(value === 'all' ? '' : value)
           }

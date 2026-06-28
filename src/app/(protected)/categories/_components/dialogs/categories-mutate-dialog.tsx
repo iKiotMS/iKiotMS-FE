@@ -39,12 +39,14 @@ type CategoriesMutateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentRow?: Category
+  defaultParentId?: string | null
 }
 
 export function CategoriesMutateDialog({
   open,
   onOpenChange,
   currentRow,
+  defaultParentId,
 }: CategoriesMutateDialogProps) {
   const isEdit = !!currentRow
   const { handleAdd, handleEdit } = useCategories()
@@ -66,9 +68,9 @@ export function CategoriesMutateDialog({
         imageUrl: currentRow.imageUrl ?? undefined,
       })
     } else {
-      form.reset(EMPTY_VALUES)
+      form.reset({ ...EMPTY_VALUES, parentId: defaultParentId ?? null })
     }
-  }, [open, isEdit, currentRow, form])
+  }, [open, isEdit, currentRow, defaultParentId, form])
 
   async function onSubmit(data: CategoryFormValues) {
     const success = isEdit && currentRow
@@ -81,11 +83,13 @@ export function CategoriesMutateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Chỉnh sửa danh mục' : defaultParentId ? 'Thêm danh mục con' : 'Thêm danh mục mới'}
+          </DialogTitle>
           <DialogDescription>
             {isEdit
               ? 'Cập nhật thông tin danh mục. Nhấn Lưu khi hoàn tất.'
-              : 'Điền thông tin danh mục mới. Nhấn Lưu khi hoàn tất.'}
+              : 'Điền thông tin danh mục. Nhấn Lưu khi hoàn tất.'}
           </DialogDescription>
         </DialogHeader>
 

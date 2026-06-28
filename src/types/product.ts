@@ -106,7 +106,8 @@ export interface ProductItemUpdatePayload {
 
 export interface ProductCreatePayload {
   name: string;
-  categoryName?: string;
+  brandId?: string | null;
+  categoryId?: string | null;
   status: ProductStatus;
   images?: ProductImage[];
   items: ProductItemCreatePayload[];
@@ -114,7 +115,8 @@ export interface ProductCreatePayload {
 
 export interface ProductUpdatePayload {
   name?: string;
-  categoryName?: string;
+  brandId?: string | null;
+  categoryId?: string | null;
   status?: ProductStatus;
   images?: ProductImage[];
 }
