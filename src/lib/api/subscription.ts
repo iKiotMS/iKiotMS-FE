@@ -8,6 +8,28 @@ export async function assignFreeTrial() {
   return response.data;
 }
 
+export interface Plan {
+  _id: string;
+  planName: string;
+  planCode: string;
+  price: number;
+  billingCycle: "MONTHLY" | "YEARLY" | "NONE";
+  maxBranches: number;
+  maxUsers: number;
+  maxProducts: number;
+  trialDays: number;
+  features: string[];
+  isActive: boolean;
+}
+
+/**
+ * List all active subscription plans (public endpoint)
+ */
+export async function listPlans(): Promise<Plan[]> {
+  const response = await client.get("/plans");
+  return response.data.data;
+}
+
 export interface InitiateUpgradeResult {
   invoiceId: string;
   paymentReference: string;
@@ -22,8 +44,11 @@ export async function initiateUpgrade(planCode: string): Promise<InitiateUpgrade
   return response.data.data;
 }
 
-export async function getInvoiceStatus(invoiceId: string): Promise<{ status: string; paidAt?: string }> {
-  const response = await client.get(`/subscription/invoice/${invoiceId}/status`);
+/**
+ * Renew the tenant's current plan (no planCode needed — backend uses the active plan)
+ */
+export async function initiateRenewal(): Promise<InitiateUpgradeResult> {
+  const response = await client.post("/subscription/renew/initiate", {});
   return response.data.data;
 }
 
