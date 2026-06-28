@@ -76,19 +76,53 @@ const STATUS_ACCENT: Record<
 type ScheduleDetailContentProps = {
   data: WorkingSchedule;
   loading?: boolean;
+};
+
+export function ScheduleDetailFooter({
+  data,
+  onEdit,
+  onDelete,
+}: {
+  data: WorkingSchedule;
   onEdit?: () => void;
   onDelete?: () => void;
-};
+}) {
+  const isLocked = isScheduleLocked(data.status);
+
+  return (
+    <div className="shrink-0 border-t bg-background px-5 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+      {isLocked ? (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          <Lock className="size-4 shrink-0" />
+          Lịch đã hoàn thành — không thể chỉnh sửa hoặc xóa.
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={onDelete}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa ca làm
+          </Button>
+          <Button size="sm" className="cursor-pointer" onClick={onEdit}>
+            <Pencil className="mr-2 size-4" />
+            Chỉnh sửa
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ScheduleDetailContent({
   data,
   loading = false,
-  onEdit,
-  onDelete,
 }: ScheduleDetailContentProps) {
   const status = SCHEDULE_STATUS_MAP[data.status];
   const attendanceStatus = getAttendanceStatusDisplay(data.attendance?.status);
-  const isLocked = isScheduleLocked(data.status);
   const shiftTime = formatShiftTimeRange(data.startTime, data.endTime);
   const accent = STATUS_ACCENT[data.status] ?? STATUS_ACCENT.SCHEDULED;
 
@@ -257,31 +291,6 @@ export function ScheduleDetailContent({
             </div>
           </dl>
         </div>
-      </div>
-
-      <div className="border-t bg-muted/20 px-5 py-4">
-        {isLocked ? (
-          <div className="flex items-center gap-2 rounded-lg border border-dashed bg-background/60 px-4 py-3 text-sm text-muted-foreground">
-            <Lock className="size-4 shrink-0" />
-            Lịch đã hoàn thành — không thể chỉnh sửa hoặc xóa.
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="cursor-pointer"
-              onClick={onDelete}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Xóa ca làm
-            </Button>
-            <Button size="sm" className="cursor-pointer" onClick={onEdit}>
-              <Pencil className="mr-2 size-4" />
-              Chỉnh sửa
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
