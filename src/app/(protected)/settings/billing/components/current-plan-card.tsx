@@ -1,69 +1,133 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Crown, AlertTriangle } from "lucide-react"
+import { Crown, AlertTriangle, Clock } from "lucide-react"
+import type { User } from "@/lib/auth"
 
-interface CurrentPlan {
-  planName: string
-  price: string
-  nextBilling: string
-  status: string
-  daysUsed: number
-  totalDays: number
-  progressPercentage: number
-  remainingDays: number
-  needsAttention: boolean
-  attentionMessage: string
+type Subscription = NonNullable<User["subscription"]>
+
+const STATUS_LABEL: Record<string, string> = {
+  TRIAL: "Dùng thử",
+  ACTIVE: "Đang hoạt động",
+  EXPIRED: "Đã hết hạn",
+  PAST_DUE: "Quá hạn thanh toán",
+  CANCELLED: "Đã huỷ",
+}
+
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  TRIAL: "secondary",
+  ACTIVE: "default",
+  EXPIRED: "destructive",
+  PAST_DUE: "destructive",
+  CANCELLED: "outline",
+}
+
+function getDaysLeft(dateStr: string | undefined): number {
+  if (!dateStr) return 0
+  return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000))
+}
+
+function getProgress(startDate: string, endDate: string): number {
+  const start = new Date(startDate).getTime()
+  const end = new Date(endDate).getTime()
+  const now = Date.now()
+  if (now >= end) return 100
+  if (now <= start) return 0
+  return Math.round(((now - start) / (end - start)) * 100)
 }
 
 interface CurrentPlanCardProps {
-  plan: CurrentPlan
+  subscription: Subscription | undefined
 }
 
-export function CurrentPlanCard({ plan }: CurrentPlanCardProps) {
+export function CurrentPlanCard({ subscription }: CurrentPlanCardProps) {
+  if (!subscription) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Gói hiện tại</CardTitle>
+          <CardDescription>Bạn chưa có gói đăng ký nào.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Liên hệ hỗ trợ để được kích hoạt gói dùng thử.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const isTrial = subscription.status === "TRIAL"
+  const isExpired = subscription.status === "EXPIRED" || subscription.status === "PAST_DUE"
+  const activeEndDate = isTrial ? subscription.trialEndDate : subscription.endDate
+  const daysLeft = getDaysLeft(activeEndDate)
+  const progress = subscription.startDate && activeEndDate
+    ? getProgress(subscription.startDate, activeEndDate)
+    : 0
+  const needsAttention = isExpired || daysLeft <= 3
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Current Plan</CardTitle>
-        <CardDescription>
-          You are currently on the {plan.planName}.
-        </CardDescription>
+        <CardTitle>Gói hiện tại</CardTitle>
+        <CardDescription>Thông tin gói đăng ký của bạn.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <Crown className="h-5 w-5 text-yellow-500" />
-            <span className="font-semibold">{plan.planName}</span>
-            <Badge variant="secondary">{plan.status}</Badge>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold">{plan.price}</div>
-            <div className="text-sm text-muted-foreground">Next billing: {plan.nextBilling}</div>
-          </div>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Crown className="h-5 w-5 text-yellow-500" />
+          <span className="font-semibold">{subscription.planName}</span>
+          <Badge variant={STATUS_VARIANT[subscription.status] ?? "secondary"}>
+            {STATUS_LABEL[subscription.status] ?? subscription.status}
+          </Badge>
         </div>
 
-        {plan.needsAttention && (
-          <Card className="border-neutral-200 bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800">
-            <CardContent>
+        {needsAttention && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-neutral-600 mt-0.5 dark:text-neutral-400" />
+                <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
                 <div className="space-y-1">
-                  <p className="font-medium text-neutral-800 dark:text-neutral-400">We need your attention!</p>
-                  <p className="text-sm text-neutral-700 dark:text-neutral-400">{plan.attentionMessage}</p>
+                  <p className="font-medium text-destructive">
+                    {isExpired ? "Gói đã hết hạn" : "Sắp hết hạn"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {isExpired
+                      ? "Vui lòng nâng cấp gói để tiếp tục sử dụng đầy đủ tính năng."
+                      : `Gói của bạn sẽ hết hạn sau ${daysLeft} ngày.`}
+                  </p>
                 </div>
-              </div>
-              
-              {/* Progress Section */}
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground font-medium">Days</span>
-                  <span className="text-sm text-muted-foreground font-medium">{plan.daysUsed} of {plan.totalDays} Days</span>
-                </div>
-                <Progress value={plan.progressPercentage} className="h-2" />
-                <p className="text-xs text-muted-foreground">{plan.remainingDays} days remaining until your plan requires update</p>
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {!isExpired && activeEndDate && (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground flex items-center gap-1.5">
+                <Clock className="size-3.5" />
+                {isTrial ? "Thời gian dùng thử" : "Chu kỳ thanh toán"}
+              </span>
+              <span className="text-muted-foreground">còn {daysLeft} ngày</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              Hết hạn vào {new Date(activeEndDate).toLocaleDateString("vi-VN")}
+            </p>
+          </div>
+        )}
+
+        {subscription.currentQuotaSnapshot && (
+          <div className="grid grid-cols-3 gap-3 pt-1">
+            {[
+              { label: "Chi nhánh", value: subscription.currentQuotaSnapshot.maxBranches },
+              { label: "Sản phẩm", value: subscription.currentQuotaSnapshot.maxProducts },
+              { label: "Nhân viên", value: subscription.currentQuotaSnapshot.maxUsers },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-lg border bg-muted/40 px-3 py-2 text-center">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-sm font-semibold">{value === -1 ? "∞" : value}</p>
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

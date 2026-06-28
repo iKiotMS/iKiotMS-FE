@@ -95,6 +95,7 @@ export function ReceiptDialog({ open, onOpenChange, order }: ReceiptDialogProps)
 
   const paymentMethodLabel: Record<string, string> = {
     CASH: "Tiền mặt",
+    SEPAY: "QR SePay",
     BANK_TRANSFER: "Chuyển khoản",
     MOMO: "Ví MoMo",
     VNPAY: "Ví VNPay",
