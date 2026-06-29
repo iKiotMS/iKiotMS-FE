@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import { useEffect, useMemo, useState } from "react"
-import { Check, Loader2 } from "lucide-react"
-import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useEffect, useMemo, useState } from "react";
+import { Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   initiateUpgrade,
   initiateRenewal,
   listPlans,
   type InitiateUpgradeResult,
   type Plan,
-} from "@/lib/api/subscription"
-import { PaymentDialog } from "./payment-dialog"
-import type { User } from "@/lib/auth"
+} from "@/lib/api/subscription";
+import { PaymentDialog } from "./payment-dialog";
+import type { User } from "@/lib/auth";
 
-const TIER_ORDER = ["TRIAL", "PLUS", "PRO"] as const
+const TIER_ORDER = ["TRIAL", "PLUS", "PRO"] as const;
 
 // Nội dung marketing hiển thị; giá & mã gói lấy động từ /plans
 const TIER_META: Record<string, { features: string[] }> = {
@@ -47,42 +47,44 @@ const TIER_META: Record<string, { features: string[] }> = {
       "Hỗ trợ ưu tiên",
     ],
   },
-}
+};
 
-const baseTier = (planCode: string) => planCode.replace(/_YEARLY$/, "")
+const baseTier = (planCode: string) => planCode.replace(/_YEARLY$/, "");
 
-const formatVnd = (amount: number) => `${amount.toLocaleString("vi-VN")}đ`
+const formatVnd = (amount: number) => `${amount.toLocaleString("vi-VN")}đ`;
 
 interface UpgradePlanSectionProps {
-  subscription: NonNullable<User["subscription"]> | undefined
+  subscription: NonNullable<User["subscription"]> | undefined;
 }
 
 export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
-  const [plans, setPlans] = useState<Plan[]>([])
-  const [plansLoading, setPlansLoading] = useState(true)
-  const [isYearly, setIsYearly] = useState(false)
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [invoice, setInvoice] = useState<InitiateUpgradeResult | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [isYearly, setIsYearly] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [invoice, setInvoice] = useState<InitiateUpgradeResult | null>(null);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     listPlans()
       .then((data) => {
-        if (active) setPlans(data)
+        if (active) setPlans(data);
       })
       .catch(() => toast.error("Không thể tải danh sách gói dịch vụ."))
       .finally(() => {
-        if (active) setPlansLoading(false)
-      })
+        if (active) setPlansLoading(false);
+      });
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+    };
+  }, []);
 
-  const currentPlanCode = subscription?.planCode ?? "TRIAL"
-  const currentTier = baseTier(currentPlanCode)
-  const currentTierIdx = TIER_ORDER.indexOf(currentTier as (typeof TIER_ORDER)[number])
+  const currentPlanCode = subscription?.planCode ?? "TRIAL";
+  const currentTier = baseTier(currentPlanCode);
+  const currentTierIdx = TIER_ORDER.indexOf(
+    currentTier as (typeof TIER_ORDER)[number],
+  );
 
   // Gom plan theo tier: { tier, monthly, yearly }
   const tiers = useMemo(() => {
@@ -91,35 +93,35 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
       monthly: plans.find((p) => p.planCode === tier),
       yearly: plans.find((p) => p.planCode === `${tier}_YEARLY`),
       features: TIER_META[tier]?.features ?? [],
-    }))
-  }, [plans])
+    }));
+  }, [plans]);
 
   const hasAnyYearly = useMemo(
     () => plans.some((p) => p.billingCycle === "YEARLY"),
     [plans],
-  )
+  );
 
   const handleAction = async (
     action: "renew" | "upgrade",
     planCode: string,
   ) => {
-    setLoadingPlan(planCode)
+    setLoadingPlan(planCode);
     try {
       const result =
         action === "renew"
           ? await initiateRenewal()
-          : await initiateUpgrade(planCode)
-      setInvoice(result)
-      setDialogOpen(true)
+          : await initiateUpgrade(planCode);
+      setInvoice(result);
+      setDialogOpen(true);
     } catch (err: any) {
       toast.error(
         err?.response?.data?.message ||
           "Không thể khởi tạo thanh toán. Vui lòng thử lại.",
-      )
+      );
     } finally {
-      setLoadingPlan(null)
+      setLoadingPlan(null);
     }
-  }
+  };
 
   return (
     <>
@@ -136,7 +138,9 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
             <ToggleGroup
               type="single"
               value={isYearly ? "yearly" : "monthly"}
-              onValueChange={(value) => value && setIsYearly(value === "yearly")}
+              onValueChange={(value) =>
+                value && setIsYearly(value === "yearly")
+              }
               className="bg-secondary text-secondary-foreground rounded-full p-1 shadow-none"
             >
               <ToggleGroupItem
@@ -147,10 +151,10 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="yearly"
-                className="data-[state=on]:bg-background px-5 !rounded-full cursor-pointer"
+                className="data-[state=on]:bg-background px-6 !rounded-full cursor-pointer"
               >
                 Hàng năm
-                <Badge variant="secondary" className="ml-1.5 text-[10px]">
+                <Badge variant="secondary" className="text-[10px]">
                   -20%
                 </Badge>
               </ToggleGroupItem>
@@ -169,42 +173,45 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
               {tiers.map(({ tier, monthly, yearly, features }) => {
                 // TRIAL không có chu kỳ năm; các gói khác chọn theo toggle
                 const selected =
-                  tier !== "TRIAL" && isYearly && yearly ? yearly : monthly
-                if (!selected) return null
+                  tier !== "TRIAL" && isYearly && yearly ? yearly : monthly;
+                if (!selected) return null;
 
-                const tierIdx = TIER_ORDER.indexOf(tier)
-                const isExactCurrent = selected.planCode === currentPlanCode
-                const isSameTier = tier === currentTier
-                const isUpgradeTier = tierIdx > currentTierIdx
-                const isLowerTier = tierIdx < currentTierIdx
-                const isFree = selected.price === 0
-                const isLoading = loadingPlan === selected.planCode
+                const tierIdx = TIER_ORDER.indexOf(tier);
+                const isExactCurrent = selected.planCode === currentPlanCode;
+                const isSameTier = tier === currentTier;
+                const isUpgradeTier = tierIdx > currentTierIdx;
+                const isLowerTier = tierIdx < currentTierIdx;
+                const isFree = selected.price === 0;
+                const isLoading = loadingPlan === selected.planCode;
                 const isElevated =
-                  isExactCurrent || (tier === "PLUS" && currentTier === "TRIAL")
+                  isExactCurrent ||
+                  (tier === "PLUS" && currentTier === "TRIAL");
 
                 // Xác định hành động + nhãn nút
-                let label: string
-                let action: "renew" | "upgrade" | null = null
+                let label: string;
+                let action: "renew" | "upgrade" | null = null;
                 if (isExactCurrent) {
                   // Gói đang dùng đúng chu kỳ → cho gia hạn (trừ TRIAL)
                   if (tier === "TRIAL") {
-                    label = "Gói hiện tại"
+                    label = "Gói hiện tại";
                   } else {
-                    label = "Gia hạn"
-                    action = "renew"
+                    label = "Gia hạn";
+                    action = "renew";
                   }
                 } else if (isLowerTier || isFree) {
-                  label = "Không khả dụng"
+                  label = "Không khả dụng";
                 } else if (isUpgradeTier) {
-                  label = `Nâng cấp lên ${selected.planName}`
-                  action = "upgrade"
+                  label = `Nâng cấp lên ${selected.planName}`;
+                  action = "upgrade";
                 } else {
                   // Cùng tier, khác chu kỳ
-                  label = isYearly ? "Chuyển sang gói năm" : "Chuyển sang gói tháng"
-                  action = "upgrade"
+                  label = isYearly
+                    ? "Chuyển sang gói năm"
+                    : "Chuyển sang gói tháng";
+                  action = "upgrade";
                 }
 
-                const disabled = action === null || isLoading
+                const disabled = action === null || isLoading;
 
                 return (
                   <div
@@ -222,13 +229,20 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
                           {tier === "TRIAL" ? "Dùng Thử" : selected.planName}
                         </span>
                         {isExactCurrent && (
-                          <Badge className="rounded-full text-xs">Đang sở hữu</Badge>
-                        )}
-                        {tier === "PLUS" && !isSameTier && currentTier === "TRIAL" && (
-                          <Badge variant="secondary" className="rounded-full text-xs">
-                            Phổ biến
+                          <Badge className="rounded-full text-xs">
+                            Đang sở hữu
                           </Badge>
                         )}
+                        {tier === "PLUS" &&
+                          !isSameTier &&
+                          currentTier === "TRIAL" && (
+                            <Badge
+                              variant="secondary"
+                              className="rounded-full text-xs"
+                            >
+                              Phổ biến
+                            </Badge>
+                          )}
                       </div>
                     </div>
 
@@ -241,8 +255,8 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
                         {tier === "TRIAL"
                           ? `${selected.trialDays} ngày dùng thử`
                           : selected.billingCycle === "YEARLY"
-                          ? `Mỗi năm (~${formatVnd(Math.round(selected.price / 12))}/tháng)`
-                          : "Mỗi tháng"}
+                            ? `Mỗi năm (~${formatVnd(Math.round(selected.price / 12))}/tháng)`
+                            : "Mỗi tháng"}
                       </div>
                     </div>
 
@@ -253,15 +267,15 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
                           isExactCurrent
                             ? ""
                             : isElevated && !disabled
-                            ? "shadow-md border-[0.5px] border-white/25 shadow-black/20 bg-primary ring-1 ring-primary/15 text-primary-foreground hover:bg-primary/90"
-                            : "shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50"
+                              ? "shadow-md border-[0.5px] border-white/25 shadow-black/20 bg-primary ring-1 ring-primary/15 text-primary-foreground hover:bg-primary/90"
+                              : "shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50"
                         }`}
                         variant={
                           isExactCurrent
                             ? "outline"
                             : isElevated && !disabled
-                            ? "default"
-                            : "secondary"
+                              ? "default"
+                              : "secondary"
                         }
                         disabled={disabled}
                         onClick={() =>
@@ -290,7 +304,7 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
                       </ul>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -303,5 +317,5 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
         invoice={invoice}
       />
     </>
-  )
+  );
 }

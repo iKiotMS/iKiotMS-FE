@@ -1,35 +1,72 @@
 // [Mutations – Customer]
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Customer } from '@/types/customer'
 import type { CustomerFormValues } from '../_types/customer.types'
-import initialData from '../data/customers.json'
+import { customerApi } from '@/lib/api/customer'
+import { useAuthStore } from '@/store/auth-store'
+
+import { formatDateTime } from '@/lib/utils'
 
 export function useCustomersMutations() {
-  const [customers, setCustomers] = useState<Customer[]>(initialData as Customer[])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const locationKey = useAuthStore((state) => state.locationKey)
+
+  const fetchCustomers = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      let branchId: string | undefined = undefined
+      if (locationKey && locationKey !== 'all') {
+        const [type, id] = locationKey.split('-')
+        if (type === 'branch' && id) {
+          branchId = id
+        }
+      }
+
+      const res = await customerApi.getList({ limit: 1000, branchId })
+      const customersData = res.data
+
+      // Map raw ISO date strings of orders into the formatDateTime string format
+      const enrichedCustomers = customersData.map((customer) => ({
+        ...customer,
+        orders: (customer.orders || []).map((o) => ({
+          ...o,
+          createdAt: formatDateTime(o.createdAt),
+        })),
+      }))
+
+      setCustomers(enrichedCustomers)
+    } catch (err) {
+      console.error(err)
+      toast.error('Tải danh sách khách hàng thất bại')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [locationKey])
+
+  useEffect(() => {
+    fetchCustomers()
+  }, [fetchCustomers])
 
   async function handleAdd(data: CustomerFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      const newCustomer: Customer = {
-        id: Date.now().toString(),
-        customerCode: data.customerCode,
+      const customer = await customerApi.create({
+        customerCode: data.customerCode || undefined,
         name: data.name,
-        phone: data.phone ?? '',
+        phone: data.phone || undefined,
         gender: data.gender,
-        address: data.address ?? '',
-        dob: data.dob ?? '',
-        createdAt: new Date().toISOString().split('T')[0],
-        orders: [],
-      }
-      setCustomers((prev) => [newCustomer, ...prev])
+        address: data.address || undefined,
+        dob: data.dob || undefined,
+      })
+      setCustomers((prev) => [customer, ...prev])
       toast.success('Thêm khách hàng thành công')
       return true
-    } catch {
-      toast.error('Thêm khách hàng thất bại')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Thêm khách hàng thất bại')
       return false
     } finally {
       setIsLoading(false)
@@ -39,25 +76,28 @@ export function useCustomersMutations() {
   async function handleEdit(id: string, data: CustomerFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
+      const updated = await customerApi.update(id, {
+        customerCode: data.customerCode || undefined,
+        name: data.name,
+        phone: data.phone || undefined,
+        gender: data.gender,
+        address: data.address || undefined,
+        dob: data.dob || undefined,
+      })
       setCustomers((prev) =>
         prev.map((c) =>
           c.id === id
             ? {
-                ...c,
-                customerCode: data.customerCode,
-                name: data.name,
-                phone: data.phone ?? c.phone,
-                gender: data.gender,
-                address: data.address ?? c.address,
-                dob: data.dob ?? c.dob,
+                ...updated,
+                orders: c.orders, // Preserve existing orders/spending data
               }
             : c,
         ),
       )
       toast.success('Cập nhật khách hàng thành công')
       return true
-    } catch {
-      toast.error('Cập nhật khách hàng thất bại')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Cập nhật khách hàng thất bại')
       return false
     } finally {
       setIsLoading(false)
@@ -67,11 +107,12 @@ export function useCustomersMutations() {
   async function handleDelete(id: string): Promise<boolean> {
     setIsLoading(true)
     try {
+      await customerApi.remove(id)
       setCustomers((prev) => prev.filter((c) => c.id !== id))
       toast.success('Xóa khách hàng thành công')
       return true
-    } catch {
-      toast.error('Xóa khách hàng thất bại')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Xóa khách hàng thất bại')
       return false
     } finally {
       setIsLoading(false)
@@ -81,11 +122,12 @@ export function useCustomersMutations() {
   async function handleDeleteMany(ids: string[]): Promise<boolean> {
     setIsLoading(true)
     try {
+      await customerApi.removeMany(ids)
       setCustomers((prev) => prev.filter((c) => !ids.includes(c.id)))
       toast.success(`Xóa ${ids.length} khách hàng thành công`)
       return true
-    } catch {
-      toast.error('Xóa khách hàng thất bại')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Xóa khách hàng thất bại')
       return false
     } finally {
       setIsLoading(false)

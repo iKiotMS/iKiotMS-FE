@@ -40,6 +40,7 @@ export interface CustomerQueryParams {
   page?: number
   limit?: number
   search?: string
+  branchId?: string
 }
 
 export interface CustomerListResponse {

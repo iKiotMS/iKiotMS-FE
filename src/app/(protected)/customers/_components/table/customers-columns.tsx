@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { Customer } from '@/types/customer'
 import { GENDER_MAP } from '../../_constants/customer.constants'
+import { formatDateTime } from '@/lib/utils'
 
 const formatVND = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
@@ -126,7 +127,9 @@ export const customersColumns: ColumnDef<Customer>[] = [
     accessorKey: 'createdAt',
     header: ({ column }) => <SortableHeader label="Ngày tạo" column={column} />,
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">{row.getValue('createdAt')}</span>
+      <span className="text-sm text-muted-foreground">
+        {formatDateTime(row.getValue('createdAt'))}
+      </span>
     ),
   },
   {
