@@ -1,6 +1,30 @@
 // [API – Order]
 import client from '@/lib/api/client';
-import type { Order, OrderCreatePayload, OrderCreateResponse } from '@/types/order';
+import type { Order, OrderCreatePayload, OrderCreateResponse, OrderStatus, OrderPaymentMethod } from '@/types/order';
+import { useAuthStore } from '@/store/auth-store';
+
+export interface OrderQueryParams {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+  paymentMethod?: OrderPaymentMethod;
+  customerId?: string;
+  branchId?: string;
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface OrderListResponse {
+  success: boolean;
+  data: Order[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 export const orderApi = {
   create: async (payload: OrderCreatePayload): Promise<OrderCreateResponse> => {
@@ -10,5 +34,25 @@ export const orderApi = {
   getById: async (id: string): Promise<Order> => {
     const res = await client.get<{ success: boolean; data: Order }>(`/orders/${id}`);
     return res.data.data;
+  },
+  getList: async (params?: OrderQueryParams): Promise<OrderListResponse> => {
+    const state = useAuthStore.getState();
+    const locationKey = state.locationKey;
+    let branchIdParam: { branchId?: string } = {};
+
+    if (locationKey && locationKey !== "all") {
+      const [type, id] = locationKey.split("-");
+      if (type === "branch" && id) {
+        branchIdParam = { branchId: id };
+      }
+    }
+
+    const mergedParams = {
+      ...branchIdParam,
+      ...params,
+    };
+
+    const res = await client.get<OrderListResponse>('/orders', { params: mergedParams });
+    return res.data;
   },
 };
