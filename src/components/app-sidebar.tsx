@@ -265,10 +265,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (!user) {
       return data.user;
     }
-    const name = [user.profile?.lastName, user.profile?.firstName]
-      .filter(Boolean)
-      .join(" ")
-      .trim() || user.email;
+    const name =
+      [user.profile?.lastName, user.profile?.firstName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || user.email;
     return {
       name,
       email: user.email,
@@ -283,9 +284,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {data.navGroups.map((group) => (
-          <NavMain key={group.label} label={group.label} items={group.items} />
-        ))}
+        {data.navGroups
+          .filter(
+            (group) =>
+              process.env.NODE_ENV !== "production" ||
+              group.label !== "(Tham khảo UI)",
+          )
+          .map((group) => (
+            <NavMain
+              key={group.label}
+              label={group.label}
+              items={group.items}
+            />
+          ))}
       </SidebarContent>
 
       <SidebarFooter>
