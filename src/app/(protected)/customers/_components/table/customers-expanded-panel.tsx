@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 import type { Customer } from '@/types/customer'
 import {
   GENDER_MAP,
@@ -117,7 +117,7 @@ export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpand
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Ngày tạo</span>
-              <span>{customer.createdAt}</span>
+              <span>{formatDateTime(customer.createdAt)}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Tổng chi tiêu</span>
