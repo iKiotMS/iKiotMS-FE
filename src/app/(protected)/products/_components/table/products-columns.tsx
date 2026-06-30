@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import type { Brand } from "@/types/brand";
 import type { Category } from "@/types/category";
-import { STATUS_MAP } from "../../_constants/product.constants";
+import { safeImageSrc, STATUS_MAP } from "../../_constants/product.constants";
 
 function SortableHeader({
   label,
@@ -85,7 +85,7 @@ export function getProductsColumns(
           <div className="relative w-12 h-12">
             <Image
               fill
-              src={thumbnail?.url || "/placeholder-product.svg"}
+              src={safeImageSrc(thumbnail?.url)}
               alt={row.original.name}
               className="rounded-md border object-contain"
             />
