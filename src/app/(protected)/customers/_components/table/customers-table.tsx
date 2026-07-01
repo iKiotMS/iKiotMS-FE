@@ -42,15 +42,25 @@ export function CustomersTable() {
   const [expanded, setExpanded] = useState<ExpandedState>({})
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [spendingFrom, setSpendingFrom] = useState('')
+  const [spendingTo, setSpendingTo] = useState('')
 
   const filteredCustomers = useMemo(
     () =>
       customers.filter((c) => {
         if (dateFrom && c.createdAt < dateFrom) return false
         if (dateTo && c.createdAt > dateTo) return false
+
+        const totalSpending = c.orders
+          .filter((o) => o.status === 'COMPLETED')
+          .reduce((sum, o) => sum + o.grandTotal, 0)
+
+        if (spendingFrom !== '' && totalSpending < Number(spendingFrom)) return false
+        if (spendingTo !== '' && totalSpending > Number(spendingTo)) return false
+
         return true
       }),
-    [customers, dateFrom, dateTo],
+    [customers, dateFrom, dateTo, spendingFrom, spendingTo],
   )
 
   const table = useReactTable({
@@ -94,6 +104,10 @@ export function CustomersTable() {
         dateTo={dateTo}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
+        spendingFrom={spendingFrom}
+        spendingTo={spendingTo}
+        onSpendingFromChange={setSpendingFrom}
+        onSpendingToChange={setSpendingTo}
       />
 
       <div className="rounded-md border">

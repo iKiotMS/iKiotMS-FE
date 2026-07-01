@@ -11,7 +11,7 @@ export interface OrderItemPayload {
 }
 
 export interface OrderCreatePayload {
-  customerId: string;
+  customerId?: string;
   branchId: string;
   paymentMethod: OrderPaymentMethod;
   items: OrderItemPayload[];

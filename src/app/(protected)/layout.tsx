@@ -6,7 +6,6 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
-import { UpgradeToProButton } from "@/components/upgrade-to-pro-button";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
@@ -86,7 +85,6 @@ export default function DashboardLayout({
           open={themeCustomizerOpen}
           onOpenChange={setThemeCustomizerOpen}
         />
-        <UpgradeToProButton />
       </SidebarProvider>
     </AuthGuard>
   );

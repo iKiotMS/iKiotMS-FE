@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { UserPlus, X, Coins, Check, FileText, QrCode, Banknote } from "lucide-react";
+import {
+  UserPlus,
+  X,
+  Coins,
+  Check,
+  FileText,
+  QrCode,
+  Banknote,
+  AlertCircle,
+} from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -31,7 +40,6 @@ interface CheckoutSidebarProps {
   subtotal: number;
   discount: number;
   discountType: "cash" | "percent";
-  vatPercent: number;
   paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
@@ -39,7 +47,6 @@ interface CheckoutSidebarProps {
   onCustomerChange: (customer: Customer | null) => void;
   onDiscountChange: (discount: number) => void;
   onDiscountTypeChange: (type: "cash" | "percent") => void;
-  onVatChange: (vat: number) => void;
   onPaymentMethodChange: (method: "CASH" | "SEPAY") => void;
   onCustomerPayChange: (pay: number) => void;
   onNoteChange: (note: string) => void;
@@ -58,7 +65,6 @@ export function CheckoutSidebar({
   subtotal,
   discount,
   discountType,
-  vatPercent,
   paymentMethod,
   customerPay,
   note,
@@ -66,7 +72,6 @@ export function CheckoutSidebar({
   onCustomerChange,
   onDiscountChange,
   onDiscountTypeChange,
-  onVatChange,
   onPaymentMethodChange,
   onCustomerPayChange,
   onNoteChange,
@@ -77,6 +82,7 @@ export function CheckoutSidebar({
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [isCustomerLoading, setIsCustomerLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -85,16 +91,24 @@ export function CheckoutSidebar({
     if (!customerQuery.trim()) {
       setCustomerResults([]);
       setIsCustomerDropdownOpen(false);
+      setIsCustomerLoading(false);
       return;
     }
 
+    setIsCustomerDropdownOpen(true);
+    setIsCustomerLoading(true);
+
     const handler = setTimeout(async () => {
       try {
-        const response = await customerApi.getList({ search: customerQuery, limit: 10 });
+        const response = await customerApi.getList({
+          search: customerQuery,
+          limit: 10,
+        });
         setCustomerResults(response.data);
-        setIsCustomerDropdownOpen(true);
       } catch (error) {
         console.error("Lỗi khi tìm kiếm khách hàng:", error);
+      } finally {
+        setIsCustomerLoading(false);
       }
     }, 300);
 
@@ -130,8 +144,7 @@ export function CheckoutSidebar({
   const calculatedDiscount =
     discountType === "cash" ? discount : (subtotal * discount) / 100;
   const subtotalAfterDiscount = Math.max(0, subtotal - calculatedDiscount);
-  const calculatedVat = (subtotalAfterDiscount * vatPercent) / 100;
-  const grandTotal = Math.max(0, subtotalAfterDiscount + calculatedVat);
+  const grandTotal = subtotalAfterDiscount;
   const changeDue = Math.max(0, customerPay - grandTotal);
 
   // Quick cash triggers
@@ -203,28 +216,40 @@ export function CheckoutSidebar({
                   className="h-11 w-full text-base"
                 />
 
-                {isCustomerDropdownOpen && customerResults.length > 0 && (
+                {isCustomerDropdownOpen && customerQuery.trim() !== "" && (
                   <div
                     ref={dropdownRef}
-                    className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-[200px] overflow-y-auto divide-y w-full text-base"
+                    className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-[200px] overflow-y-auto divide-y w-full text-base scrollbar-thin"
                   >
-                    {customerResults.map((cust) => (
-                      <div
-                        key={cust.id}
-                        onClick={() => {
-                          onCustomerChange(cust);
-                          setIsCustomerDropdownOpen(false);
-                        }}
-                        className="p-2 hover:bg-muted cursor-pointer flex flex-col gap-0.5"
-                      >
-                        <span className="font-bold text-base text-foreground">
-                          {cust.name}
-                        </span>
-                        <span className="text-sm text-muted-foreground font-mono">
-                          {cust.phone} • {cust.customerCode}
-                        </span>
+                    {isCustomerLoading ? (
+                      <div className="p-4 text-center text-muted-foreground flex items-center justify-center gap-2">
+                        <span className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+                        <span>Đang tìm kiếm khách hàng...</span>
                       </div>
-                    ))}
+                    ) : customerResults.length > 0 ? (
+                      customerResults.map((cust) => (
+                        <div
+                          key={cust.id}
+                          onClick={() => {
+                            onCustomerChange(cust);
+                            setIsCustomerDropdownOpen(false);
+                          }}
+                          className="p-2 hover:bg-muted cursor-pointer flex flex-col gap-0.5"
+                        >
+                          <span className="font-bold text-base text-foreground">
+                            {cust.name}
+                          </span>
+                          <span className="text-sm text-muted-foreground font-mono">
+                            {cust.phone} • {cust.customerCode}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-base text-muted-foreground flex flex-col items-center justify-center gap-1.5">
+                        <AlertCircle className="size-5 text-yellow-500" />
+                        <span>Khách hàng không tồn tại</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -233,7 +258,7 @@ export function CheckoutSidebar({
                 variant="outline"
                 size="icon"
                 onClick={onOpenNewCustomerModal}
-                className="h-9 w-9 cursor-pointer border-primary/30 text-primary hover:bg-primary/5 shrink-0"
+                className="h-11 w-11 cursor-pointer border-primary/30 text-primary hover:bg-primary/5 shrink-0"
                 title="Thêm khách hàng"
               >
                 <UserPlus className="size-4" />
@@ -310,28 +335,6 @@ export function CheckoutSidebar({
             </div>
           </div>
 
-          {/* VAT Selection */}
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground font-medium">Thuế VAT</span>
-            <div className="flex gap-1 border rounded-md p-0.5 bg-muted/40 shrink-0">
-              {[0, 5, 8, 10].map((rate) => (
-                <button
-                  key={rate}
-                  type="button"
-                  onClick={() => onVatChange(rate)}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-sm font-semibold transition-colors cursor-pointer",
-                    vatPercent === rate
-                      ? "bg-background text-primary shadow-xs border border-border"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {rate}%
-                </button>
-              ))}
-            </div>
-          </div>
-
           <Separator className="my-2" />
 
           {/* Grand total */}
@@ -353,7 +356,7 @@ export function CheckoutSidebar({
               {(
                 [
                   { method: "CASH", label: "Tiền mặt", Icon: Banknote },
-                  { method: "SEPAY", label: "QR SePay", Icon: QrCode },
+                  { method: "SEPAY", label: "Chuyển khoản", Icon: QrCode },
                 ] as const
               ).map(({ method, label, Icon }) => {
                 const isSelected = paymentMethod === method;
@@ -441,7 +444,10 @@ export function CheckoutSidebar({
           {paymentMethod === "SEPAY" && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm">
               <QrCode className="size-4 shrink-0 mt-0.5" />
-              <span>Khách hàng sẽ quét mã QR để thanh toán đúng số tiền. Hệ thống tự xác nhận khi nhận được giao dịch.</span>
+              <span>
+                Khách hàng sẽ quét mã QR để thanh toán đúng số tiền. Hệ thống tự
+                xác nhận khi nhận được giao dịch.
+              </span>
             </div>
           )}
 

@@ -15,6 +15,7 @@ import { OrderQrDialog } from "./components/order-qr-dialog";
 import { orderApi } from "@/lib/api/order";
 import { branchApi } from "@/lib/api/branch";
 import { getCachedUser } from "@/lib/auth";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 interface Customer {
   id: string;
@@ -69,6 +70,18 @@ export default function CheckOutPage() {
   ]);
   const [activeTabId, setActiveTabId] = useState<string>("1");
   const [branches, setBranches] = useState<any[]>([]);
+  const [direction, setDirection] = useState<"horizontal" | "vertical">("horizontal");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setDirection(e.matches ? "horizontal" : "vertical");
+    };
+    handleMediaChange(mediaQuery);
+    mediaQuery.addEventListener("change", handleMediaChange);
+    return () => mediaQuery.removeEventListener("change", handleMediaChange);
+  }, []);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -249,11 +262,6 @@ export default function CheckOutPage() {
       return;
     }
 
-    if (!activeInvoice.selectedCustomer) {
-      toast.error("Vui lòng chọn hoặc thêm khách hàng trước khi thanh toán!");
-      return;
-    }
-
     if (activeInvoice.paymentMethod === "CASH" && activeInvoice.customerPay < grandTotal) {
       toast.error("Số tiền khách trả phải lớn hơn hoặc bằng tổng hóa đơn!");
       return;
@@ -286,7 +294,7 @@ export default function CheckOutPage() {
     }
 
     const payload = {
-      customerId: activeInvoice.selectedCustomer.id,
+      customerId: activeInvoice.selectedCustomer?.id,
       branchId: resolvedBranchId,
       paymentMethod: activeInvoice.paymentMethod,
       items: activeInvoice.items.map((item) => ({
@@ -399,78 +407,82 @@ export default function CheckOutPage() {
 
   return (
     <div className="h-screen w-full flex flex-col gap-4 p-4 overflow-hidden bg-background">
-      {/* Main Grid: Left Column Cart + Search | Right Column Billing Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-1 min-h-0">
+      {/* Main Resizable Layout: Left Column Cart + Search | Right Column Billing Sidebar */}
+      <ResizablePanelGroup direction={direction} className="flex-1 min-h-0 gap-4">
         {/* Left Side: Search + Active Tab + Cart Items list */}
-        <div className="lg:col-span-8 flex flex-col gap-4 min-h-0">
-          <div className="flex flex-col gap-3 bg-card p-4 rounded-xl border shadow-sm shrink-0">
-            {/* Tabs Control */}
-            <CheckoutTabs
-              tabs={invoices.map((inv) => ({
-                id: inv.id,
-                tabName: inv.tabName,
-              }))}
-              activeTabId={activeTabId}
-              onTabChange={setActiveTabId}
-              onTabAdd={handleTabAdd}
-              onTabClose={handleTabClose}
-            />
+        <ResizablePanel defaultSize={65} minSize={30}>
+          <div className="h-full flex flex-col gap-4 min-h-0">
+            <div className="flex flex-col gap-3 bg-card p-4 rounded-xl border shadow-sm shrink-0">
+              {/* Tabs Control */}
+              <CheckoutTabs
+                tabs={invoices.map((inv) => ({
+                  id: inv.id,
+                  tabName: inv.tabName,
+                }))}
+                activeTabId={activeTabId}
+                onTabChange={setActiveTabId}
+                onTabAdd={handleTabAdd}
+                onTabClose={handleTabClose}
+              />
 
-            {/* Product Autocomplete Lookup */}
-            <ProductSearch onProductSelect={handleProductSelect} />
-          </div>
+              {/* Product Autocomplete Lookup */}
+              <ProductSearch onProductSelect={handleProductSelect} />
+            </div>
 
-          {/* Cart items list - scrollable wrapper */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <CartItems
-              items={activeInvoice.items}
-              onQuantityChange={handleItemQuantityChange}
-              onUnitPriceChange={handleItemUnitPriceChange}
-              onDiscountChange={handleItemDiscountChange}
-              onItemRemove={handleItemRemove}
-            />
+            {/* Cart items list - scrollable wrapper */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <CartItems
+                items={activeInvoice.items}
+                onQuantityChange={handleItemQuantityChange}
+                onUnitPriceChange={handleItemUnitPriceChange}
+                onDiscountChange={handleItemDiscountChange}
+                onItemRemove={handleItemRemove}
+              />
+            </div>
           </div>
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle className="hidden lg:flex" />
 
         {/* Right Side: Billing details card */}
-        <div className="lg:col-span-4 h-full min-h-0">
-          <CheckoutSidebar
-            totalQuantity={activeInvoice.items.reduce(
-              (acc, item) => acc + item.quantity,
-              0,
-            )}
-            subtotal={activeInvoice.items.reduce(
-              (acc, item) => acc + item.quantity * item.unitPrice,
-              0,
-            )}
-            discount={activeInvoice.discount}
-            discountType={activeInvoice.discountType}
-            vatPercent={activeInvoice.vatPercent}
-            paymentMethod={activeInvoice.paymentMethod}
-            customerPay={activeInvoice.customerPay}
-            note={activeInvoice.note}
-            selectedCustomer={activeInvoice.selectedCustomer}
-            onCustomerChange={(customer) =>
-              updateActiveInvoice({ selectedCustomer: customer })
-            }
-            onDiscountChange={(discount) => updateActiveInvoice({ discount })}
-            onDiscountTypeChange={(type) =>
-              updateActiveInvoice({ discountType: type })
-            }
-            onVatChange={(vat) => updateActiveInvoice({ vatPercent: vat })}
-            onPaymentMethodChange={(method) =>
-              updateActiveInvoice({ paymentMethod: method })
-            }
-            onCustomerPayChange={(pay) =>
-              updateActiveInvoice({ customerPay: pay })
-            }
-            onNoteChange={(note) => updateActiveInvoice({ note })}
-            onCheckout={handleCheckoutSubmit}
-            onCancel={handleCancelOrder}
-            onOpenNewCustomerModal={() => setIsCustomerModalOpen(true)}
-          />
-        </div>
-      </div>
+        <ResizablePanel defaultSize={35} minSize={25}>
+          <div className="h-full min-h-0">
+            <CheckoutSidebar
+              totalQuantity={activeInvoice.items.reduce(
+                (acc, item) => acc + item.quantity,
+                0,
+              )}
+              subtotal={activeInvoice.items.reduce(
+                (acc, item) => acc + item.quantity * item.unitPrice,
+                0,
+              )}
+              discount={activeInvoice.discount}
+              discountType={activeInvoice.discountType}
+              paymentMethod={activeInvoice.paymentMethod}
+              customerPay={activeInvoice.customerPay}
+              note={activeInvoice.note}
+              selectedCustomer={activeInvoice.selectedCustomer}
+              onCustomerChange={(customer) =>
+                updateActiveInvoice({ selectedCustomer: customer })
+              }
+              onDiscountChange={(discount) => updateActiveInvoice({ discount })}
+              onDiscountTypeChange={(type) =>
+                updateActiveInvoice({ discountType: type })
+              }
+              onPaymentMethodChange={(method) =>
+                updateActiveInvoice({ paymentMethod: method })
+              }
+              onCustomerPayChange={(pay) =>
+                updateActiveInvoice({ customerPay: pay })
+              }
+              onNoteChange={(note) => updateActiveInvoice({ note })}
+              onCheckout={handleCheckoutSubmit}
+              onCancel={handleCancelOrder}
+              onOpenNewCustomerModal={() => setIsCustomerModalOpen(true)}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Quick modal forms */}
       <CustomerDialog
