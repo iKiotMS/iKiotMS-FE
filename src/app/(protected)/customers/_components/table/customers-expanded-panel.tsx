@@ -171,10 +171,10 @@ export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpand
             <p className="text-sm text-muted-foreground text-center py-6">Chưa có đơn hàng nào</p>
           ) : (
             <div className="space-y-2">
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border [&_[data-slot=table-container]]:max-h-[300px] [&_[data-slot=table-container]]:overflow-y-auto">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40">
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow className="bg-muted">
                       <TableHead className="text-xs">Mã đơn</TableHead>
                       <TableHead className="text-xs">Ngày mua</TableHead>
                       <TableHead className="text-xs">Chi nhánh</TableHead>
