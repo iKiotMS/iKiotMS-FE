@@ -15,13 +15,22 @@ import { registerUser, loginUser } from "@/lib/api/auth";
 import { setTokens, setCachedUser } from "@/lib/auth";
 import { assignFreeTrial } from "@/lib/api/subscription";
 import { useAuthStore } from "@/store/auth-store";
+import { usePhoneOtp } from "./hooks/use-phone-otp";
+
+// Skip SMS OTP entirely in local dev (sends "DEV_BYPASS" to the backend).
+const OTP_BYPASS = process.env.NEXT_PUBLIC_OTP_BYPASS === "true";
 
 export function SignupForm2({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const [isLoading, setIsLoading] = useState(false);
+  // OTP verification step (skipped entirely when OTP_BYPASS is on)
+  const [otpPhase, setOtpPhase] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [pendingData, setPendingData] = useState<SignupInput | null>(null);
   const router = useRouter();
+  const { sendOtp, isSending } = usePhoneOtp();
 
   const {
     register,
@@ -41,14 +50,15 @@ export function SignupForm2({
     },
   });
 
-  const onSubmit = async (data: SignupInput) => {
+  // Final step: create the account. `otpCode` is verified by the backend.
+  const completeSignup = async (data: SignupInput, otpCode: string) => {
     setIsLoading(true);
     try {
       // 1. Register the tenant and user account
-      await registerUser(data);
+      await registerUser(data, otpCode);
 
       // 2. Programmatically login to obtain access/refresh tokens
-      const { accessToken, refreshToken, user } = await loginUser({
+      const { accessToken, refreshToken } = await loginUser({
         phone: data.phoneNumber,
         password: data.password,
       });
@@ -92,6 +102,126 @@ export function SignupForm2({
       setIsLoading(false);
     }
   };
+
+  // First step: validate the form, then send the OTP (or bypass in dev).
+  const onSubmit = async (data: SignupInput) => {
+    if (OTP_BYPASS) {
+      await completeSignup(data, "DEV_BYPASS");
+      return;
+    }
+    try {
+      await sendOtp(data.phoneNumber);
+      setPendingData(data);
+      setOtpPhase(true);
+      setOtpCode("");
+      toast.success(`Đã gửi mã OTP đến ${data.phoneNumber}.`);
+    } catch (error) {
+      console.error("Send OTP error:", error);
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      toast.error(
+        err.response?.data?.message ||
+          "Không gửi được mã OTP. Vui lòng kiểm tra số điện thoại.",
+      );
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!pendingData) return;
+    if (otpCode.trim().length < 6) {
+      toast.error("Vui lòng nhập đủ 6 chữ số mã OTP.");
+      return;
+    }
+    // The backend verifies the code as part of registration.
+    await completeSignup(pendingData, otpCode.trim());
+  };
+
+  const handleBackToForm = () => {
+    setOtpPhase(false);
+    setOtpCode("");
+  };
+
+  const handleResendOtp = async () => {
+    if (!pendingData) return;
+    try {
+      await sendOtp(pendingData.phoneNumber);
+      setOtpCode("");
+      toast.success("Đã gửi lại mã OTP.");
+    } catch (error) {
+      console.error("Resend OTP error:", error);
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      toast.error(
+        err.response?.data?.message ||
+          "Không gửi lại được mã OTP. Vui lòng thử lại.",
+      );
+    }
+  };
+
+  if (otpPhase) {
+    return (
+      <div className={cn("flex flex-col gap-6", className)}>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-2xl font-bold">Xác thực số điện thoại</h1>
+          <p className="text-muted-foreground text-sm text-balance">
+            Nhập mã OTP gồm 6 chữ số đã gửi đến{" "}
+            <span className="font-medium text-foreground">
+              {pendingData?.phoneNumber}
+            </span>
+          </p>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor="otpCode">Mã OTP</Label>
+          <Input
+            id="otpCode"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="000000"
+            className="text-center text-lg tracking-[0.5em]"
+            value={otpCode}
+            onChange={(e) =>
+              setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            disabled={isLoading}
+          />
+        </div>
+
+        <Button
+          type="button"
+          className="w-full cursor-pointer"
+          onClick={handleVerifyOtp}
+          disabled={isLoading || otpCode.length < 6}
+        >
+          {isLoading ? "Đang xác thực..." : "Xác nhận & Đăng ký"}
+        </Button>
+
+        <div className="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            onClick={handleBackToForm}
+            disabled={isLoading}
+            className="underline underline-offset-4 hover:text-primary disabled:opacity-50"
+          >
+            Quay lại
+          </button>
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={isSending || isLoading}
+            className="underline underline-offset-4 hover:text-primary disabled:opacity-50"
+          >
+            {isSending ? "Đang gửi lại..." : "Gửi lại mã"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -264,9 +394,15 @@ export function SignupForm2({
         <Button
           type="submit"
           className="w-full cursor-pointer mt-1"
-          disabled={isLoading}
+          disabled={isLoading || isSending}
         >
-          {isLoading ? "Đang xử lý..." : "Đăng ký cửa hàng"}
+          {isSending
+            ? "Đang gửi mã OTP..."
+            : isLoading
+              ? "Đang xử lý..."
+              : OTP_BYPASS
+                ? "Đăng ký cửa hàng"
+                : "Tiếp tục & nhận mã OTP"}
         </Button>
       </div>
 

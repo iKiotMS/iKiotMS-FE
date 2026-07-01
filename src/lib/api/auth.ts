@@ -32,9 +32,18 @@ export async function loginUser(data: LoginInput) {
 }
 
 /**
- * Register a new user and tenant
+ * Request an SMS OTP (sent via eSMS) for the given phone number before registration.
  */
-export async function registerUser(data: SignupInput) {
+export async function sendOtpRequest(phoneNumber: string) {
+  const response = await client.post("/auth/send-otp", { phoneNumber });
+  return response.data;
+}
+
+/**
+ * Register a new user and tenant. `otpCode` is the 6-digit code the user
+ * received via SMS (or "DEV_BYPASS" when OTP is bypassed in dev).
+ */
+export async function registerUser(data: SignupInput, otpCode: string) {
   const response = await client.post("/auth/register", {
     phoneNumber: data.phoneNumber,
     password: data.password,
@@ -44,6 +53,7 @@ export async function registerUser(data: SignupInput) {
     tenantPhoneNumber: null,
     tenantMainAddress: null,
     tenantTaxNumber: null,
+    otpCode,
   });
   return response.data;
 }
