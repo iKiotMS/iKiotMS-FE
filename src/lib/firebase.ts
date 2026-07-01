@@ -1,5 +1,4 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,21 +10,6 @@ const firebaseConfig = {
 };
 
 // Reuse the app across HMR reloads / multiple imports.
-export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(firebaseApp);
-
-/**
- * When true, the signup flow skips Firebase OTP entirely and sends the
- * backend's dev-bypass sentinel token instead. Set NEXT_PUBLIC_OTP_BYPASS=true
- * in .env.local for local development so no real SMS is sent.
- */
-export const OTP_BYPASS = process.env.NEXT_PUBLIC_OTP_BYPASS === "true";
-
-/** Normalize a Vietnamese phone number to E.164 (+84...) for Firebase. */
-export function toE164(phone: string): string {
-  const p = phone.trim().replace(/[\s\-().]/g, "");
-  if (p.startsWith("+")) return p;
-  if (p.startsWith("84")) return "+" + p;
-  if (p.startsWith("0")) return "+84" + p.slice(1);
-  return "+84" + p;
-}
+export const firebaseApp = getApps().length
+  ? getApp()
+  : initializeApp(firebaseConfig);

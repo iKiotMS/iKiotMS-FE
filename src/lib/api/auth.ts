@@ -32,6 +32,24 @@ export async function loginUser(data: LoginInput) {
 }
 
 /**
+ * Check whether the phone number / store name are already taken, before
+ * sending an OTP, so the user gets immediate feedback and no wasted SMS.
+ */
+export async function checkRegistrationAvailability(
+  phoneNumber: string,
+  tenantName: string,
+) {
+  const response = await client.post("/auth/check-availability", {
+    phoneNumber,
+    tenantName,
+  });
+  return response.data.data as {
+    phoneNumberTaken: boolean;
+    tenantNameTaken: boolean;
+  };
+}
+
+/**
  * Request an SMS OTP (sent via eSMS) for the given phone number before registration.
  */
 export async function sendOtpRequest(phoneNumber: string) {

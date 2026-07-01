@@ -11,8 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signupSchema, SignupInput } from "@/lib/validation";
-import { registerUser, loginUser } from "@/lib/api/auth";
-import { setTokens, setCachedUser } from "@/lib/auth";
+import {
+  registerUser,
+  loginUser,
+  checkRegistrationAvailability,
+} from "@/lib/api/auth";
+import { setTokens } from "@/lib/auth";
 import { assignFreeTrial } from "@/lib/api/subscription";
 import { useAuthStore } from "@/store/auth-store";
 import { usePhoneOtp } from "./hooks/use-phone-otp";
@@ -25,6 +29,8 @@ export function SignupForm2({
   ...props
 }: React.ComponentProps<"form">) {
   const [isLoading, setIsLoading] = useState(false);
+  // Pre-submit uniqueness check (phone / store name) before sending the OTP
+  const [isChecking, setIsChecking] = useState(false);
   // OTP verification step (skipped entirely when OTP_BYPASS is on)
   const [otpPhase, setOtpPhase] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -36,6 +42,7 @@ export function SignupForm2({
     register,
     handleSubmit,
     control,
+    setError,
     formState: { errors },
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
@@ -103,8 +110,41 @@ export function SignupForm2({
     }
   };
 
+  const checkAvailability = async (data: SignupInput): Promise<boolean> => {
+    setIsChecking(true);
+    try {
+      const { phoneNumberTaken, tenantNameTaken } =
+        await checkRegistrationAvailability(data.phoneNumber, data.tenantName);
+
+      if (phoneNumberTaken) {
+        setError("phoneNumber", {
+          message: "Số điện thoại đã được sử dụng.",
+        });
+        toast.error("Số điện thoại đã được sử dụng.");
+      }
+      if (tenantNameTaken) {
+        setError("tenantName", {
+          message: "Tên cửa hàng đã tồn tại. Vui lòng chọn tên khác.",
+        });
+        toast.error("Tên cửa hàng đã tồn tại. Vui lòng chọn tên khác.");
+      }
+
+      return !phoneNumberTaken && !tenantNameTaken;
+    } catch (error) {
+      console.error("Availability check error:", error);
+      toast.error("Không kiểm tra được thông tin. Vui lòng thử lại.");
+      return false;
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   // First step: validate the form, then send the OTP (or bypass in dev).
   const onSubmit = async (data: SignupInput) => {
+    // Pre-check uniqueness first — stop early (and keep the SMS) if taken.
+    const isAvailable = await checkAvailability(data);
+    if (!isAvailable) return;
+
     if (OTP_BYPASS) {
       await completeSignup(data, "DEV_BYPASS");
       return;
@@ -394,15 +434,17 @@ export function SignupForm2({
         <Button
           type="submit"
           className="w-full cursor-pointer mt-1"
-          disabled={isLoading || isSending}
+          disabled={isChecking || isLoading || isSending}
         >
-          {isSending
-            ? "Đang gửi mã OTP..."
-            : isLoading
-              ? "Đang xử lý..."
-              : OTP_BYPASS
-                ? "Đăng ký cửa hàng"
-                : "Tiếp tục & nhận mã OTP"}
+          {isChecking
+            ? "Đang kiểm tra thông tin..."
+            : isSending
+              ? "Đang gửi mã OTP..."
+              : isLoading
+                ? "Đang xử lý..."
+                : OTP_BYPASS
+                  ? "Đăng ký cửa hàng"
+                  : "Tiếp tục & nhận mã OTP"}
         </Button>
       </div>
 
