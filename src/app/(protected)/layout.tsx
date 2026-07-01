@@ -3,9 +3,11 @@
 import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
+import {
+  ThemeCustomizer,
+  ThemeCustomizerTrigger,
+} from "@/components/theme-customizer";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
@@ -22,9 +24,7 @@ export default function DashboardLayout({
   if (pathname === "/check-out") {
     return (
       <AuthGuard>
-        <div className="min-h-screen w-full bg-background">
-          {children}
-        </div>
+        <div className="min-h-screen w-full bg-background">{children}</div>
       </AuthGuard>
     );
   }
@@ -32,11 +32,13 @@ export default function DashboardLayout({
   return (
     <AuthGuard>
       <SidebarProvider
-        style={{
-          "--sidebar-width": "16rem",
-          "--sidebar-width-icon": "3rem",
-          "--header-height": "calc(var(--spacing) * 14)",
-        } as React.CSSProperties}
+        style={
+          {
+            "--sidebar-width": "16rem",
+            "--sidebar-width-icon": "3rem",
+            "--header-height": "calc(var(--spacing) * 14)",
+          } as React.CSSProperties
+        }
         className={config.collapsible === "none" ? "sidebar-none-mode" : ""}
       >
         {config.side === "left" ? (
@@ -55,7 +57,6 @@ export default function DashboardLayout({
                   </div>
                 </div>
               </div>
-              <SiteFooter />
             </SidebarInset>
           </>
         ) : (
@@ -69,7 +70,6 @@ export default function DashboardLayout({
                   </div>
                 </div>
               </div>
-              <SiteFooter />
             </SidebarInset>
             <AppSidebar
               variant={config.variant}

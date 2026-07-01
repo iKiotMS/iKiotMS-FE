@@ -30,7 +30,7 @@ export interface Invoice {
     gender: "MALE" | "FEMALE" | "OTHER";
     address: string;
   };
-  status: "COMPLETED" | "CANCELLED" | "RETURNED";
+  status: "COMPLETED" | "CANCELLED" | "RETURNED" | "PENDING";
   userId: string;
   seller: {
     name: string;
@@ -78,6 +78,10 @@ export const STATUS_MAP: Record<
   RETURNED: {
     label: "Trả hàng",
     variant: "info",
+  },
+  PENDING: {
+    label: "Đang chờ",
+    variant: "warning",
   },
 };
 
@@ -225,6 +229,18 @@ export const invoicesColumns: ColumnDef<Invoice>[] = [
         {formatVND(row.getValue("customerPay"))}
       </span>
     ),
+  },
+  {
+    accessorKey: "paymentMethod",
+    header: "Thanh toán",
+    cell: ({ row }) => {
+      const method = row.getValue("paymentMethod") as Invoice["paymentMethod"];
+      return PAYMENT_METHOD_MAP[method] || "—";
+    },
+    filterFn: (row, columnId, value: string) => {
+      if (!value || value === "all") return true;
+      return row.getValue(columnId) === value;
+    },
   },
   {
     accessorKey: "status",

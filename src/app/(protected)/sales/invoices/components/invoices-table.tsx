@@ -127,6 +127,7 @@ export function InvoicesTable() {
     "seller.name": "Người bán",
     grandTotal: "Tổng tiền hàng",
     customerPay: "Khách đã trả",
+    paymentMethod: "Thanh toán",
     status: "Trạng thái",
   };
 

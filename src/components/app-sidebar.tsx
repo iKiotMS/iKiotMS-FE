@@ -50,6 +50,11 @@ const data = {
           icon: LayoutDashboard,
         },
         {
+          title: "Trợ lý AI",
+          url: "/chat",
+          icon: MessageCircle,
+        },
+        {
           title: "Nhân viên",
           url: "#",
           icon: Users,
@@ -163,11 +168,6 @@ const data = {
           title: "Tasks",
           url: "/tasks",
           icon: CheckSquare,
-        },
-        {
-          title: "Chat",
-          url: "/chat",
-          icon: MessageCircle,
         },
         {
           title: "Calendar",
