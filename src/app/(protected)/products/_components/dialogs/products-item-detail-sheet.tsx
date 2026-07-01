@@ -24,11 +24,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { formatVND, STATUS_MAP } from "../../_constants/product.constants";
+import {
+  formatVND,
+  safeImageSrc,
+  STATUS_MAP,
+} from "../../_constants/product.constants";
 import { useProducts } from "../../_context/products-provider";
 import type { Product, ProductItem } from "@/types/product";
 import { getCachedUser } from "@/lib/auth";
-import { canUpdateProduct, canDeleteProduct } from "../../shared/product-permissions";
+import {
+  canUpdateProduct,
+  canDeleteProduct,
+} from "../../shared/product-permissions";
 
 const formatDate = (iso?: string) => {
   if (!iso) return "—";
@@ -98,9 +105,12 @@ export function ProductsItemDetailSheet({
 
   if (!item) return null;
 
-  function resolveLocationName(locationType: string, locationId: string): string {
-    const opts = locationType === 'branch' ? branchOptions : warehouseOptions
-    return opts.find((o) => o.value === locationId)?.label ?? locationId
+  function resolveLocationName(
+    locationType: string,
+    locationId: string,
+  ): string {
+    const opts = locationType === "branch" ? branchOptions : warehouseOptions;
+    return opts.find((o) => o.value === locationId)?.label ?? locationId;
   }
 
   const profit = item.retailPrice - item.costPrice;
@@ -135,7 +145,7 @@ export function ProductsItemDetailSheet({
             <div className="grid grid-cols-[3fr_7fr] gap-4">
               <div className="relative rounded-xl overflow-hidden border shadow-sm">
                 <Image
-                  src={thumbnail?.url ?? "/placeholder-product.svg"}
+                  src={safeImageSrc(thumbnail?.url)}
                   alt={product.name}
                   fill
                   className="object-contain"
@@ -188,6 +198,18 @@ export function ProductsItemDetailSheet({
             </div>
 
             <Separator />
+
+            {item.productName && (
+              <Section title="Tên phiên bản">
+                <div className="px-4 py-3">
+                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                    {item.productDetails?.length
+                      ? `${item.productName} - ${item.productDetails.map((d) => d.value).join(" / ")}`
+                      : item.productName}
+                  </p>
+                </div>
+              </Section>
+            )}
 
             <Section title="Giá cả">
               <div className="px-4">
@@ -274,6 +296,16 @@ export function ProductsItemDetailSheet({
               </Section>
             )}
 
+            {item.productDetails && item.productDetails.length > 0 && (
+              <Section title="Thuộc tính">
+                {item.productDetails.map((d, idx) => (
+                  <div key={idx} className="px-4">
+                    <InfoRow label={d.name}>{d.value}</InfoRow>
+                  </div>
+                ))}
+              </Section>
+            )}
+
             <Section title="Thời gian">
               <div className="px-4">
                 <InfoRow label="Ngày tạo">{formatDate(item.createdAt)}</InfoRow>
@@ -296,7 +328,9 @@ export function ProductsItemDetailSheet({
               <Trash2 className=" size-4" />
               Xóa phiên bản
             </Button>
-          ) : <span />}
+          ) : (
+            <span />
+          )}
           <div />
           {canEdit && (
             <Button variant="outline" onClick={onEdit}>

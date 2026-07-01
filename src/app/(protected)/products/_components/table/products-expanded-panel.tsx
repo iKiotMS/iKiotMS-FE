@@ -9,7 +9,11 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useProducts } from "../../_context/products-provider";
-import { formatVND, STATUS_MAP } from "../../_constants/product.constants";
+import {
+  formatVND,
+  safeImageSrc,
+  STATUS_MAP,
+} from "../../_constants/product.constants";
 import type {
   Product,
   ProductDetailResponse,
@@ -36,7 +40,8 @@ export function ProductsExpandedPanel({
   product,
   isExpanded,
 }: ProductsExpandedPanelProps) {
-  const { setOpen, setCurrentRow } = useProducts();
+  const { setOpen, setCurrentRow, branchOptions, warehouseOptions } =
+    useProducts();
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
   const canDelete = canDeleteProduct(role);
@@ -142,12 +147,12 @@ export function ProductsExpandedPanel({
                   </div>
 
                   <Image
-                    src={
+                    src={safeImageSrc(
                       (
                         item.images?.find((i) => i.isThumbnail) ??
                         item.images?.[0]
-                      )?.url ?? "/placeholder-product.svg"
-                    }
+                      )?.url,
+                    )}
                     alt={product.name}
                     width={96}
                     height={96}
@@ -187,6 +192,16 @@ export function ProductsExpandedPanel({
                         {STATUS_MAP[product.status].label}
                       </Badge>
                     </div>
+                      <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
+                        Tên phiên bản
+                      </span>
+                      <span className="block min-w-0 truncate font-medium">
+                        {item.productDetails?.length
+                          ? `${item.productName} - ${item.productDetails.map((d) => d.value).join(" / ")}`
+                          : item.productName}
+                      </span>
+                    </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
                         Giá bán
@@ -220,6 +235,25 @@ export function ProductsExpandedPanel({
                         <span>{item.warrantyPeriod}</span>
                       </div>
                     )}
+                    {item.productDetails && item.productDetails.length > 0 && (
+                      <div className="col-span-2 flex flex-col gap-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          Thuộc tính
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {item.productDetails.map((d, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="max-w-[150px] truncate text-xs font-normal"
+                              title={`${d.name}: ${d.value}`}
+                            >
+                              {d.name}: {d.value}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Separator />
@@ -247,7 +281,9 @@ export function ProductsExpandedPanel({
               <Trash2 className="mr-2 size-4" />
               Xóa hàng hóa
             </Button>
-          ) : <span />}
+          ) : (
+            <span />
+          )}
 
           <div className="flex items-center gap-2">
             {canAdd && (
@@ -309,6 +345,8 @@ export function ProductsExpandedPanel({
         open={addOpen}
         onOpenChange={setAddOpen}
         onSuccess={handleItemAdded}
+        branchOptions={branchOptions}
+        warehouseOptions={warehouseOptions}
       />
 
       {editingItem && (

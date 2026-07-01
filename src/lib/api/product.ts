@@ -1,4 +1,3 @@
-// [API – Product]
 import client from '@/lib/api/client'
 import { useAuthStore } from '@/store/auth-store'
 import type {
@@ -14,19 +13,28 @@ import type {
   ProductDetailResponse,
 } from '@/types/product'
 
-type MongoDoc<T> = Omit<T, 'id'> & { _id: string }
+type MongoDoc<T extends object> = Omit<T, 'id'> & { _id: string }
+
+// GET /products, GET /products/:id — có items (nested) và totalStock
+type MongoProduct = MongoDoc<Omit<Product, 'items'>> & {
+  items?: MongoDoc<ProductItem>[]
+}
+
+// POST /products, PATCH /products/:id — không trả về items hay totalStock
+type MongoProductBase = MongoDoc<Omit<Product, 'items' | 'totalStock'>>
 
 function mapId<T extends object>(doc: MongoDoc<T>): T & { id: string } {
   const { _id, ...rest } = doc
-  return { ...(rest as T), id: _id }
+  return { ...(rest as unknown as T), id: _id }
 }
 
-function mapProduct<T extends any>(prod: MongoDoc<T>): T & { id: string } {
-  const mapped = mapId(prod) as any
-  if (mapped.items && Array.isArray(mapped.items)) {
-    mapped.items = mapped.items.map((item: any) => mapId(item))
+function mapProduct(prod: MongoProduct): Product {
+  const { _id, items, ...rest } = prod
+  return {
+    ...(rest as unknown as Omit<Product, 'id' | 'items'>),
+    id: _id,
+    items: items?.map(mapId),
   }
-  return mapped
 }
 
 export const productApi = {
@@ -51,7 +59,7 @@ export const productApi = {
     };
 
     const res = await client.get<{
-      data: MongoDoc<Product>[]
+      data: MongoProduct[]
       pagination: PaginationResponse
     }>('/products', { params: mergedParams })
     return {
@@ -61,17 +69,17 @@ export const productApi = {
   },
 
   getById: async (id: string): Promise<ProductDetailResponse> => {
-    const res = await client.get<{ data: MongoDoc<ProductDetailResponse> }>(`/products/${id}`)
-    return mapProduct(res.data.data)
+    const res = await client.get<{ data: MongoProduct }>(`/products/${id}`)
+    return mapProduct(res.data.data) as ProductDetailResponse
   },
 
   create: async (payload: ProductCreatePayload): Promise<Product> => {
-    const res = await client.post<{ data: MongoDoc<Product> }>('/products', payload)
+    const res = await client.post<{ data: MongoProductBase }>('/products', payload)
     return mapId(res.data.data)
   },
 
   update: async (id: string, payload: ProductUpdatePayload): Promise<Product> => {
-    const res = await client.patch<{ data: MongoDoc<Product> }>(`/products/${id}`, payload)
+    const res = await client.patch<{ data: MongoProductBase }>(`/products/${id}`, payload)
     return mapId(res.data.data)
   },
 

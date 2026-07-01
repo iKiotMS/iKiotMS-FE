@@ -3,6 +3,17 @@ import { z } from 'zod'
 
 export type ProductsDialogType = 'add' | 'edit' | 'delete' | 'deleteMany'
 
+const productDetailEntrySchema = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+
+const initialStockEntrySchema = z.object({
+  locationId: z.string(),
+  locationType: z.enum(['branch', 'warehouse']),
+  stock: z.string().optional(),
+})
+
 // Schema cho form tạo/chỉnh sửa Product (item fields optional — validate thủ công khi create)
 export const productFormSchema = z.object({
   name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
@@ -17,6 +28,10 @@ export const productFormSchema = z.object({
       }),
     )
     .optional(),
+  // --- Phiên bản đầu tiên ---
+  itemImages: z
+    .array(z.object({ url: z.string(), isThumbnail: z.boolean() }))
+    .optional(),
   productCode: z.string().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
@@ -25,6 +40,8 @@ export const productFormSchema = z.object({
   VAT: z.string().optional(),
   warrantyPeriod: z.string().optional(),
   description: z.string().optional(),
+  productDetails: z.array(productDetailEntrySchema).optional(),
+  initialStock: z.array(initialStockEntrySchema).optional(),
 })
 
 export type ProductFormValues = z.infer<typeof productFormSchema>
@@ -47,6 +64,8 @@ export const productItemFormSchema = z.object({
       }),
     )
     .optional(),
+  productDetails: z.array(productDetailEntrySchema).optional(),
+  initialStock: z.array(initialStockEntrySchema).optional(),
 })
 
 export type ProductItemFormValues = z.infer<typeof productItemFormSchema>
