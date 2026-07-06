@@ -22,6 +22,8 @@ import {
 import { Logo } from "@/components/logo";
 import { BranchSwitcher } from "@/components/switcher/branch-switcher";
 import { SidebarNotification } from "@/components/sidebar-notification";
+import { getSessionRole } from "@/lib/auth";
+import { filterHrNavItems } from "@/app/(protected)/staffs/shared/nav-hr-permissions";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -257,6 +259,29 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const userRole = getSessionRole();
+
+  const navGroups = React.useMemo(() => {
+    return data.navGroups.map((group) => ({
+      ...group,
+      items: group.items.map((item) => {
+        if (item.title !== "Nhân viên" || !item.items) {
+          return item;
+        }
+
+        const visibleItems = filterHrNavItems(item.items, userRole);
+        if (visibleItems.length === 0) {
+          return null;
+        }
+
+        return {
+          ...item,
+          items: visibleItems,
+        };
+      }).filter((item): item is NonNullable<typeof item> => item !== null),
+    }));
+  }, [userRole]);
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -264,7 +289,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {data.navGroups.map((group) => (
+        {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>

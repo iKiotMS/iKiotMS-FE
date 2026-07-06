@@ -1,13 +1,24 @@
 "use client";
 
 import { StaffsAccountDialog } from "./staffs-account-dialog";
+import { AssignBranchManagerDialog } from "./assign-branch-manager-dialog";
 import { StaffsDeactivateDialog } from "./staffs-deactivate-dialog";
 import { StaffsDeleteDialog } from "./staffs-delete-dialog";
 import { StaffsMutateDialog } from "./staffs-mutate-dialog";
 import { useStaffs } from "./staffs-provider";
 
 export function StaffsDialogs() {
-  const { open, setOpen, currentRow, setCurrentRow } = useStaffs();
+  const {
+    open,
+    setOpen,
+    currentRow,
+    setCurrentRow,
+    assignManagerOpen,
+    assignManagerBranchId,
+    assignManagerBranchName,
+    closeAssignBranchManager,
+    fetchStaffs,
+  } = useStaffs();
 
   function closeDialog() {
     setOpen(null);
@@ -62,6 +73,15 @@ export function StaffsDialogs() {
         }}
         currentRow={currentRow}
         mode="password"
+      />
+      <AssignBranchManagerDialog
+        open={assignManagerOpen}
+        onOpenChange={(value) => {
+          if (!value) closeAssignBranchManager();
+        }}
+        initialBranchId={assignManagerBranchId}
+        initialBranchName={assignManagerBranchName}
+        onSuccess={() => void fetchStaffs()}
       />
     </>
   );

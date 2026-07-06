@@ -23,9 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { getSessionRole } from "@/lib/auth";
+import { canFilterScheduleByStaff } from "@/app/(protected)/staffs/shared/schedule-permissions";
 import { getAttendanceStatusDisplay } from "@/app/(protected)/staffs/shared/attendance-status";
 import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
-import { sortSchedulesForDay } from "@/app/(protected)/staffs/shared/schedule-utils";
+import { expandSchedulesForCalendar, type CalendarScheduleEntry } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { ScheduleMonthPicker } from "./schedule-month-picker";
 import { useSchedule } from "./schedule-provider";
@@ -53,14 +55,15 @@ function attendanceDotClass(status?: string): string {
 }
 
 function ScheduleDayChip({
-  schedule,
+  entry,
   isSelected,
   onClick,
 }: {
-  schedule: WorkingSchedule;
+  entry: CalendarScheduleEntry;
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const { schedule, displayName, displayAttendance } = entry;
   const status = SCHEDULE_STATUS_MAP[schedule.status];
 
   return (
@@ -81,16 +84,16 @@ function ScheduleDayChip({
         status.variant === "secondary" &&
           "bg-muted border-border text-muted-foreground",
       )}
-      title={`${schedule.staffName} · ${schedule.shiftName} · ${getAttendanceStatusDisplay(schedule.attendance?.status).label}`}
+      title={`${displayName} · ${schedule.shiftName} · ${getAttendanceStatusDisplay(displayAttendance?.status).label}`}
     >
       <span
         className={cn(
           "size-1.5 shrink-0 rounded-full",
-          attendanceDotClass(schedule.attendance?.status),
+          attendanceDotClass(displayAttendance?.status),
         )}
       />
       <span className="truncate">
-        <span className="font-medium">{schedule.staffName}</span>
+        <span className="font-medium">{displayName}</span>
         <span className="opacity-75"> · {schedule.shiftName}</span>
       </span>
     </button>
@@ -104,8 +107,10 @@ export function ScheduleCalendar() {
     isFetching,
     calendarMonth,
     setSelectedSchedule,
+    setSelectedAssigneeUserId,
     setSelectedDayDate,
     selectedSchedule,
+    selectedAssigneeUserId,
     selectedDayDate,
     staffOptions,
     filters,
@@ -122,23 +127,40 @@ export function ScheduleCalendar() {
       (s) =>
         s.staffName.toLowerCase().includes(kw) ||
         s.shiftName.toLowerCase().includes(kw) ||
-        s.staffPhone.includes(kw),
+        s.staffPhone.includes(kw) ||
+        s.assignees.some(
+          (a) =>
+            a.staffName.toLowerCase().includes(kw) ||
+            a.staffPhone.includes(kw),
+        ),
     );
   }, [schedules, keyword]);
 
-  const schedulesByDate = useMemo(() => {
-    const map = new Map<string, WorkingSchedule[]>();
-    for (const schedule of filteredSchedules) {
-      const key = toDateKey(schedule.workDate);
+  const calendarEntries = useMemo(
+    () => expandSchedulesForCalendar(filteredSchedules, filters.userId),
+    [filteredSchedules, filters.userId],
+  );
+
+  const entriesByDate = useMemo(() => {
+    const map = new Map<string, CalendarScheduleEntry[]>();
+    for (const entry of calendarEntries) {
+      const key = toDateKey(entry.schedule.workDate);
       const list = map.get(key) ?? [];
-      list.push(schedule);
+      list.push(entry);
       map.set(key, list);
     }
     for (const [key, list] of map) {
-      map.set(key, sortSchedulesForDay(list));
+      map.set(
+        key,
+        [...list].sort((a, b) => {
+          const timeCmp = a.schedule.startTime.localeCompare(b.schedule.startTime);
+          if (timeCmp !== 0) return timeCmp;
+          return a.displayName.localeCompare(b.displayName, "vi");
+        }),
+      );
     }
     return map;
-  }, [filteredSchedules]);
+  }, [calendarEntries]);
 
   const monthStart = startOfMonth(calendarMonth);
   const monthEnd = endOfMonth(calendarMonth);
@@ -147,14 +169,21 @@ export function ScheduleCalendar() {
   const calendarDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   const isLoading = isInitialLoading || isFetching;
+  const canFilterStaff = canFilterScheduleByStaff(getSessionRole());
 
   function openDayPanel(dateKey: string) {
     setSelectedDayDate(dateKey);
     setSelectedSchedule(null);
+    setSelectedAssigneeUserId(null);
   }
 
-  function selectSchedule(schedule: WorkingSchedule, dateKey: string) {
+  function selectSchedule(
+    schedule: WorkingSchedule,
+    dateKey: string,
+    userId?: string | null,
+  ) {
     setSelectedDayDate(dateKey);
+    setSelectedAssigneeUserId(userId ?? null);
     setSelectedSchedule(schedule);
   }
 
@@ -173,7 +202,7 @@ export function ScheduleCalendar() {
               className="pl-9 h-9"
             />
           </div>
-          {staffOptions.length > 0 && (
+          {canFilterStaff && staffOptions.length > 0 && (
             <Select value={filters.userId} onValueChange={updateUserFilter}>
               <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
                 <SelectValue placeholder="Nhân viên" />
@@ -238,11 +267,11 @@ export function ScheduleCalendar() {
         <div className="grid grid-cols-7">
           {calendarDays.map((day) => {
             const dateKey = format(day, "yyyy-MM-dd");
-            const daySchedules = schedulesByDate.get(dateKey) ?? [];
+            const dayEntries = entriesByDate.get(dateKey) ?? [];
             const inMonth = isSameMonth(day, calendarMonth);
             const today = isToday(day);
-            const visible = daySchedules.slice(0, MAX_VISIBLE_PER_DAY);
-            const hiddenCount = daySchedules.length - visible.length;
+            const visible = dayEntries.slice(0, MAX_VISIBLE_PER_DAY);
+            const hiddenCount = dayEntries.length - visible.length;
 
             const isDaySelected = selectedDayDate === dateKey;
 
@@ -250,14 +279,14 @@ export function ScheduleCalendar() {
               <div
                 key={dateKey}
                 onClick={() => {
-                  if (daySchedules.length > 0) openDayPanel(dateKey);
+                  if (dayEntries.length > 0) openDayPanel(dateKey);
                 }}
                 className={cn(
                   "min-h-[110px] border-b border-r p-1.5 flex flex-col gap-1",
                   !inMonth && "bg-muted/20",
                   today && "bg-primary/5",
                   isDaySelected && "bg-primary/10 ring-1 ring-inset ring-primary/30",
-                  daySchedules.length > 0 &&
+                  dayEntries.length > 0 &&
                     "cursor-pointer hover:bg-muted/30 transition-colors",
                 )}
               >
@@ -271,7 +300,7 @@ export function ScheduleCalendar() {
                   >
                     {format(day, "d")}
                   </span>
-                  {daySchedules.length > 0 && (
+                  {dayEntries.length > 0 && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -281,7 +310,7 @@ export function ScheduleCalendar() {
                       className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
                       title="Xem tất cả ca trong ngày"
                     >
-                      {daySchedules.length} ca
+                      {dayEntries.length} ca
                     </button>
                   )}
                 </div>
@@ -290,12 +319,21 @@ export function ScheduleCalendar() {
                   <Skeleton className="h-5 w-full" />
                 ) : (
                   <div className="flex flex-col gap-0.5 flex-1">
-                    {visible.map((schedule) => (
+                    {visible.map((entry) => (
                       <ScheduleDayChip
-                        key={schedule._id}
-                        schedule={schedule}
-                        isSelected={selectedSchedule?._id === schedule._id}
-                        onClick={() => selectSchedule(schedule, dateKey)}
+                        key={entry.chipKey}
+                        entry={entry}
+                        isSelected={
+                          selectedSchedule?._id === entry.schedule._id &&
+                          selectedAssigneeUserId === (entry.assignee?.userId ?? null)
+                        }
+                        onClick={() =>
+                          selectSchedule(
+                            entry.schedule,
+                            dateKey,
+                            entry.assignee?.userId,
+                          )
+                        }
                       />
                     ))}
                     {hiddenCount > 0 && (

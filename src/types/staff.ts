@@ -105,6 +105,10 @@ export interface CreateStaffAccountPayload {
   reEnterPassword: string;
 }
 
+export interface StaffManagerActionPayload {
+  replacementManagerId?: string;
+}
+
 export interface StaffRoleOption {
   value: StaffRole;
   label: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { getCachedUser } from "@/lib/auth";
+import { getSessionRole } from "@/lib/auth";
 import { canViewStaff } from "@/app/(protected)/staffs/shared/staff-permissions";
 import { StaffsButtonGroup } from "./components/staffs-button-group";
 import { StaffsDialogs } from "./components/staffs-dialogs";
@@ -8,7 +8,7 @@ import { StaffsProvider } from "./components/staffs-provider";
 import { StaffsTable } from "./components/staffs-table";
 
 function StaffsPageContent() {
-  const canView = canViewStaff(getCachedUser()?.role);
+  const canView = canViewStaff(getSessionRole());
 
   if (!canView) {
     return (
@@ -39,12 +39,14 @@ function StaffsPageContent() {
 }
 
 export default function StaffsPage() {
+  const canView = canViewStaff(getSessionRole());
+
   return (
-    <StaffsProvider>
+    <StaffsProvider enabled={canView}>
       <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
         <StaffsPageContent />
       </div>
-      <StaffsDialogs />
+      {canView && <StaffsDialogs />}
     </StaffsProvider>
   );
 }

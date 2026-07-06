@@ -14,6 +14,7 @@ import type {
   CreateStaffPayload,
   Staff,
   StaffListResponse,
+  StaffManagerActionPayload,
   StaffQueryParams,
   StaffRoleOption,
   UpdateStaffPayload,
@@ -184,12 +185,24 @@ export const staffApi = {
     await client.patch(`/staff/${id}/account/password`, payload);
   },
 
-  deactivateAccount: async (id: string): Promise<void> => {
-    await client.patch(`/staff/${id}/account/deactivate`);
+  deactivateAccount: async (
+    id: string,
+    payload?: StaffManagerActionPayload,
+  ): Promise<void> => {
+    const body = payload?.replacementManagerId
+      ? { replacementManagerId: payload.replacementManagerId }
+      : {};
+    await client.patch(`/staff/${id}/account/deactivate`, body);
   },
 
-  remove: async (id: string): Promise<void> => {
-    await client.delete(`/staff/${id}`);
+  remove: async (
+    id: string,
+    payload?: StaffManagerActionPayload,
+  ): Promise<void> => {
+    const body = payload?.replacementManagerId
+      ? { replacementManagerId: payload.replacementManagerId }
+      : {};
+    await client.delete(`/staff/${id}`, { data: body });
   },
 
   getRoles: async (): Promise<StaffRoleOption[]> => {

@@ -46,6 +46,10 @@ export function useBranchSwitcher() {
     name: string;
     type: "branch" | "warehouse";
   } | null>(null);
+  const [assignManagerBranch, setAssignManagerBranch] =
+    React.useState<Branch | null>(null);
+  const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] =
+    React.useState(false);
 
   const mapBranchToItem = React.useCallback(
     (b: Branch): SwitcherItem => ({
@@ -297,6 +301,21 @@ export function useBranchSwitcher() {
     }
   };
 
+  const openAssignManagerDialog = (branch: Branch) => {
+    setAssignManagerBranch(branch);
+    setIsAssignManagerDialogOpen(true);
+  };
+
+  const closeAssignManagerDialog = () => {
+    setIsAssignManagerDialogOpen(false);
+    setAssignManagerBranch(null);
+  };
+
+  const handleAssignManagerSuccess = async () => {
+    closeAssignManagerDialog();
+    await fetchBranches();
+  };
+
   return {
     isMobile,
     dbBranches,
@@ -320,6 +339,9 @@ export function useBranchSwitcher() {
     setDeleteConfirmOpen,
     deleteTarget,
     setDeleteTarget,
+    assignManagerBranch,
+    isAssignManagerDialogOpen,
+    closeAssignManagerDialog,
     mapBranchToItem,
     mapWarehouseToItem,
     handleSelect,
@@ -328,5 +350,7 @@ export function useBranchSwitcher() {
     handleCreateWarehouse,
     handleEditWarehouse,
     handleConfirmDelete,
+    openAssignManagerDialog,
+    handleAssignManagerSuccess,
   };
 }

@@ -50,6 +50,18 @@ import { toDateInputValue } from "@/app/(protected)/staffs/shared/staff-format";
 import { CccdInput } from "./cccd-input";
 import { StaffAvatarField } from "./staff-avatar-field";
 import { uploadImage } from "@/lib/api/upload";
+import { getSessionBranchId, getSessionRole } from "@/lib/auth";
+import {
+  canAssignWarehouseOnStaffForm,
+  canEditStaffRoleAndWorkplace,
+  shouldLockBranchOnCreate,
+} from "@/app/(protected)/staffs/shared/staff-permissions";
+import { isManagerRole } from "@/app/(protected)/staffs/shared/staff-manager-utils";
+import {
+  resolveBranchIdForRole,
+  resolveWarehouseIdForRole,
+  validateStaffWorkplace,
+} from "@/app/(protected)/staffs/shared/staff-workplace";
 import { useStaffs } from "./staffs-provider";
 
 const GENDER_OPTIONS: { value: StaffGender; label: string }[] = [
@@ -134,22 +146,6 @@ function buildProfilePayload(data: {
   return hasExplicitAvatar || hasOtherValue ? profile : undefined;
 }
 
-function resolveBranchIdForRole(
-  role: StaffRole,
-  branchId?: string,
-): string | null | undefined {
-  if (role === "WAREHOUSE_MANAGER") return null;
-  return branchId || undefined;
-}
-
-function resolveWarehouseIdForRole(
-  role: StaffRole,
-  warehouseId?: string,
-): string | null | undefined {
-  if (role === "BRANCH_MANAGER") return null;
-  return warehouseId || undefined;
-}
-
 const createFormSchema = z
   .object({
     firstName: z.string().trim().min(1, "Tên là bắt buộc").max(50, "Tên tối đa 50 ký tự"),
@@ -187,6 +183,19 @@ const createFormSchema = z
         path: ["branchId"],
       });
     }
+
+    const workplaceError = validateStaffWorkplace(
+      data.role,
+      data.branchId,
+      data.warehouseId,
+    );
+    if (workplaceError) {
+      ctx.addIssue({
+        code: "custom",
+        message: workplaceError,
+        path: ["branchId"],
+      });
+    }
   });
 
 const editFormSchema = z
@@ -215,6 +224,19 @@ const editFormSchema = z
       ctx.addIssue({
         code: "custom",
         message: "Quản lý chi nhánh cần chọn chi nhánh",
+        path: ["branchId"],
+      });
+    }
+
+    const workplaceError = validateStaffWorkplace(
+      data.role,
+      data.branchId,
+      data.warehouseId,
+    );
+    if (workplaceError) {
+      ctx.addIssue({
+        code: "custom",
+        message: workplaceError,
         path: ["branchId"],
       });
     }
@@ -253,7 +275,16 @@ export function StaffsMutateDialog({
   currentRow,
 }: StaffsMutateDialogProps) {
   const isEdit = !!currentRow;
-  const { handleAdd, handleEdit, roleOptions, branchOptions, warehouseOptions } =
+  const userRole = getSessionRole();
+  const lockBranchOnCreate = shouldLockBranchOnCreate(userRole);
+  const canAssignWarehouse = canAssignWarehouseOnStaffForm(userRole);
+  const isEditingManager = isEdit && currentRow && isManagerRole(currentRow.role);
+  const canEditRoleWorkplace =
+    !isEdit ||
+    (currentRow &&
+      canEditStaffRoleAndWorkplace(userRole, currentRow.role));
+
+  const { handleAdd, handleEdit, roleOptions, branchOptions, warehouseOptions, warehouseOptionsFailed } =
     useStaffs();
 
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
@@ -347,6 +378,9 @@ export function StaffsMutateDialog({
     if (selectedRole === "BRANCH_MANAGER") {
       form.setValue("warehouseId", "");
     }
+    if (selectedRole === "STAFF") {
+      // keep one workplace — user clears the other manually when switching
+    }
   }, [selectedRole, open, form]);
 
   useEffect(() => {
@@ -371,9 +405,22 @@ export function StaffsMutateDialog({
       });
     } else {
       resetAvatarDraft();
-      form.reset(EMPTY_CREATE_VALUES);
+      const defaultBranchId =
+        lockBranchOnCreate && getSessionBranchId()
+          ? getSessionBranchId()!
+          : "";
+      form.reset({
+        ...EMPTY_CREATE_VALUES,
+        branchId: defaultBranchId,
+        warehouseId: "",
+      });
     }
-  }, [open, isEdit, currentRow, form]);
+  }, [open, isEdit, currentRow, form, lockBranchOnCreate]);
+
+  useEffect(() => {
+    if (!open || canAssignWarehouse) return;
+    form.setValue("warehouseId", "");
+  }, [open, canAssignWarehouse, form, selectedRole]);
 
   async function onSubmit(data: CreateFormValues | EditFormValues) {
     const existingAvatarUrl = isEdit ? currentRow?.profile?.avatarUrl : undefined;
@@ -394,23 +441,33 @@ export function StaffsMutateDialog({
     try {
       if (isEdit && currentRow) {
         const editData = data as EditFormValues;
-        await handleEdit(currentRow._id, {
+        const payload: Parameters<typeof handleEdit>[1] = {
           firstName: editData.firstName,
           lastName: editData.lastName,
           email: editData.email || undefined,
-          role: editData.role,
-          branchId: resolveBranchIdForRole(editData.role, editData.branchId),
-          warehouseId: resolveWarehouseIdForRole(
-            editData.role,
-            editData.warehouseId,
-          ),
           hireDate: normalizeDateInput(editData.hireDate),
           profile: buildProfilePayload({
             ...editData,
             avatarUrl,
           }),
           accountNote: editData.accountNote?.trim() || "",
-        });
+        };
+
+        if (canEditRoleWorkplace && !isEditingManager) {
+          payload.role = editData.role;
+          payload.branchId = resolveBranchIdForRole(
+            editData.role,
+            editData.branchId,
+          );
+          if (canAssignWarehouse) {
+            payload.warehouseId = resolveWarehouseIdForRole(
+              editData.role,
+              editData.warehouseId,
+            );
+          }
+        }
+
+        await handleEdit(currentRow._id, payload);
       } else {
         const createData = data as CreateFormValues;
         await handleAdd({
@@ -420,10 +477,9 @@ export function StaffsMutateDialog({
           email: createData.email || undefined,
           role: createData.role,
           branchId: resolveBranchIdForRole(createData.role, createData.branchId),
-          warehouseId: resolveWarehouseIdForRole(
-            createData.role,
-            createData.warehouseId,
-          ),
+          warehouseId: canAssignWarehouse
+            ? resolveWarehouseIdForRole(createData.role, createData.warehouseId)
+            : undefined,
           hireDate: normalizeDateInput(createData.hireDate),
           profile: buildProfilePayload({
             ...createData,
@@ -532,7 +588,11 @@ export function StaffsMutateDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vai trò</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={Boolean(isEditingManager)}
+                    >
                       <FormControl>
                         <SelectTrigger className="cursor-pointer w-full">
                           <SelectValue placeholder="Chọn vai trò" />
@@ -546,6 +606,12 @@ export function StaffsMutateDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    {isEditingManager && (
+                      <p className="text-xs text-muted-foreground">
+                        Thay đổi vai trò quản lý qua API phân công, không qua
+                        form này.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -560,17 +626,26 @@ export function StaffsMutateDialog({
                     <FormItem>
                       <FormLabel>
                         Chi nhánh
-                        {selectedRole !== "BRANCH_MANAGER" && (
+                        {selectedRole === "STAFF" && canAssignWarehouse && (
                           <span className="text-muted-foreground font-normal">
                             {" "}
-                            (tuỳ chọn)
+                            (hoặc chọn kho)
                           </span>
                         )}
                       </FormLabel>
                       {branchOptions.length > 0 ? (
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            if (selectedRole === "STAFF" && value) {
+                              form.setValue("warehouseId", "");
+                            }
+                          }}
                           value={field.value || ""}
+                          disabled={
+                            Boolean(isEditingManager) ||
+                            (lockBranchOnCreate && !isEdit)
+                          }
                         >
                           <FormControl>
                             <SelectTrigger className="cursor-pointer w-full">
@@ -593,6 +668,12 @@ export function StaffsMutateDialog({
                           Hiện chưa có chi nhánh nào trong hệ thống.
                         </p>
                       )}
+                      {lockBranchOnCreate && !isEdit && (
+                        <p className="text-xs text-muted-foreground">
+                          Chi nhánh được gán theo chi nhánh của bạn. Nhân viên
+                          mới chỉ thuộc chi nhánh này.
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -600,17 +681,33 @@ export function StaffsMutateDialog({
               )}
             </div>
 
-            {selectedRole === "WAREHOUSE_MANAGER" && (
+            {canAssignWarehouse &&
+              (selectedRole === "WAREHOUSE_MANAGER" ||
+                selectedRole === "STAFF") && (
               <FormField
                 control={form.control}
                 name="warehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kho hàng</FormLabel>
+                    <FormLabel>
+                      Kho hàng
+                      {selectedRole === "STAFF" && (
+                        <span className="text-muted-foreground font-normal">
+                          {" "}
+                          (hoặc chọn chi nhánh)
+                        </span>
+                      )}
+                    </FormLabel>
                     {warehouseOptions.length > 0 ? (
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          if (selectedRole === "STAFF" && value) {
+                            form.setValue("branchId", "");
+                          }
+                        }}
                         value={field.value || ""}
+                        disabled={Boolean(isEditingManager)}
                       >
                         <FormControl>
                           <SelectTrigger className="cursor-pointer w-full">
@@ -627,7 +724,9 @@ export function StaffsMutateDialog({
                       </Select>
                     ) : (
                       <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
-                        Hiện chưa có kho hàng nào trong hệ thống.
+                        {warehouseOptionsFailed
+                          ? "Không tải được danh sách kho. Bạn vẫn có thể chọn chi nhánh cho nhân viên."
+                          : "Hiện chưa có kho hàng nào trong hệ thống."}
                       </p>
                     )}
                     <FormMessage />

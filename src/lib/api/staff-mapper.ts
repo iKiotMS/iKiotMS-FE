@@ -126,6 +126,33 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
   };
 }
 
+export function getApiFieldErrors(
+  error: unknown,
+): Record<string, string> | undefined {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return undefined;
+  }
+
+  const data = (error as { response?: { data?: Record<string, unknown> } })
+    .response?.data;
+  const errors = data?.errors;
+
+  if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
+    return undefined;
+  }
+
+  const mapped: Record<string, string> = {};
+  for (const [key, value] of Object.entries(errors)) {
+    if (typeof value === "string") {
+      mapped[key] = value;
+    } else if (Array.isArray(value) && typeof value[0] === "string") {
+      mapped[key] = value[0];
+    }
+  }
+
+  return Object.keys(mapped).length > 0 ? mapped : undefined;
+}
+
 export function getApiErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "response" in error) {
     const data = (error as { response?: { data?: Record<string, unknown> } })
@@ -135,6 +162,18 @@ export function getApiErrorMessage(error: unknown): string {
     if (typeof data?.message === "string") {
       if (data.message === "Invalid or expired token.") {
         return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+      }
+      if (data.message === "Staff account is not active") {
+        return "Tài khoản chưa được kích hoạt hoặc chưa có mật khẩu. Vui lòng dùng «Kích hoạt tài khoản» trước.";
+      }
+      if (
+        data.message.includes("password") &&
+        data.message.includes("required")
+      ) {
+        return "Nhân viên chưa có tài khoản đăng nhập. Vui lòng «Kích hoạt tài khoản» trước khi đổi quản lý hoặc thay thế quản lý.";
+      }
+      if (data.message.includes("phân công quản lý")) {
+        return data.message;
       }
       return data.message;
     }
