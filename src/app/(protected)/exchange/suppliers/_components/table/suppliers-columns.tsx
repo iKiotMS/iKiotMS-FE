@@ -1,11 +1,9 @@
 // [Table – Columns Supplier]
 import { type ColumnDef } from '@tanstack/react-table'
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { Supplier } from '@/types/supplier'
-import { STATUS_MAP } from '../../_constants/supplier.constants'
 
 function SortableHeader({
   label,
@@ -68,13 +66,6 @@ export const suppliersColumns: ColumnDef<Supplier>[] = [
     size: 50,
   },
   {
-    accessorKey: 'supplierCode',
-    header: ({ column }) => <SortableHeader label="Mã NCC" column={column} />,
-    cell: ({ row }) => (
-      <span className="font-mono text-sm font-medium">{row.getValue('supplierCode')}</span>
-    ),
-  },
-  {
     accessorKey: 'supplierName',
     header: ({ column }) => <SortableHeader label="Tên nhà cung cấp" column={column} />,
     cell: ({ row }) => (
@@ -111,6 +102,11 @@ export const suppliersColumns: ColumnDef<Supplier>[] = [
         </span>
       )
     },
+    // Bộ lọc "Có công nợ" tương ứng tham số hasDebt của backend
+    filterFn: (row, columnId, value: string) => {
+      if (value !== 'hasDebt') return true
+      return (row.getValue(columnId) as number) > 0
+    },
   },
   {
     accessorKey: 'creditLimit',
@@ -118,20 +114,6 @@ export const suppliersColumns: ColumnDef<Supplier>[] = [
     cell: ({ row }) => (
       <span className="tabular-nums text-sm">{formatVND(row.getValue('creditLimit') as number)}</span>
     ),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Trạng thái',
-    cell: ({ row }) => {
-      const status = row.getValue('status') as Supplier['status']
-      const { label, className } = STATUS_MAP[status]
-      return (
-        <Badge variant="secondary" className={className}>
-          {label}
-        </Badge>
-      )
-    },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: 'expand',

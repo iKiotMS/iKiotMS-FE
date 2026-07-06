@@ -2,23 +2,28 @@
 import client from '@/lib/api/client'
 import type {
   Category,
+  CategoryPagination,
   CategoryQueryParams,
   CategoryListResponse,
   CategoryCreatePayload,
   CategoryUpdatePayload,
 } from '@/types/category'
 
-function mapCategory(doc: any): Category {
+// Backend trả về document Mongoose với `_id`; FE dùng `id`.
+type CategoryDoc = Omit<Category, 'id'> & { _id: string }
+
+function mapCategory(doc: CategoryDoc): Category {
   const { _id, ...rest } = doc
   return { ...rest, id: _id, _id }
 }
 
 export const categoryApi = {
   getList: async (params?: CategoryQueryParams): Promise<CategoryListResponse> => {
-    const res = await client.get<{ success: boolean; data: any[]; pagination: any }>(
-      '/categories',
-      { params },
-    )
+    const res = await client.get<{
+      success: boolean
+      data: CategoryDoc[]
+      pagination: CategoryPagination
+    }>('/categories', { params })
     return {
       data: res.data.data.map(mapCategory),
       pagination: res.data.pagination,
@@ -26,22 +31,22 @@ export const categoryApi = {
   },
 
   getById: async (id: string): Promise<Category> => {
-    const res = await client.get<{ data: any }>(`/categories/${id}`)
+    const res = await client.get<{ data: CategoryDoc }>(`/categories/${id}`)
     return mapCategory(res.data.data)
   },
 
   getTree: async (): Promise<Category[]> => {
-    const res = await client.get<{ data: any[] }>('/categories/tree')
+    const res = await client.get<{ data: CategoryDoc[] }>('/categories/tree')
     return res.data.data.map(mapCategory)
   },
 
   create: async (payload: CategoryCreatePayload): Promise<Category> => {
-    const res = await client.post<{ data: any }>('/categories', payload)
+    const res = await client.post<{ data: CategoryDoc }>('/categories', payload)
     return mapCategory(res.data.data)
   },
 
   update: async (id: string, payload: CategoryUpdatePayload): Promise<Category> => {
-    const res = await client.patch<{ data: any }>(`/categories/${id}`, payload)
+    const res = await client.patch<{ data: CategoryDoc }>(`/categories/${id}`, payload)
     return mapCategory(res.data.data)
   },
 
