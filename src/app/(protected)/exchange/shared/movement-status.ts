@@ -9,8 +9,7 @@ export const MOVEMENT_STATUS_MAP: Record<
   { label: string; variant: BadgeVariant }
 > = {
   PENDING: { label: "Chờ duyệt", variant: "warning" },
-  APPROVED: { label: "Đã duyệt", variant: "success" },
-  REJECTED: { label: "Từ chối", variant: "error" },
-  COMPLETED: { label: "Hoàn thành", variant: "info" },
+  IN_TRANSIT: { label: "Đang vận chuyển", variant: "info" },
+  RECEIVED: { label: "Đã nhận hàng", variant: "success" },
   CANCELLED: { label: "Đã huỷ", variant: "secondary" },
 };

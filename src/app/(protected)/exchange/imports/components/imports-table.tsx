@@ -116,9 +116,9 @@ export function ImportsTable() {
             <SelectContent>
               <SelectItem value="ALL">Tất cả</SelectItem>
               <SelectItem value="PENDING">Chờ duyệt</SelectItem>
-              <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-              <SelectItem value="REJECTED">Từ chối</SelectItem>
-              <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+              <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
+              <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
+              <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
             </SelectContent>
           </Select>
         </div>

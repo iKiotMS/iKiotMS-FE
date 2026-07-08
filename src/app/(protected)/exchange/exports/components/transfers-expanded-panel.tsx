@@ -7,13 +7,14 @@ import {
   ArrowRight,
   CalendarDays,
   CheckCircle,
+  PackageCheck,
   User,
   Warehouse,
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -24,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
 import type { StockMovement } from "@/types/stock-movement";
 import { useTransfers } from "./transfers-provider";
@@ -56,12 +56,10 @@ export function TransfersExpandedPanel({
   request: StockMovement;
   isExpanded: boolean;
 }) {
-  const { handleApprove, handleReject } = useTransfers();
+  const { handleApprove, handleReceive, handleCancel } = useTransfers();
   const [loading, setLoading] = useState(false);
-  const [approveNote, setApproveNote] = useState("");
-  const [rejectNote, setRejectNote] = useState("");
-  const [showApproveForm, setShowApproveForm] = useState(false);
-  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [receivedQtys, setReceivedQtys] = useState<Record<string, number>>({});
+  const [showReceiveForm, setShowReceiveForm] = useState(false);
   const wasExpandedRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -73,16 +71,16 @@ export function TransfersExpandedPanel({
     }
     if (!isExpanded) {
       wasExpandedRef.current = false;
-      setShowApproveForm(false);
-      setShowRejectForm(false);
-      setApproveNote("");
-      setRejectNote("");
     }
   }, [isExpanded]);
 
   const status = MOVEMENT_STATUS_MAP[request.status];
   const totalQty = request.details.reduce((sum, item) => sum + item.quantity, 0);
   const isPending = request.status === "PENDING";
+  const isInTransit = request.status === "IN_TRANSIT";
+
+  const getQty = (id: string, original: number) =>
+    receivedQtys[id] ?? original;
 
   if (loading) {
     return (
@@ -174,15 +172,12 @@ export function TransfersExpandedPanel({
         </Table>
       </div>
 
-      {isPending && !showApproveForm && !showRejectForm && (
+      {isPending && (
         <div className="flex gap-3">
-          <Button
-            className="flex-1 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowApproveForm(true);
-            }}
-          >
+          <Button className="flex-1 cursor-pointer" onClick={(e) => {
+            e.stopPropagation();
+            handleApprove(request._id);
+          }}>
             <CheckCircle className="mr-2 size-4" />
             Duyệt yêu cầu
           </Button>
@@ -191,91 +186,91 @@ export function TransfersExpandedPanel({
             className="flex-1 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              setShowRejectForm(true);
+              handleCancel(request._id);
             }}
           >
             <XCircle className="mr-2 size-4" />
-            Từ chối
+            Huỷ yêu cầu
           </Button>
         </div>
       )}
 
-      {isPending && showApproveForm && (
-        <div className="space-y-3 rounded-lg border p-4">
-          <h4 className="text-sm font-semibold">Xác nhận duyệt yêu cầu chuyển kho</h4>
-          <div>
-            <Label className="text-sm">Ghi chú (tuỳ chọn)</Label>
-            <Textarea
-              value={approveNote}
-              onChange={(e) => setApproveNote(e.target.value)}
-              placeholder="Ghi chú khi duyệt..."
-              className="mt-1 resize-none"
-              rows={2}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              className="flex-1 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleApprove(request._id, approveNote);
-                setShowApproveForm(false);
-                setApproveNote("");
-              }}
-            >
-              Xác nhận duyệt
-            </Button>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowApproveForm(false);
-              }}
-            >
-              Huỷ
-            </Button>
-          </div>
+      {isInTransit && !showReceiveForm && (
+        <div className="flex gap-3">
+          <Button
+            className="flex-1 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowReceiveForm(true);
+            }}
+          >
+            <PackageCheck className="mr-2 size-4" />
+            Xác nhận đã nhận
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCancel(request._id);
+            }}
+          >
+            <XCircle className="mr-2 size-4" />
+            Huỷ yêu cầu
+          </Button>
         </div>
       )}
 
-      {isPending && showRejectForm && (
+      {isInTransit && showReceiveForm && (
         <div className="space-y-3 rounded-lg border p-4">
-          <h4 className="text-sm font-semibold">Từ chối yêu cầu chuyển kho</h4>
-          <div>
-            <Label className="text-sm">
-              Lý do từ chối <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
-              placeholder="Nhập lý do từ chối..."
-              className="mt-1 resize-none"
-              rows={2}
-              onClick={(e) => e.stopPropagation()}
-            />
+          <h4 className="text-sm font-semibold">Xác nhận nhận hàng chuyển kho</h4>
+          <p className="text-xs text-muted-foreground">
+            Điều chỉnh số lượng thực nhận nếu có chênh lệch.
+          </p>
+          <div className="space-y-2">
+            {request.details.map((item) => (
+              <div key={item.productItemId} className="grid grid-cols-[1fr_120px] items-center gap-3">
+                <span className="text-sm">{item.productName || item.sku || item.productItemId}</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={item.quantity}
+                  title="Số lượng thực nhận"
+                  placeholder="SL nhận"
+                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                  value={getQty(item.productItemId, item.quantity)}
+                  onChange={(e) =>
+                    setReceivedQtys((prev) => ({
+                      ...prev,
+                      [item.productItemId]: e.target.valueAsNumber,
+                    }))
+                  }
+                />
+              </div>
+            ))}
           </div>
           <div className="flex gap-2">
             <Button
-              variant="destructive"
               className="flex-1 cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
-                handleReject(request._id, rejectNote);
-                setShowRejectForm(false);
-                setRejectNote("");
+                const details = request.details.map((d) => ({
+                  productItemId: d.productItemId,
+                  receivedQuantity: getQty(d.productItemId, d.quantity),
+                }));
+                handleReceive(request._id, details);
+                setShowReceiveForm(false);
+                setReceivedQtys({});
               }}
-              disabled={!rejectNote.trim()}
             >
-              Xác nhận từ chối
+              Xác nhận nhận hàng
             </Button>
             <Button
               variant="outline"
               className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowRejectForm(false);
+                setShowReceiveForm(false);
               }}
             >
               Huỷ

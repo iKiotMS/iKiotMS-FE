@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -14,19 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import type {
+  StockMovementLocationOption,
+  StockMovementProductItemOption,
+} from '@/types/stock-movement'
 import { useTransfers } from './transfers-provider'
-
-const MOCK_LOCATIONS = [
-  { _id: 'wh-1', name: 'Kho Trung Tâm', type: 'warehouse' as const },
-  { _id: 'br-1', name: 'Chi nhánh Q.1', type: 'branch' as const },
-  { _id: 'br-2', name: 'Chi nhánh Q.3', type: 'branch' as const },
-]
-const MOCK_PRODUCTS = [
-  { _id: 'pi-1', name: 'Nước suối Lavie 500ml', sku: 'LAV-500' },
-  { _id: 'pi-2', name: 'Coca-Cola 330ml', sku: 'COKE-330' },
-  { _id: 'pi-3', name: 'Bánh mì que', sku: 'BMQ-001' },
-  { _id: 'pi-4', name: 'Mì gói Hảo Hảo', sku: 'HH-001' },
-]
 
 const transferFormSchema = z.object({
   fromLocationId: z.string().min(1, 'Vui lòng chọn kho gửi'),
@@ -60,6 +52,9 @@ interface TransfersCreateDialogProps {
 
 export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDialogProps) {
   const { fetchTransfers } = useTransfers()
+  const [locations, setLocations] = useState<StockMovementLocationOption[]>([])
+  const [products, setProducts] = useState<StockMovementProductItemOption[]>([])
+  const [isOptionsLoading, setIsOptionsLoading] = useState(false)
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferFormSchema),
@@ -73,9 +68,32 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     form.reset(EMPTY_VALUES)
   }, [open, form])
 
+  useEffect(() => {
+    if (!open) return
+
+    async function loadOptions() {
+      setIsOptionsLoading(true)
+      try {
+        const [locationOptions, productOptions] = await Promise.all([
+          stockMovementApi.getLocationOptions(),
+          stockMovementApi.getProductItemOptions(),
+        ])
+        setLocations(locationOptions)
+        setProducts(productOptions)
+      } catch (error) {
+        console.error(error)
+        toast.error('Không thể tải dữ liệu tạo yêu cầu chuyển kho')
+      } finally {
+        setIsOptionsLoading(false)
+      }
+    }
+
+    loadOptions()
+  }, [open])
+
   async function onSubmit(data: TransferFormValues) {
-    const fromLoc = MOCK_LOCATIONS.find((l) => l._id === data.fromLocationId)
-    const toLoc = MOCK_LOCATIONS.find((l) => l._id === data.toLocationId)
+    const fromLoc = locations.find((l) => l._id === data.fromLocationId)
+    const toLoc = locations.find((l) => l._id === data.toLocationId)
     try {
       await stockMovementApi.createTransfer({
         movementType: 'TRANSFER',
@@ -117,7 +135,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                       <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder="Chọn kho gửi" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_LOCATIONS.map((l) => (
+                      {locations.map((l) => (
                         <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
@@ -134,7 +152,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                       <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder="Chọn kho nhận" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_LOCATIONS.map((l) => (
+                      {locations.map((l) => (
                         <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
@@ -174,7 +192,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                             <SelectTrigger className="cursor-pointer h-8 text-sm"><SelectValue placeholder="Chọn hàng hóa" /></SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {MOCK_PRODUCTS.map((p) => (
+                            {products.map((p) => (
                               <SelectItem key={p._id} value={p._id}>{p.name} <span className="text-xs text-muted-foreground">({p.sku})</span></SelectItem>
                             ))}
                           </SelectContent>
@@ -218,7 +236,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">Hủy</Button>
-              <Button type="submit" disabled={form.formState.isSubmitting} className="cursor-pointer">
+              <Button type="submit" disabled={form.formState.isSubmitting || isOptionsLoading} className="cursor-pointer">
                 <Plus className="mr-2 size-4" />
                 {form.formState.isSubmitting ? 'Đang tạo...' : 'Tạo yêu cầu chuyển kho'}
               </Button>
