@@ -26,7 +26,7 @@ type SuppliersToolbarProps = {
 }
 
 export function SuppliersToolbar({ table }: SuppliersToolbarProps) {
-  const statusFilter = table.getColumn('status')?.getFilterValue() as string
+  const debtFilter = table.getColumn('outstandingDebt')?.getFilterValue() as string
 
   return (
     <div className="flex items-center justify-between">
@@ -34,7 +34,7 @@ export function SuppliersToolbar({ table }: SuppliersToolbarProps) {
         <div className="relative flex-1 min-w-52 max-w-sm">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Tìm tên, mã, số điện thoại..."
+            placeholder="Tìm tên, số điện thoại..."
             value={(table.getState().globalFilter as string) ?? ''}
             onChange={(e) => table.setGlobalFilter(String(e.target.value))}
             className="pl-9 h-9"
@@ -42,18 +42,17 @@ export function SuppliersToolbar({ table }: SuppliersToolbarProps) {
         </div>
 
         <Select
-          value={statusFilter || ''}
+          value={debtFilter || 'all'}
           onValueChange={(value) =>
-            table.getColumn('status')?.setFilterValue(value === 'all' ? '' : value)
+            table.getColumn('outstandingDebt')?.setFilterValue(value === 'all' ? undefined : value)
           }
         >
           <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
-            <SelectValue placeholder="Trạng thái" />
+            <SelectValue placeholder="Công nợ" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="ACTIVE">Đang hợp tác</SelectItem>
-            <SelectItem value="INACTIVE">Ngừng hợp tác</SelectItem>
+            <SelectItem value="all">Tất cả</SelectItem>
+            <SelectItem value="hasDebt">Có công nợ</SelectItem>
           </SelectContent>
         </Select>
       </div>

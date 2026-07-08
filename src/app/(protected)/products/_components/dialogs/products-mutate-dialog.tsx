@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Pencil, Plus, ShoppingBag } from 'lucide-react'
+import { Check, ChevronsUpDown, Pencil, Plus, ShoppingBag, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { uploadImage } from '@/lib/api/upload'
 import { toast } from 'sonner'
 import {
@@ -33,11 +34,143 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product'
 import { productFormSchema, type ProductFormValues } from '../../_types/product.types'
 import { useProducts } from '../../_context/products-provider'
 import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
 import { CascadeSelect } from '@/components/ui/cascade-select'
+
+type LocationOption = { value: string; label: string }
+type StockLocation = { locationId: string; locationType: 'branch' | 'warehouse' }
+
+function InitialStockMultiSelect({
+  branchOptions,
+  warehouseOptions,
+  value,
+  onChange,
+}: {
+  branchOptions: LocationOption[]
+  warehouseOptions: LocationOption[]
+  value: StockLocation[]
+  onChange: (v: StockLocation[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  const selectedKeys = new Set(value.map((s) => `${s.locationType}:${s.locationId}`))
+
+  function toggle(locationType: 'branch' | 'warehouse', locationId: string) {
+    const key = `${locationType}:${locationId}`
+    if (selectedKeys.has(key)) {
+      onChange(value.filter((s) => `${s.locationType}:${s.locationId}` !== key))
+    } else {
+      onChange([...value, { locationId, locationType }])
+    }
+  }
+
+  function remove(key: string) {
+    onChange(value.filter((s) => `${s.locationType}:${s.locationId}` !== key))
+  }
+
+  function getLabel(locationType: 'branch' | 'warehouse', locationId: string) {
+    const opts = locationType === 'branch' ? branchOptions : warehouseOptions
+    return opts.find((o) => o.value === locationId)?.label ?? locationId
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          className={cn(
+            'w-full min-h-9 h-auto justify-start gap-1.5 flex-wrap font-normal px-3 py-2',
+            value.length === 0 && 'text-muted-foreground',
+          )}
+        >
+          {value.length === 0 ? (
+            <span>Chọn chi nhánh / kho...</span>
+          ) : (
+            value.map((s) => {
+              const key = `${s.locationType}:${s.locationId}`
+              return (
+                <Badge
+                  key={key}
+                  variant="secondary"
+                  className="gap-1 pr-1 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    remove(key)
+                  }}
+                >
+                  {getLabel(s.locationType, s.locationId)}
+                  <X className="size-3" />
+                </Badge>
+              )
+            })
+          )}
+          <ChevronsUpDown className="ml-auto size-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Tìm kiếm địa điểm..." />
+          <CommandList>
+            <CommandEmpty>Không tìm thấy địa điểm.</CommandEmpty>
+            {branchOptions.length > 0 && (
+              <CommandGroup heading="Chi nhánh">
+                {branchOptions.map((b) => (
+                  <CommandItem
+                    key={`branch:${b.value}`}
+                    value={b.label}
+                    onSelect={() => toggle('branch', b.value)}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 size-4',
+                        selectedKeys.has(`branch:${b.value}`) ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {b.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {warehouseOptions.length > 0 && (
+              <CommandGroup heading="Kho">
+                {warehouseOptions.map((w) => (
+                  <CommandItem
+                    key={`warehouse:${w.value}`}
+                    value={w.label}
+                    onSelect={() => toggle('warehouse', w.value)}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 size-4',
+                        selectedKeys.has(`warehouse:${w.value}`) ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {w.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
@@ -45,6 +178,7 @@ const EMPTY_VALUES: ProductFormValues = {
   categoryId: null,
   status: 'ACTIVE',
   images: [],
+  itemImages: [],
   productCode: '',
   sku: '',
   barcode: '',
@@ -53,6 +187,8 @@ const EMPTY_VALUES: ProductFormValues = {
   VAT: '',
   warrantyPeriod: '',
   description: '',
+  productDetails: [],
+  initialStock: [],
 }
 
 type ProductsMutateDialogProps = {
@@ -63,13 +199,20 @@ type ProductsMutateDialogProps = {
 
 export function ProductsMutateDialog({ open, onOpenChange, currentRow }: ProductsMutateDialogProps) {
   const isEdit = !!currentRow
-  const { handleAdd, handleEdit, brands, categories } = useProducts()
+  const { handleAdd, handleEdit, brands, categories, branchOptions, warehouseOptions } = useProducts()
   const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: EMPTY_VALUES,
   })
+
+  const { fields: detailFields, append: appendDetail, remove: removeDetail } = useFieldArray({
+    control: form.control,
+    name: 'productDetails',
+  })
+
+  const hasLocations = branchOptions.length > 0 || warehouseOptions.length > 0
 
   useEffect(() => {
     if (!open) return
@@ -95,8 +238,24 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
       form.setValue('images', [{ url, isThumbnail: true }])
       toast.success('Tải ảnh lên thành công')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      toast.error(err.message || 'Tải ảnh lên thất bại')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Tải ảnh lên thất bại')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const url = await uploadImage(file)
+      form.setValue('itemImages', [{ url, isThumbnail: true }])
+      toast.success('Tải ảnh lên thành công')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Tải ảnh lên thất bại')
     } finally {
       setUploading(false)
     }
@@ -302,6 +461,56 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                   Mỗi hàng hóa cần ít nhất một phiên bản. Bạn có thể thêm nhiều phiên bản sau.
                 </p>
 
+                {/* Ảnh riêng cho phiên bản */}
+                <div className="space-y-2">
+                  <FormLabel>Hình ảnh phiên bản</FormLabel>
+                  <div className="flex items-center gap-4">
+                    <div className="size-20 rounded-lg border bg-muted flex items-center justify-center overflow-hidden relative shrink-0">
+                      {form.watch('itemImages')?.[0]?.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={form.watch('itemImages')?.[0]?.url}
+                          alt="Item preview"
+                          className="object-cover size-full"
+                        />
+                      ) : (
+                        <ShoppingBag className="size-8 text-muted-foreground" />
+                      )}
+                      {uploading && (
+                        <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                          <span className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleItemImageUpload}
+                          disabled={uploading}
+                          className="cursor-pointer max-w-xs"
+                        />
+                        {form.watch('itemImages')?.[0]?.url && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => form.setValue('itemImages', [])}
+                            disabled={uploading}
+                            className="cursor-pointer text-destructive border-destructive/20 hover:bg-destructive/10"
+                          >
+                            Xóa ảnh
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Nếu để trống, ảnh hàng hóa sẽ được dùng thay thế.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -457,6 +666,75 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                     </FormItem>
                   )}
                 />
+
+                {/* === Thuộc tính phiên bản === */}
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Thuộc tính phiên bản</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer h-7 text-xs"
+                      onClick={() => appendDetail({ name: '', value: '' })}
+                    >
+                      <Plus className="mr-1 size-3.5" />
+                      Thêm thuộc tính
+                    </Button>
+                  </div>
+                  {detailFields.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      VD: Màu sắc — Đỏ, Dung lượng — 512GB
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    {detailFields.map((field, index) => (
+                      <div key={field.id} className="flex gap-2">
+                        <Input
+                          placeholder="Tên thuộc tính (VD: Màu sắc)"
+                          className="flex-1"
+                          {...form.register(`productDetails.${index}.name`)}
+                        />
+                        <Input
+                          placeholder="Giá trị (VD: Đỏ)"
+                          className="flex-1"
+                          {...form.register(`productDetails.${index}.value`)}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 cursor-pointer text-muted-foreground hover:text-destructive"
+                          onClick={() => removeDetail(index)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* === Tồn kho ban đầu === */}
+                <Separator />
+                <div className="space-y-2">
+                  <div>
+                    <FormLabel>Tồn kho ban đầu</FormLabel>
+                    <p className="text-xs text-muted-foreground mt-0.5">Tùy chọn</p>
+                  </div>
+                  {!hasLocations ? (
+                    <p className="text-xs text-muted-foreground">
+                      Chưa có chi nhánh hoặc kho. Vui lòng tạo trước để nhập tồn kho.
+                    </p>
+                  ) : (
+                    <InitialStockMultiSelect
+                      branchOptions={branchOptions}
+                      warehouseOptions={warehouseOptions}
+                      value={(form.watch('initialStock') ?? []) as StockLocation[]}
+                      onChange={(v) => form.setValue('initialStock', v)}
+                    />
+                  )}
+                </div>
               </>
             )}
 

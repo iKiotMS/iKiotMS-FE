@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Pencil, Plus, ShoppingBag } from 'lucide-react'
+import { Pencil, Plus, ShoppingBag, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { uploadImage } from '@/lib/api/upload'
@@ -25,6 +25,16 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import type { ProductItem } from '@/types/product'
 import { productApi } from '@/lib/api/product'
 import { productItemFormSchema, type ProductItemFormValues } from '../../_types/product.types'
@@ -40,7 +50,11 @@ const EMPTY_VALUES: ProductItemFormValues = {
   warrantyPeriod: '',
   description: '',
   images: [],
+  productDetails: [],
+  initialStock: [],
 }
+
+type LocationOption = { value: string; label: string }
 
 type Props =
   | {
@@ -49,6 +63,8 @@ type Props =
       open: boolean
       onOpenChange: (open: boolean) => void
       onSuccess: (item: ProductItem) => void
+      branchOptions: LocationOption[]
+      warehouseOptions: LocationOption[]
     }
   | {
       mode: 'edit'
@@ -62,11 +78,23 @@ export function ProductsItemMutateDialog(props: Props) {
   const { open, onOpenChange, onSuccess } = props
   const isEdit = props.mode === 'edit'
   const existingItem = props.mode === 'edit' ? props.item : undefined
+  const branchOptions = props.mode === 'create' ? props.branchOptions : []
+  const warehouseOptions = props.mode === 'create' ? props.warehouseOptions : []
   const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductItemFormValues>({
     resolver: zodResolver(productItemFormSchema),
     defaultValues: EMPTY_VALUES,
+  })
+
+  const { fields: detailFields, append: appendDetail, remove: removeDetail } = useFieldArray({
+    control: form.control,
+    name: 'productDetails',
+  })
+
+  const { fields: stockFields, append: appendStock, remove: removeStock } = useFieldArray({
+    control: form.control,
+    name: 'initialStock',
   })
 
   useEffect(() => {
@@ -82,6 +110,8 @@ export function ProductsItemMutateDialog(props: Props) {
         warrantyPeriod: existingItem.warrantyPeriod ?? '',
         description: existingItem.description ?? '',
         images: existingItem.images ?? [],
+        productDetails: existingItem.productDetails?.map((d) => ({ name: d.name, value: d.value })) ?? [],
+        initialStock: [],
       })
     } else {
       form.reset(EMPTY_VALUES)
@@ -96,9 +126,8 @@ export function ProductsItemMutateDialog(props: Props) {
       const url = await uploadImage(file)
       form.setValue('images', [{ url, isThumbnail: true }])
       toast.success('Tải ảnh lên thành công')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      toast.error(err.message || 'Tải ảnh lên thất bại')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Tải ảnh lên thất bại')
     } finally {
       setUploading(false)
     }
@@ -110,6 +139,16 @@ export function ProductsItemMutateDialog(props: Props) {
       costPrice: parsePriceAmount(data.costPrice),
       retailPrice: parsePriceAmount(data.retailPrice),
       VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
+      productDetails: data.productDetails?.filter((d) => d.name.trim() && d.value.trim()),
+      initialStock: isEdit
+        ? undefined
+        : data.initialStock
+            ?.filter((s) => s.locationId)
+            .map((s) => ({
+              locationId: s.locationId,
+              locationType: s.locationType,
+              ...(s.stock && Number(s.stock) > 0 ? { stock: Number(s.stock) } : {}),
+            })),
     }
     try {
       let result: ProductItem
@@ -126,6 +165,8 @@ export function ProductsItemMutateDialog(props: Props) {
       toast.error(isEdit ? 'Cập nhật phiên bản thất bại' : 'Thêm phiên bản thất bại')
     }
   }
+
+  const hasLocations = branchOptions.length > 0 || warehouseOptions.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -346,6 +387,151 @@ export function ProductsItemMutateDialog(props: Props) {
                 </FormItem>
               )}
             />
+
+            {/* === Thuộc tính sản phẩm === */}
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FormLabel>Thuộc tính</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer h-7 text-xs"
+                  onClick={() => appendDetail({ name: '', value: '' })}
+                >
+                  <Plus className="mr-1 size-3.5" />
+                  Thêm thuộc tính
+                </Button>
+              </div>
+              {detailFields.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  VD: Màu sắc — Đỏ, Dung lượng — 512GB
+                </p>
+              )}
+              <div className="space-y-2">
+                {detailFields.map((field, index) => (
+                  <div key={field.id} className="flex gap-2">
+                    <Input
+                      placeholder="Tên thuộc tính (VD: Màu sắc)"
+                      className="flex-1"
+                      {...form.register(`productDetails.${index}.name`)}
+                    />
+                    <Input
+                      placeholder="Giá trị (VD: Đỏ)"
+                      className="flex-1"
+                      {...form.register(`productDetails.${index}.value`)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 cursor-pointer text-muted-foreground hover:text-destructive"
+                      onClick={() => removeDetail(index)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* === Tồn kho ban đầu (chỉ khi tạo) === */}
+            {!isEdit && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <FormLabel>Tồn kho ban đầu</FormLabel>
+                      <p className="text-xs text-muted-foreground mt-0.5">Tùy chọn</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer h-7 text-xs"
+                      disabled={!hasLocations}
+                      onClick={() => appendStock({ locationId: '', locationType: 'branch', stock: '0' })}
+                    >
+                      <Plus className="mr-1 size-3.5" />
+                      Thêm địa điểm
+                    </Button>
+                  </div>
+                  {!hasLocations && (
+                    <p className="text-xs text-muted-foreground">
+                      Chưa có chi nhánh hoặc kho. Vui lòng tạo trước để nhập tồn kho.
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    {stockFields.map((field, index) => {
+                      const watched = form.watch('initialStock') ?? []
+                      const current = watched[index]
+                      const combined =
+                        current?.locationId
+                          ? `${current.locationType}:${current.locationId}`
+                          : ''
+                      return (
+                        <div key={field.id} className="flex gap-2 items-center">
+                          <Select
+                            value={combined}
+                            onValueChange={(val) => {
+                              const sepIdx = val.indexOf(':')
+                              const type = val.slice(0, sepIdx) as 'branch' | 'warehouse'
+                              const id = val.slice(sepIdx + 1)
+                              form.setValue(`initialStock.${index}.locationId`, id, { shouldDirty: true })
+                              form.setValue(`initialStock.${index}.locationType`, type, { shouldDirty: true })
+                            }}
+                          >
+                            <SelectTrigger className="flex-1 cursor-pointer">
+                              <SelectValue placeholder="Chọn chi nhánh / kho" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {branchOptions.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Chi nhánh</SelectLabel>
+                                  {branchOptions.map((b) => (
+                                    <SelectItem key={b.value} value={`branch:${b.value}`}>
+                                      {b.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              )}
+                              {warehouseOptions.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Kho</SelectLabel>
+                                  {warehouseOptions.map((w) => (
+                                    <SelectItem key={w.value} value={`warehouse:${w.value}`}>
+                                      {w.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            className="w-24 tabular-nums"
+                            {...form.register(`initialStock.${index}.stock`)}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 cursor-pointer text-muted-foreground hover:text-destructive"
+                            onClick={() => removeStock(index)}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
 
             <DialogFooter>
               <Button

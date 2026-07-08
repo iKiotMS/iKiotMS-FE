@@ -1,11 +1,7 @@
 // [Domain – Types]
-export type SupplierStatus = 'ACTIVE' | 'INACTIVE'
-
-export type TransactionType = 'PURCHASE' | 'PAYMENT' | 'RETURN'
-
 export interface Supplier {
   id: string
-  supplierCode: string
+  _id?: string
   supplierName: string
   contactName: string
   phoneNumber: string
@@ -13,45 +9,45 @@ export interface Supplier {
   address: string
   creditLimit: number
   outstandingDebt: number
-  status: SupplierStatus
-  createdAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
-export interface SupplierTransaction {
-  id: string
-  supplierId: string
-  type: TransactionType
-  reference: string
-  amount: number
-  balance: number
-  description: string
-  date: string
-}
-
-export interface SupplierQueryParams {
-  keyword?: string
-  status?: SupplierStatus
-  page?: number
-  limit?: number
-}
-
-export interface SupplierListResponse {
-  data: Supplier[]
+export interface SupplierPagination {
   total: number
   page: number
   limit: number
   totalPages: number
 }
 
+export interface SupplierQueryParams {
+  search?: string
+  hasDebt?: 'true' | 'false'
+  page?: number
+  limit?: number
+}
+
+export interface SupplierListResponse {
+  data: Supplier[]
+  pagination: SupplierPagination
+}
+
 export interface SupplierCreatePayload {
-  supplierCode: string
   supplierName: string
   contactName?: string
   phoneNumber?: string
   email?: string
   address?: string
   creditLimit?: number
-  status: SupplierStatus
 }
 
 export type SupplierUpdatePayload = Partial<SupplierCreatePayload>
+
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'MOMO' | 'VNPAY' | 'SEPAY'
+
+export interface SupplierPayDebtPayload {
+  amount: number
+  paymentMethod?: PaymentMethod
+  branchId?: string
+  note?: string
+}

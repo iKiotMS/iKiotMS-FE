@@ -24,6 +24,13 @@ export function useProductsMutations() {
   async function handleAdd(data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
+      const validInitialStock = (data.initialStock ?? [])
+        .filter((s) => s.locationId)
+        .map((s) => ({
+          locationId: s.locationId,
+          locationType: s.locationType,
+          ...(s.stock && Number(s.stock) > 0 ? { stock: Number(s.stock) } : {}),
+        }))
       const product = await productApi.create({
         name: data.name,
         brandId: data.brandId ?? undefined,
@@ -40,11 +47,13 @@ export function useProductsMutations() {
             VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
             warrantyPeriod: data.warrantyPeriod,
             description: data.description,
-            images: data.images,
+            images: data.itemImages?.length ? data.itemImages : data.images,
+            productDetails: data.productDetails?.filter((d) => d.name.trim() && d.value.trim()),
+            initialStock: validInitialStock,
           },
         ],
       })
-      setProducts((prev) => [product, ...prev])
+      setProducts((prev) => [{ ...product, totalStock: 0 }, ...prev])
       toast.success('Thêm hàng hóa thành công')
       return true
     } catch {
@@ -65,7 +74,7 @@ export function useProductsMutations() {
         status: data.status,
         images: data.images,
       })
-      setProducts((prev) => prev.map((p) => (p.id === id ? product : p)))
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...product } : p)))
       toast.success('Cập nhật hàng hóa thành công')
       return true
     } catch {

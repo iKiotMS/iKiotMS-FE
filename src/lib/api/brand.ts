@@ -2,23 +2,28 @@
 import client from '@/lib/api/client'
 import type {
   Brand,
+  BrandPagination,
   BrandQueryParams,
   BrandListResponse,
   BrandCreatePayload,
   BrandUpdatePayload,
 } from '@/types/brand'
 
-function mapBrand(doc: any): Brand {
+// Backend trả về document Mongoose với `_id`; FE dùng `id`.
+type BrandDoc = Omit<Brand, 'id'> & { _id: string }
+
+function mapBrand(doc: BrandDoc): Brand {
   const { _id, ...rest } = doc
   return { ...rest, id: _id, _id }
 }
 
 export const brandApi = {
   getList: async (params?: BrandQueryParams): Promise<BrandListResponse> => {
-    const res = await client.get<{ success: boolean; data: any[]; pagination: any }>(
-      '/brands',
-      { params },
-    )
+    const res = await client.get<{
+      success: boolean
+      data: BrandDoc[]
+      pagination: BrandPagination
+    }>('/brands', { params })
     return {
       data: res.data.data.map(mapBrand),
       pagination: res.data.pagination,
@@ -26,17 +31,17 @@ export const brandApi = {
   },
 
   getById: async (id: string): Promise<Brand> => {
-    const res = await client.get<{ data: any }>(`/brands/${id}`)
+    const res = await client.get<{ data: BrandDoc }>(`/brands/${id}`)
     return mapBrand(res.data.data)
   },
 
   create: async (payload: BrandCreatePayload): Promise<Brand> => {
-    const res = await client.post<{ data: any }>('/brands', payload)
+    const res = await client.post<{ data: BrandDoc }>('/brands', payload)
     return mapBrand(res.data.data)
   },
 
   update: async (id: string, payload: BrandUpdatePayload): Promise<Brand> => {
-    const res = await client.patch<{ data: any }>(`/brands/${id}`, payload)
+    const res = await client.patch<{ data: BrandDoc }>(`/brands/${id}`, payload)
     return mapBrand(res.data.data)
   },
 

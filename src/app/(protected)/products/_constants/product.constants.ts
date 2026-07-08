@@ -1,6 +1,14 @@
 // [Constants – Product]
 import type { ProductStatus } from '@/types/product'
 
+const PLACEHOLDER = '/placeholder-product.svg'
+
+export function safeImageSrc(url?: string | null): string {
+  if (!url) return PLACEHOLDER
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) return url
+  return PLACEHOLDER
+}
+
 export const formatVND = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
 
