@@ -4,10 +4,6 @@ import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import {
-  ThemeCustomizer,
-  ThemeCustomizerTrigger,
-} from "@/components/theme-customizer";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
@@ -17,7 +13,6 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
   const { config } = useSidebarConfig();
   const pathname = usePathname();
 
@@ -79,12 +74,6 @@ export default function DashboardLayout({
           </>
         )}
 
-        {/* Theme Customizer */}
-        <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
-        <ThemeCustomizer
-          open={themeCustomizerOpen}
-          onOpenChange={setThemeCustomizerOpen}
-        />
       </SidebarProvider>
     </AuthGuard>
   );
