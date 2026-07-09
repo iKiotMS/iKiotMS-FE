@@ -1,11 +1,13 @@
 "use client";
 
+import * as React from "react";
 import {
   CreditCard,
   EllipsisVertical,
   LogOut,
   BellDot,
   CircleUser,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -115,13 +117,19 @@ export function NavUser({
                   Thông báo
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/settings">
+                  <Settings className="h-4 w-4" />
+                  Cài đặt hệ thống
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
               onClick={handleLogout}
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="h-4 w-4" />
               <span>Đăng xuất</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

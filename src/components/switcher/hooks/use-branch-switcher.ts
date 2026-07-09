@@ -123,6 +123,16 @@ export function useBranchSwitcher() {
     fetchBranches();
   }, [fetchBranches]);
 
+  React.useEffect(() => {
+    const handleBranchesUpdated = () => {
+      fetchBranches();
+    };
+    window.addEventListener("branches-updated", handleBranchesUpdated);
+    return () => {
+      window.removeEventListener("branches-updated", handleBranchesUpdated);
+    };
+  }, [fetchBranches]);
+
   // Synchronize activeItem with the global locationKey
   React.useEffect(() => {
     if (!locationKey) {
@@ -193,6 +203,7 @@ export function useBranchSwitcher() {
       toast.success(`Đã tạo chi nhánh "${newBranch.name}" thành công!`);
       setIsDialogOpen(false);
       await fetchBranches();
+      window.dispatchEvent(new Event("branches-updated"));
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Lỗi khi tạo chi nhánh";
       toast.error(msg);
@@ -214,6 +225,7 @@ export function useBranchSwitcher() {
       setIsEditBranchDialogOpen(false);
       setEditingBranch(null);
       await fetchBranches();
+      window.dispatchEvent(new Event("branches-updated"));
     } catch (error: any) {
       const msg =
         error?.response?.data?.message || "Lỗi khi cập nhật chi nhánh";
@@ -231,6 +243,7 @@ export function useBranchSwitcher() {
       toast.success(`Đã tạo kho hàng "${newWarehouse.name}" thành công!`);
       setIsWarehouseDialogOpen(false);
       await fetchBranches();
+      window.dispatchEvent(new Event("branches-updated"));
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Lỗi khi tạo kho hàng";
       toast.error(msg);
@@ -250,6 +263,7 @@ export function useBranchSwitcher() {
       setIsEditWarehouseDialogOpen(false);
       setEditingWarehouse(null);
       await fetchBranches();
+      window.dispatchEvent(new Event("branches-updated"));
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Lỗi khi cập nhật kho hàng";
       toast.error(msg);
@@ -277,6 +291,7 @@ export function useBranchSwitcher() {
         });
       }
       await fetchBranches();
+      window.dispatchEvent(new Event("branches-updated"));
     } catch (error: any) {
       const msg =
         error?.response?.data?.message ||
