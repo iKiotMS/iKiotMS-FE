@@ -512,6 +512,17 @@ export default function CheckOutPage() {
             setIsReceiptOpen(true);
             setQrOrderData(null);
           }}
+          onPaidOffline={({ customerPay, change }) => {
+            // Đơn đã chuyển sang tiền mặt — hóa đơn phải phản ánh đúng phương thức
+            setReceiptOrder({
+              ...qrOrderData.receiptSnapshot,
+              paymentMethod: "CASH",
+              customerPay,
+              change,
+            });
+            setIsReceiptOpen(true);
+            setQrOrderData(null);
+          }}
         />
       )}
 

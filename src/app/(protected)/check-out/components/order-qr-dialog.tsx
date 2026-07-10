@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, Copy, Loader2, QrCode, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Banknote, CheckCircle2, Copy, Loader2, QrCode, XCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { getSocket, joinRoom } from "@/lib/socket";
+import { orderApi } from "@/lib/api/order";
 
 interface OrderQrDialogProps {
   open: boolean;
@@ -20,6 +23,7 @@ interface OrderQrDialogProps {
   paymentReference: string;
   grandTotal: number;
   onPaymentConfirmed: () => void;
+  onPaidOffline: (info: { customerPay: number; change: number }) => void;
 }
 
 const formatVND = (value: number) =>
@@ -33,13 +37,25 @@ export function OrderQrDialog({
   paymentReference,
   grandTotal,
   onPaymentConfirmed,
+  onPaidOffline,
 }: OrderQrDialogProps) {
   const [status, setStatus] = useState<"pending" | "paid">("pending");
+  const [isCashMode, setIsCashMode] = useState(false);
+  const [customerPay, setCustomerPay] = useState(grandTotal);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Đơn đã chốt bằng tiền mặt: bỏ qua sự kiện order:paid dội về từ chính request này,
+  // nếu không receipt sẽ hiện sai phương thức thanh toán.
+  const paidOfflineRef = useRef(false);
 
   useEffect(() => {
     if (!open || !orderId) return;
 
     setStatus("pending");
+    setIsCashMode(false);
+    setCustomerPay(grandTotal);
+    setIsSubmitting(false);
+    paidOfflineRef.current = false;
 
     const socket = getSocket();
     const room = `order:${orderId}`;
@@ -47,6 +63,7 @@ export function OrderQrDialog({
     joinRoom(room);
 
     const handlePaid = () => {
+      if (paidOfflineRef.current) return;
       setStatus("paid");
       setTimeout(() => {
         onOpenChange(false);
@@ -59,11 +76,42 @@ export function OrderQrDialog({
     return () => {
       socket.off("order:paid", handlePaid);
     };
-  }, [open, orderId]);
+  }, [open, orderId, grandTotal]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(paymentReference);
     toast.success("Đã sao chép nội dung chuyển khoản");
+  };
+
+  const change = Math.max(0, customerPay - grandTotal);
+
+  const handleConfirmCash = async () => {
+    if (customerPay < grandTotal) {
+      toast.error("Số tiền khách trả phải lớn hơn hoặc bằng tổng hóa đơn!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    paidOfflineRef.current = true;
+    try {
+      await orderApi.payOffline(orderId, { paymentMethod: "CASH", customerPay });
+      setStatus("paid");
+      toast.success("Đã ghi nhận thanh toán tiền mặt!");
+      setTimeout(() => {
+        onOpenChange(false);
+        onPaidOffline({ customerPay, change });
+      }, 1200);
+    } catch (err) {
+      paidOfflineRef.current = false;
+      setIsSubmitting(false);
+      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      toast.error(
+        apiMessage ||
+          (err instanceof Error ? err.message : "") ||
+          "Không ghi nhận được thanh toán tiền mặt",
+      );
+    }
   };
 
   return (
@@ -124,6 +172,44 @@ export function OrderQrDialog({
                 <Loader2 className="size-4 animate-spin" />
                 <span>Đang chờ xác nhận thanh toán...</span>
               </div>
+
+              {/* Fallback: khách không quét được, trả tiền mặt tại quầy */}
+              {isCashMode && (
+                <div className="space-y-3 p-3 rounded-lg border bg-muted/40">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="offline-customer-pay" className="text-xs">
+                      Tiền khách đưa
+                    </Label>
+                    <Input
+                      id="offline-customer-pay"
+                      type="number"
+                      min={grandTotal}
+                      step={1000}
+                      value={customerPay}
+                      onChange={(e) => setCustomerPay(Number(e.target.value))}
+                      className="tabular-nums"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Tiền thối lại</span>
+                    <span className="font-bold tabular-nums">{formatVND(change)}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    className="w-full cursor-pointer"
+                    disabled={isSubmitting || customerPay < grandTotal}
+                    onClick={handleConfirmCash}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                    ) : (
+                      <Banknote className="size-4 mr-2" />
+                    )}
+                    Xác nhận đã nhận tiền mặt
+                  </Button>
+                </div>
+              )}
             </>
           )}
 
@@ -141,16 +227,28 @@ export function OrderQrDialog({
         </div>
 
         {status === "pending" && (
-          <div className="flex justify-end pt-2 border-t">
+          <div className="flex justify-between gap-2 pt-2 border-t">
             <Button
               type="button"
               variant="ghost"
               className="text-muted-foreground cursor-pointer"
+              disabled={isSubmitting}
               onClick={() => onOpenChange(false)}
             >
               <XCircle className="size-4 mr-2" />
               Hủy đơn này
             </Button>
+            {!isCashMode && (
+              <Button
+                type="button"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => setIsCashMode(true)}
+              >
+                <Banknote className="size-4 mr-2" />
+                Chuyển sang tiền mặt
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>
