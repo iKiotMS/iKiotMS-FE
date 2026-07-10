@@ -26,10 +26,24 @@ export interface OrderListResponse {
   };
 }
 
+export interface PayOfflinePayload {
+  paymentMethod?: Exclude<OrderPaymentMethod, 'SEPAY'>;
+  customerPay?: number;
+  note?: string;
+}
+
 export const orderApi = {
   create: async (payload: OrderCreatePayload): Promise<OrderCreateResponse> => {
     const res = await client.post<OrderCreateResponse>('/orders', payload);
     return res.data;
+  },
+  /** Khách bỏ QR SePay và trả tại quầy — chốt đơn theo phương thức offline. */
+  payOffline: async (id: string, payload: PayOfflinePayload = {}): Promise<Order> => {
+    const res = await client.post<{ success: boolean; data: Order }>(
+      `/orders/${id}/pay-offline`,
+      { paymentMethod: 'CASH', ...payload },
+    );
+    return res.data.data;
   },
   getById: async (id: string): Promise<Order> => {
     const res = await client.get<{ success: boolean; data: Order }>(`/orders/${id}`);
