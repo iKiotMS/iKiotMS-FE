@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
 export type TransfersDialogType = 'create'
@@ -31,7 +32,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState<TransfersDialogType | null>(null)
   const [currentRow, setCurrentRow] = useState<StockMovement | null>(null)
-  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('PENDING')
 
   const fetchTransfers = useCallback(async () => {
     setIsLoading(true)
@@ -47,7 +48,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
       console.error(error)
       setTransfers([])
       setTotal(0)
-      toast.error('Không thể tải danh sách chuyển kho')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể tải danh sách chuyển kho'))
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +64,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
       await fetchTransfers()
     } catch (error) {
       console.error(error)
-      toast.error('Không thể duyệt yêu cầu, vui lòng thử lại')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể duyệt yêu cầu, vui lòng thử lại'))
     }
   }
 
@@ -78,7 +79,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
       await fetchTransfers()
     } catch (error) {
       console.error(error)
-      toast.error('Không thể nhận hàng chuyển kho')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể nhận hàng chuyển kho'))
     }
   }
 
@@ -90,7 +91,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
       await fetchTransfers()
     } catch (error) {
       console.error(error)
-      toast.error('Không thể huỷ yêu cầu chuyển kho')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể huỷ yêu cầu chuyển kho'))
     }
   }
 

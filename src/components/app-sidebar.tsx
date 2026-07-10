@@ -104,7 +104,7 @@ const data = {
               url: "/exchange/imports",
             },
             {
-              title: "Xuất hàng",
+              title: "Chuyển kho",
               url: "/exchange/exports",
             },
           ],

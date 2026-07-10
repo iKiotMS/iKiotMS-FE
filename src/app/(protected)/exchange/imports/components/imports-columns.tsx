@@ -6,11 +6,16 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronsUpDown,
+  MessageSquareText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
+import {
+  getMovementNotePreview,
+  hasAnyMovementNote,
+} from "@/app/(protected)/exchange/shared/movement-notes";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -156,7 +161,23 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as MovementStatus;
       const config = MOVEMENT_STATUS_MAP[status];
-      return <Badge variant={config.variant}>{config.label}</Badge>;
+      const hasNote = hasAnyMovementNote(row.original);
+      const preview = getMovementNotePreview(row.original);
+      return (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={config.variant}>{config.label}</Badge>
+          {hasNote && (
+            <Badge
+              variant="outline"
+              className="gap-1 font-normal text-muted-foreground"
+              title={preview}
+            >
+              <MessageSquareText className="size-3" />
+              Ghi chú
+            </Badge>
+          )}
+        </div>
+      );
     },
     filterFn: (row, columnId, value: string) =>
       row.getValue(columnId) === value,
@@ -165,14 +186,21 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     id: "expand",
     header: "",
     cell: ({ row }) => (
-      <ChevronRight
-        className={cn(
-          "size-4 text-muted-foreground transition-transform duration-200",
-          row.getIsExpanded() && "rotate-90",
-        )}
-      />
+      <div className="flex items-center justify-end gap-2">
+        {row.getIsExpanded() ? (
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Đang xem
+          </span>
+        ) : null}
+        <ChevronRight
+          className={cn(
+            "size-4 text-muted-foreground transition-transform duration-200",
+            row.getIsExpanded() && "rotate-90",
+          )}
+        />
+      </div>
     ),
-    size: 40,
+    size: 88,
     enableSorting: false,
     enableHiding: false,
   },

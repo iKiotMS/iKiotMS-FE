@@ -14,6 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
+import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/movement-notes'
+import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
 import type {
   StockMovementLocationOption,
   StockMovementProductItemOption,
@@ -101,24 +104,24 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
         fromLocationType: fromLoc?.type ?? 'warehouse',
         toLocationId: data.toLocationId,
         toLocationType: toLoc?.type ?? 'branch',
-        note: data.note,
+        note: normalizeOptionalNote(data.note),
         details: data.details.map((d) => ({
           productItemId: d.productItemId,
           quantity: d.quantity,
-          note: d.note,
+          note: normalizeOptionalNote(d.note),
         })),
       })
       toast.success('Tạo yêu cầu chuyển kho thành công')
       onOpenChange(false)
       await fetchTransfers()
-    } catch {
-      toast.error('Không thể tạo yêu cầu, vui lòng thử lại')
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể tạo yêu cầu, vui lòng thử lại'))
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Tạo yêu cầu chuyển kho</DialogTitle>
           <DialogDescription>Chọn kho gửi, kho nhận và danh sách hàng hóa cần chuyển.</DialogDescription>
@@ -164,10 +167,10 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
             <FormField control={form.control} name="note" render={({ field }) => (
               <FormItem>
-                <FormLabel>Ghi chú</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Lý do chuyển kho (tùy chọn)" rows={2} className="resize-none" {...field} />
-                </FormControl>
+                  <FormLabel>Ghi chú đơn</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Ghi chú cho cả phiếu chuyển kho (tùy chọn)" rows={2} className="resize-none" {...field} />
+                  </FormControl>
               </FormItem>
             )} />
 
@@ -182,55 +185,120 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
               </div>
 
               {fields.map((f, idx) => (
-                <div key={f.id} className="grid grid-cols-12 gap-2 items-end p-3 rounded-lg border bg-muted/30">
-                  <div className="col-span-5">
-                    <FormField control={form.control} name={`details.${idx}.productItemId`} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Hàng hóa <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="cursor-pointer h-8 text-sm"><SelectValue placeholder="Chọn hàng hóa" /></SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {products.map((p) => (
-                              <SelectItem key={p._id} value={p._id}>{p.name} <span className="text-xs text-muted-foreground">({p.sku})</span></SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
+                  <div key={f.id} className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <FormField
+                          control={form.control}
+                          name={`details.${idx}.productItemId`}
+                          render={({ field }) => {
+                            const selectedProduct = products.find((p) => p._id === field.value)
+                            const selectedLabel = selectedProduct
+                              ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
+                              : ''
 
-                  <div className="col-span-2">
-                    <FormField control={form.control} name={`details.${idx}.quantity`} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Số lượng <span className="text-destructive">*</span></FormLabel>
-                        <FormControl>
-                          <Input type="number" min={1} placeholder="0" className="h-8 text-sm" value={field.value} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
+                            return (
+                              <FormItem>
+                                <FormLabel className="text-xs">
+                                  Hàng hóa <span className="text-destructive">*</span>
+                                </FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger
+                                      title={selectedLabel || undefined}
+                                      className="h-auto min-h-9 w-full cursor-pointer whitespace-normal py-1.5 text-left text-sm *:data-[slot=select-value]:line-clamp-none"
+                                    >
+                                      <SelectValue placeholder="Chọn hàng hóa">
+                                        {selectedProduct ? (
+                                          <span className="flex min-w-0 flex-col items-start gap-0.5 pr-1 text-left">
+                                            <span className="break-words font-medium leading-snug">
+                                              {selectedProduct.name}
+                                            </span>
+                                            {selectedProduct.sku ? (
+                                              <span className="text-xs text-muted-foreground">
+                                                SKU: {selectedProduct.sku}
+                                              </span>
+                                            ) : null}
+                                          </span>
+                                        ) : null}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="max-w-[min(90vw,40rem)]">
+                                    {products.map((p) => (
+                                      <SelectItem
+                                        key={p._id}
+                                        value={p._id}
+                                        className="items-start whitespace-normal py-2"
+                                        title={`${p.name}${p.sku ? ` (${p.sku})` : ''}`}
+                                      >
+                                        <span className="flex min-w-0 flex-col">
+                                          <span className="break-words leading-snug">{p.name}</span>
+                                          {p.sku ? (
+                                            <span className="text-xs text-muted-foreground">
+                                              SKU: {p.sku}
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )
+                          }}
+                        />
+                      </div>
 
-                  <div className="col-span-4">
-                    <FormField control={form.control} name={`details.${idx}.note`} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Ghi chú dòng</FormLabel>
-                        <FormControl>
-                          <Input placeholder="..." className="h-8 text-sm" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-6 h-8 w-8 shrink-0 text-destructive cursor-pointer"
+                        onClick={() => remove(idx)}
+                        disabled={fields.length === 1}
+                        aria-label="Xóa dòng"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
 
-                  <div className="col-span-1 flex justify-end">
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive cursor-pointer" onClick={() => remove(idx)} disabled={fields.length === 1}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name={`details.${idx}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              Số lượng <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <QuantityStepper
+                                min={1}
+                                value={Number.isFinite(field.value) ? field.value : 1}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`details.${idx}.note`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Ghi chú dòng</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ghi chú mặt hàng (tùy chọn)" className="h-8 text-sm" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
-                </div>
               ))}
             </div>
 

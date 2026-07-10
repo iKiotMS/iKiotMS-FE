@@ -61,7 +61,9 @@ export function TransfersTable() {
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    requestedByName: false,
+  });
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
@@ -79,7 +81,23 @@ export function TransfersTable() {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
-    onExpandedChange: setExpanded,
+    onExpandedChange: (updater) => {
+      setExpanded((old) => {
+        const prev = typeof old === "boolean" ? {} : old;
+        const next = typeof updater === "function" ? updater(old) : updater;
+        if (next === true) return next;
+        const newlyOpened = Object.keys(next).filter(
+          (key) => next[key] && !prev[key],
+        );
+        if (newlyOpened.length > 0) {
+          return { [newlyOpened[0]]: true };
+        }
+        return next;
+      });
+    },
+    initialState: {
+      pagination: { pageSize: 10 },
+    },
     state: {
       sorting,
       columnFilters,
@@ -109,15 +127,15 @@ export function TransfersTable() {
               setStatusFilter(value as typeof statusFilter)
             }
           >
-            <SelectTrigger className="h-9 w-36 cursor-pointer text-sm">
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Tất cả</SelectItem>
-              <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+              <SelectItem value="PENDING">Cần xử lý (chờ duyệt)</SelectItem>
               <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
               <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
               <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
+              <SelectItem value="ALL">Tất cả</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -176,63 +194,72 @@ export function TransfersTable() {
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <Fragment key={row.id}>
-                  <TableRow
-                    data-state={row.getIsSelected() ? "selected" : undefined}
-                    onClick={() => row.toggleExpanded()}
-                    className={cn(
-                      "cursor-pointer",
-                      row.getIsExpanded() &&
-                        "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        onClick={
-                          cell.column.id === "select"
-                            ? (e) => e.stopPropagation()
-                            : undefined
-                        }
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                  <TableRow
-                    className={cn(
-                      "border-transparent transition-colors duration-300 hover:bg-transparent",
-                      row.getIsExpanded() &&
-                        "shadow-[inset_0_-1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
-                    )}
-                  >
-                    <TableCell
-                      colSpan={row.getVisibleCells().length}
-                      className="p-0"
+              table.getRowModel().rows.map((row) => {
+                const isExpanded = row.getIsExpanded();
+                const hasExpandedRow = table
+                  .getRowModel()
+                  .rows.some((item) => item.getIsExpanded());
+                return (
+                  <Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() ? "selected" : undefined}
+                      onClick={() => row.toggleExpanded()}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        isExpanded
+                          ? "bg-muted border-l-2 border-l-foreground/40"
+                          : hasExpandedRow
+                            ? "opacity-55 hover:opacity-100"
+                            : "hover:bg-muted/40",
+                      )}
                     >
-                      <div
-                        className={cn(
-                          "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                          row.getIsExpanded()
-                            ? "grid-rows-[1fr]"
-                            : "grid-rows-[0fr]",
-                        )}
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          onClick={
+                            cell.column.id === "select"
+                              ? (e) => e.stopPropagation()
+                              : undefined
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    <TableRow
+                      className={cn(
+                        "border-transparent hover:bg-transparent",
+                        isExpanded && "bg-muted/40",
+                      )}
+                    >
+                      <TableCell
+                        colSpan={row.getVisibleCells().length}
+                        className="p-0"
                       >
-                        <div className="overflow-hidden">
-                          <TransfersExpandedPanel
-                            request={row.original}
-                            isExpanded={row.getIsExpanded()}
-                          />
+                        <div
+                          className={cn(
+                            "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                          )}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="px-3 pb-3 pt-1">
+                              <TransfersExpandedPanel
+                                request={row.original}
+                                isExpanded={isExpanded}
+                                onClose={() => row.toggleExpanded(false)}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </Fragment>
-              ))
+                      </TableCell>
+                    </TableRow>
+                  </Fragment>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length}>

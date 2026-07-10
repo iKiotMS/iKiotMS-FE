@@ -12,7 +12,16 @@ import type {
   StockMovementSupplierOption,
 } from "@/types/stock-movement";
 
-type ApiRef = string | { _id?: string; supplierName?: string; fullName?: string };
+type ApiRef =
+  | string
+  | {
+      _id?: string;
+      supplierName?: string;
+      fullName?: string;
+      email?: string;
+      phoneNumber?: string;
+      profile?: { firstName?: string; lastName?: string };
+    };
 
 type ApiMovementDetail = {
   productItemId?: string | { _id?: string; sku?: string; productName?: string };
@@ -29,8 +38,10 @@ type ApiMovement = {
   status?: StockMovement["status"];
   fromSupplierId?: ApiRef;
   fromLocationId?: string;
+  fromLocationName?: string | null;
   fromLocationType?: LocationType;
   toLocationId?: string;
+  toLocationName?: string | null;
   toLocationType?: LocationType;
   requestedBy?: ApiRef;
   approvedBy?: ApiRef;
@@ -82,7 +93,15 @@ function resolveSupplierName(value?: ApiRef): string | undefined {
 
 function resolveUserName(value?: ApiRef): string {
   if (!value || typeof value === "string") return "";
-  return value.fullName ?? "";
+  if (value.fullName?.trim()) return value.fullName.trim();
+  const profileName = `${value.profile?.lastName ?? ""} ${value.profile?.firstName ?? ""}`.trim();
+  if (profileName) return profileName;
+  return value.phoneNumber ?? value.email ?? "";
+}
+
+function normalizeNote(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 function mapDetail(raw: ApiMovementDetail) {
@@ -97,7 +116,7 @@ function mapDetail(raw: ApiMovementDetail) {
     quantity: raw.quantity ?? 0,
     importPrice: raw.importPrice ?? 0,
     receivedQuantity: raw.receivedQuantity ?? 0,
-    note: raw.note,
+    note: normalizeNote(raw.note),
   };
 }
 
@@ -110,20 +129,185 @@ function mapMovement(raw: ApiMovement): StockMovement {
     fromSupplierId: resolveRefId(raw.fromSupplierId),
     supplierName: resolveSupplierName(raw.fromSupplierId),
     fromLocationId: raw.fromLocationId,
-    fromLocationName: raw.fromLocationId,
+    fromLocationName: raw.fromLocationName ?? undefined,
     fromLocationType: raw.fromLocationType,
     toLocationId: raw.toLocationId ?? "",
-    toLocationName: raw.toLocationId ?? "",
+    toLocationName: raw.toLocationName ?? raw.toLocationId ?? "",
     toLocationType: raw.toLocationType ?? "warehouse",
     requestedBy: resolveRefId(raw.requestedBy),
     requestedByName: resolveUserName(raw.requestedBy),
     approvedBy: resolveRefId(raw.approvedBy) || undefined,
     approvedByName: resolveUserName(raw.approvedBy) || undefined,
-    note: raw.note,
+    note: normalizeNote(raw.note),
     details: (raw.details ?? []).map(mapDetail),
     createdAt: raw.createdAt ?? "",
     updatedAt: raw.updatedAt ?? "",
   };
+}
+
+type ProductLookup = Map<string, StockMovementProductItemOption>;
+type LocationLookup = Map<string, StockMovementLocationOption>;
+type SupplierLookup = Map<string, StockMovementSupplierOption>;
+
+let productLookupCache: { at: number; value: ProductLookup } | null = null;
+let locationLookupCache: { at: number; value: LocationLookup } | null = null;
+let supplierLookupCache: { at: number; value: SupplierLookup } | null = null;
+const LOOKUP_TTL_MS = 60_000;
+
+async function fetchSupplierOptions(): Promise<StockMovementSupplierOption[]> {
+  const response = await client.get("/suppliers", {
+    params: { page: 1, recordPerPage: 100 },
+  });
+  return asArray<ApiSupplier>(response.data?.data).map((supplier) => ({
+    _id: supplier._id,
+    name: supplier.supplierName ?? supplier.name ?? supplier._id,
+  }));
+}
+
+async function fetchLocationOptions(): Promise<StockMovementLocationOption[]> {
+  const [warehousesResponse, branchesResponse] = await Promise.all([
+    client.get("/warehouses", { params: { page: 1, recordPerPage: 100 } }),
+    client.get("/branches", { params: { page: 1, recordPerPage: 100 } }),
+  ]);
+
+  const warehouses = asArray<ApiLocation>(warehousesResponse.data?.data).map(
+    (warehouse) => ({
+      _id: warehouse._id,
+      name: warehouse.name ?? warehouse._id,
+      type: "warehouse" as const,
+    }),
+  );
+  const branches = asArray<ApiLocation>(branchesResponse.data?.data).map(
+    (branch) => ({
+      _id: branch._id,
+      name: branch.name ?? branch._id,
+      type: "branch" as const,
+    }),
+  );
+
+  return [...warehouses, ...branches];
+}
+
+async function fetchProductItemOptions(): Promise<
+  StockMovementProductItemOption[]
+> {
+  const response = await client.get("/products", {
+    params: { page: 1, recordPerPage: 100 },
+  });
+  return asArray<ApiProduct>(response.data?.data).flatMap((product) =>
+    asArray<ApiProductItem>(product.items ?? product.productItems).map(
+      (item) => ({
+        _id: item._id,
+        name: item.productName ?? item.name ?? product.name ?? item._id,
+        sku: item.sku ?? "",
+      }),
+    ),
+  );
+}
+
+async function getProductLookup(): Promise<ProductLookup> {
+  const now = Date.now();
+  if (productLookupCache && now - productLookupCache.at < LOOKUP_TTL_MS) {
+    return productLookupCache.value;
+  }
+  const options = await fetchProductItemOptions();
+  const value = new Map(options.map((item) => [item._id, item]));
+  productLookupCache = { at: now, value };
+  return value;
+}
+
+async function getLocationLookup(): Promise<LocationLookup> {
+  const now = Date.now();
+  if (locationLookupCache && now - locationLookupCache.at < LOOKUP_TTL_MS) {
+    return locationLookupCache.value;
+  }
+  const options = await fetchLocationOptions();
+  const value = new Map(options.map((item) => [item._id, item]));
+  locationLookupCache = { at: now, value };
+  return value;
+}
+
+async function getSupplierLookup(): Promise<SupplierLookup> {
+  const now = Date.now();
+  if (supplierLookupCache && now - supplierLookupCache.at < LOOKUP_TTL_MS) {
+    return supplierLookupCache.value;
+  }
+  const options = await fetchSupplierOptions();
+  const value = new Map(options.map((item) => [item._id, item]));
+  supplierLookupCache = { at: now, value };
+  return value;
+}
+
+/**
+ * Bổ sung tên SP / kho / NCC từ options API khi BE không populate đủ.
+ * Không phụ thuộc thay đổi BE.
+ */
+async function enrichMovement(movement: StockMovement): Promise<StockMovement> {
+  const needsProducts = movement.details.some((d) => !d.productName || !d.sku);
+  const needsLocations =
+    (!!movement.fromLocationId && !movement.fromLocationName) ||
+    !movement.toLocationName ||
+    movement.toLocationName === movement.toLocationId;
+  const needsSupplier = !!movement.fromSupplierId && !movement.supplierName;
+
+  const [products, locations, suppliers] = await Promise.all([
+    needsProducts ? getProductLookup() : Promise.resolve(null),
+    needsLocations ? getLocationLookup() : Promise.resolve(null),
+    needsSupplier ? getSupplierLookup() : Promise.resolve(null),
+  ]);
+
+  const fromLocation = movement.fromLocationId
+    ? locations?.get(movement.fromLocationId)
+    : undefined;
+  const toLocation = locations?.get(movement.toLocationId);
+  const supplier = movement.fromSupplierId
+    ? suppliers?.get(movement.fromSupplierId)
+    : undefined;
+
+  return {
+    ...movement,
+    supplierName: movement.supplierName || supplier?.name,
+    fromLocationName: movement.fromLocationName || fromLocation?.name,
+    fromLocationType: movement.fromLocationType || fromLocation?.type,
+    toLocationName:
+      movement.toLocationName && movement.toLocationName !== movement.toLocationId
+        ? movement.toLocationName
+        : (toLocation?.name ?? movement.toLocationName),
+    toLocationType: movement.toLocationType || toLocation?.type || "warehouse",
+    details: movement.details.map((detail) => {
+      const product = products?.get(detail.productItemId);
+      return {
+        ...detail,
+        productName: detail.productName || product?.name || "",
+        sku: detail.sku || product?.sku || "",
+      };
+    }),
+  };
+}
+
+async function enrichMovements(movements: StockMovement[]) {
+  if (movements.length === 0) return movements;
+  return Promise.all(movements.map(enrichMovement));
+}
+
+async function safeEnrichMovement(movement: StockMovement): Promise<StockMovement> {
+  try {
+    return await enrichMovement(movement);
+  } catch {
+    // Keep core flow working even when lookup endpoints fail.
+    return movement;
+  }
+}
+
+async function safeEnrichMovements(
+  movements: StockMovement[],
+): Promise<StockMovement[]> {
+  if (movements.length === 0) return movements;
+  try {
+    return await enrichMovements(movements);
+  } catch {
+    return movements;
+  }
 }
 
 export const stockMovementApi = {
@@ -132,9 +316,10 @@ export const stockMovementApi = {
     const payload = response.data ?? {};
     const list = Array.isArray(payload.data) ? payload.data : [];
     const pagination = payload.pagination ?? {};
+    const mapped = list.map(mapMovement);
 
     return {
-      data: list.map(mapMovement),
+      data: await safeEnrichMovements(mapped),
       total: pagination.total ?? list.length,
       page: pagination.page ?? 1,
       limit: pagination.limit ?? params?.limit ?? list.length,
@@ -144,78 +329,44 @@ export const stockMovementApi = {
 
   getById: async (id: string): Promise<StockMovement> => {
     const response = await client.get(`/stock-movements/${id}`);
-    return mapMovement(response.data?.data as ApiMovement);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   createImport: async (payload: CreateImportPayload): Promise<StockMovement> => {
     const response = await client.post("/stock-movements", payload);
-    return mapMovement(response.data?.data as ApiMovement);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   createTransfer: async (payload: CreateTransferPayload): Promise<StockMovement> => {
     const response = await client.post("/stock-movements", payload);
-    return mapMovement(response.data?.data as ApiMovement);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   approve: async (id: string): Promise<StockMovement> => {
     const response = await client.patch(`/stock-movements/${id}/approve`);
-    return mapMovement(response.data?.data as ApiMovement);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   receive: async (id: string, payload: ReceiveRequestPayload): Promise<StockMovement> => {
+    if (!Array.isArray(payload.details) || payload.details.length === 0) {
+      throw new Error("Vui lòng nhập số lượng thực nhận");
+    }
+    for (const item of payload.details) {
+      const qty = Number(item.receivedQuantity);
+      if (!Number.isFinite(qty) || qty < 0) {
+        throw new Error("Số lượng thực nhận phải là số không âm");
+      }
+    }
     const response = await client.patch(`/stock-movements/${id}/receive`, payload);
-    return mapMovement(response.data?.data as ApiMovement);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   cancel: async (id: string): Promise<StockMovement> => {
     const response = await client.patch(`/stock-movements/${id}/cancel`);
-    return mapMovement(response.data?.data as ApiMovement);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  getSupplierOptions: async (): Promise<StockMovementSupplierOption[]> => {
-    const response = await client.get("/suppliers", {
-      params: { page: 1, recordPerPage: 100 },
-    });
-    return asArray<ApiSupplier>(response.data?.data).map((supplier) => ({
-      _id: supplier._id,
-      name: supplier.supplierName ?? supplier.name ?? supplier._id,
-    }));
-  },
-
-  getLocationOptions: async (): Promise<StockMovementLocationOption[]> => {
-    const [warehousesResponse, branchesResponse] = await Promise.all([
-      client.get("/warehouses", { params: { page: 1, recordPerPage: 100 } }),
-      client.get("/branches", { params: { page: 1, recordPerPage: 100 } }),
-    ]);
-
-    const warehouses = asArray<ApiLocation>(warehousesResponse.data?.data).map(
-      (warehouse) => ({
-        _id: warehouse._id,
-        name: warehouse.name ?? warehouse._id,
-        type: "warehouse" as const,
-      }),
-    );
-    const branches = asArray<ApiLocation>(branchesResponse.data?.data).map(
-      (branch) => ({
-        _id: branch._id,
-        name: branch.name ?? branch._id,
-        type: "branch" as const,
-      }),
-    );
-
-    return [...warehouses, ...branches];
-  },
-
-  getProductItemOptions: async (): Promise<StockMovementProductItemOption[]> => {
-    const response = await client.get("/products", {
-      params: { page: 1, recordPerPage: 100 },
-    });
-    return asArray<ApiProduct>(response.data?.data).flatMap((product) =>
-      asArray<ApiProductItem>(product.items ?? product.productItems).map((item) => ({
-        _id: item._id,
-        name: item.productName ?? item.name ?? product.name ?? item._id,
-        sku: item.sku ?? "",
-      })),
-    );
-  },
+  getSupplierOptions: fetchSupplierOptions,
+  getLocationOptions: fetchLocationOptions,
+  getProductItemOptions: fetchProductItemOptions,
 };

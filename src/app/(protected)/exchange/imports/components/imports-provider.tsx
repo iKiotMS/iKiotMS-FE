@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
 export type ImportsDialogType = 'create'
@@ -31,7 +32,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState<ImportsDialogType | null>(null)
   const [currentRow, setCurrentRow] = useState<StockMovement | null>(null)
-  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('PENDING')
 
   const fetchImports = useCallback(async () => {
     setIsLoading(true)
@@ -47,7 +48,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
       console.error(error)
       setImports([])
       setTotal(0)
-      toast.error('Không thể tải danh sách nhập hàng')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể tải danh sách nhập hàng'))
     } finally {
       setIsLoading(false)
     }
@@ -65,7 +66,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
       await fetchImports()
     } catch (error) {
       console.error(error)
-      toast.error('Không thể duyệt đơn, vui lòng thử lại')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể duyệt đơn, vui lòng thử lại'))
     }
   }
 
@@ -82,7 +83,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
       await fetchImports()
     } catch (error) {
       console.error(error)
-      toast.error('Không thể nhận hàng, vui lòng thử lại')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể nhận hàng, vui lòng thử lại'))
     }
   }
 
@@ -94,7 +95,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
       await fetchImports()
     } catch (error) {
       console.error(error)
-      toast.error('Không thể huỷ đơn, vui lòng thử lại')
+      toast.error(getStockMovementErrorMessage(error, 'Không thể huỷ đơn, vui lòng thử lại'))
     }
   }
 
