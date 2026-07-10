@@ -48,8 +48,8 @@ import { ImportsExpandedPanel } from "./imports-expanded-panel";
 
 const COLUMN_LABELS: Record<string, string> = {
   _id: "Mã đơn",
-  supplierName: "Nhà cung cấp",
-  toLocationName: "Kho nhận",
+  supplierName: "Nguồn hàng",
+  toLocationName: "Nơi nhận",
   totalItems: "Số mặt hàng",
   totalValue: "Giá trị",
   requestedByName: "Người tạo",
@@ -116,7 +116,7 @@ export function ImportsTable() {
           <div className="relative min-w-52 max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm nhà cung cấp, mã đơn..."
+              placeholder="Tìm nguồn hàng, mã đơn..."
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
               className="h-9 pl-9"
@@ -132,7 +132,9 @@ export function ImportsTable() {
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="PENDING">Cần xử lý (chờ duyệt)</SelectItem>
+              <SelectItem value="OPENING">Đang nhập hàng</SelectItem>
+              <SelectItem value="CLOSED">Chờ kho xuất</SelectItem>
+              <SelectItem value="PENDING">Chờ giao hàng</SelectItem>
               <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
               <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
               <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
@@ -230,34 +232,22 @@ export function ImportsTable() {
                         </TableCell>
                       ))}
                     </TableRow>
-                    <TableRow
-                      className={cn(
-                        "border-transparent hover:bg-transparent",
-                        isExpanded && "bg-muted/40",
-                      )}
-                    >
-                      <TableCell
-                        colSpan={row.getVisibleCells().length}
-                        className="p-0"
-                      >
-                        <div
-                          className={cn(
-                            "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                          )}
+                    {isExpanded ? (
+                      <TableRow className="border-transparent bg-muted/40 hover:bg-muted/40">
+                        <TableCell
+                          colSpan={row.getVisibleCells().length}
+                          className="p-0"
                         >
-                          <div className="overflow-hidden">
-                            <div className="px-3 pb-3 pt-1">
-                              <ImportsExpandedPanel
-                                request={row.original}
-                                isExpanded={isExpanded}
-                                onClose={() => row.toggleExpanded(false)}
-                              />
-                            </div>
+                          <div className="px-3 pb-3 pt-1">
+                            <ImportsExpandedPanel
+                              request={row.original}
+                              isExpanded
+                              onClose={() => row.toggleExpanded(false)}
+                            />
                           </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
                   </Fragment>
                 );
               })

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  LayoutPanelLeft,
   LayoutDashboard,
   Mail,
   CheckSquare,
@@ -106,6 +105,10 @@ const data = {
             {
               title: "Chuyển kho",
               url: "/exchange/exports",
+            },
+            {
+              title: "Điều chỉnh tồn kho",
+              url: "/exchange/adjustments",
             },
           ],
         },

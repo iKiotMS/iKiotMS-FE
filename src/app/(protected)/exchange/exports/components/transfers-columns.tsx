@@ -12,10 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
+import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-type";
 import {
   getMovementNotePreview,
   hasAnyMovementNote,
 } from "@/app/(protected)/exchange/shared/movement-notes";
+import type { TransferUiLabels } from "@/app/(protected)/exchange/shared/transfer-ui-labels";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -48,7 +50,10 @@ function SortableHeader({
   );
 }
 
-export const transfersColumns: ColumnDef<StockMovement>[] = [
+export function createTransfersColumns(
+  labels: Pick<TransferUiLabels, "fromColumnHeader" | "toColumnHeader">,
+): ColumnDef<StockMovement>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -77,6 +82,20 @@ export const transfersColumns: ColumnDef<StockMovement>[] = [
     size: 50,
   },
   {
+    id: "movementType",
+    header: "Loại",
+    cell: ({ row }) => {
+      const cfg = MOVEMENT_TYPE_MAP[row.original.movementType];
+      return (
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cfg?.className ?? ""}`}>
+          {cfg?.label ?? row.original.movementType}
+        </span>
+      );
+    },
+    enableSorting: false,
+    size: 90,
+  },
+  {
     accessorKey: "_id",
     header: "Mã yêu cầu",
     cell: ({ row }) => (
@@ -87,7 +106,7 @@ export const transfersColumns: ColumnDef<StockMovement>[] = [
   },
   {
     accessorKey: "fromLocationName",
-    header: "Kho gửi",
+    header: labels.fromColumnHeader,
     cell: ({ row }) => {
       const record = row.original;
       return (
@@ -104,7 +123,7 @@ export const transfersColumns: ColumnDef<StockMovement>[] = [
   },
   {
     accessorKey: "toLocationName",
-    header: "Kho nhận",
+    header: labels.toColumnHeader,
     cell: ({ row }) => {
       const record = row.original;
       return (
@@ -206,5 +225,6 @@ export const transfersColumns: ColumnDef<StockMovement>[] = [
     enableHiding: false,
   },
 ];
+}
 
 export { MOVEMENT_STATUS_MAP as STATUS_MAP };

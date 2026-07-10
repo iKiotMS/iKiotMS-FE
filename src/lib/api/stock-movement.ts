@@ -4,8 +4,10 @@ import type {
   StockMovementListResponse,
   StockMovementQueryParams,
   CreateImportPayload,
-  CreateTransferPayload,
+  CreateExportPayload,
+  CreateAdjustPayload,
   ReceiveRequestPayload,
+  UpdateDetailsPayload,
   LocationType,
   StockMovementLocationOption,
   StockMovementProductItemOption,
@@ -43,8 +45,8 @@ type ApiMovement = {
   toLocationId?: string;
   toLocationName?: string | null;
   toLocationType?: LocationType;
+  createdBy?: ApiRef;
   requestedBy?: ApiRef;
-  approvedBy?: ApiRef;
   note?: string;
   details?: ApiMovementDetail[];
   createdAt?: string;
@@ -67,12 +69,19 @@ type ApiProductItem = {
   productName?: string;
   name?: string;
   sku?: string;
+  costPrice?: number;
+  retailPrice?: number;
 };
 
 type ApiProduct = {
   name?: string;
   items?: ApiProductItem[];
   productItems?: ApiProductItem[];
+};
+
+type ApiInventoryRow = {
+  productItemId?: string | { _id?: string };
+  stock?: number;
 };
 
 function asArray<T>(value: T[] | T | undefined | null): T[] {
@@ -121,10 +130,11 @@ function mapDetail(raw: ApiMovementDetail) {
 }
 
 function mapMovement(raw: ApiMovement): StockMovement {
+  const creator = raw.createdBy ?? raw.requestedBy;
   return {
     _id: raw._id,
     tenantId: String(raw.tenantId ?? ""),
-    movementType: raw.movementType ?? "TRANSFER",
+    movementType: raw.movementType ?? "IMPORT",
     status: raw.status ?? "PENDING",
     fromSupplierId: resolveRefId(raw.fromSupplierId),
     supplierName: resolveSupplierName(raw.fromSupplierId),
@@ -134,10 +144,8 @@ function mapMovement(raw: ApiMovement): StockMovement {
     toLocationId: raw.toLocationId ?? "",
     toLocationName: raw.toLocationName ?? raw.toLocationId ?? "",
     toLocationType: raw.toLocationType ?? "warehouse",
-    requestedBy: resolveRefId(raw.requestedBy),
-    requestedByName: resolveUserName(raw.requestedBy),
-    approvedBy: resolveRefId(raw.approvedBy) || undefined,
-    approvedByName: resolveUserName(raw.approvedBy) || undefined,
+    requestedBy: resolveRefId(creator),
+    requestedByName: resolveUserName(creator),
     note: normalizeNote(raw.note),
     details: (raw.details ?? []).map(mapDetail),
     createdAt: raw.createdAt ?? "",
@@ -156,7 +164,7 @@ const LOOKUP_TTL_MS = 60_000;
 
 async function fetchSupplierOptions(): Promise<StockMovementSupplierOption[]> {
   const response = await client.get("/suppliers", {
-    params: { page: 1, recordPerPage: 100 },
+    params: { page: 1, limit: 100 },
   });
   return asArray<ApiSupplier>(response.data?.data).map((supplier) => ({
     _id: supplier._id,
@@ -166,8 +174,8 @@ async function fetchSupplierOptions(): Promise<StockMovementSupplierOption[]> {
 
 async function fetchLocationOptions(): Promise<StockMovementLocationOption[]> {
   const [warehousesResponse, branchesResponse] = await Promise.all([
-    client.get("/warehouses", { params: { page: 1, recordPerPage: 100 } }),
-    client.get("/branches", { params: { page: 1, recordPerPage: 100 } }),
+    client.get("/warehouses", { params: { page: 1, limit: 100 } }),
+    client.get("/branches", { params: { page: 1, limit: 100 } }),
   ]);
 
   const warehouses = asArray<ApiLocation>(warehousesResponse.data?.data).map(
@@ -188,11 +196,11 @@ async function fetchLocationOptions(): Promise<StockMovementLocationOption[]> {
   return [...warehouses, ...branches];
 }
 
-async function fetchProductItemOptions(): Promise<
+async function fetchAllProductItemOptions(): Promise<
   StockMovementProductItemOption[]
 > {
   const response = await client.get("/products", {
-    params: { page: 1, recordPerPage: 100 },
+    params: { page: 1, limit: 100 },
   });
   return asArray<ApiProduct>(response.data?.data).flatMap((product) =>
     asArray<ApiProductItem>(product.items ?? product.productItems).map(
@@ -200,9 +208,28 @@ async function fetchProductItemOptions(): Promise<
         _id: item._id,
         name: item.productName ?? item.name ?? product.name ?? item._id,
         sku: item.sku ?? "",
+        costPrice: item.costPrice ?? item.retailPrice ?? 0,
       }),
     ),
   );
+}
+
+async function fetchInventoryAtLocation(
+  locationId: string,
+  locationType: LocationType,
+): Promise<Map<string, number>> {
+  const response = await client.get("/inventory", {
+    params: { page: 1, limit: 100, locationId, locationType },
+  });
+  const map = new Map<string, number>();
+  for (const row of asArray<ApiInventoryRow>(response.data?.data)) {
+    const id =
+      typeof row.productItemId === "string"
+        ? row.productItemId
+        : row.productItemId?._id;
+    if (id) map.set(id, row.stock ?? 0);
+  }
+  return map;
 }
 
 async function getProductLookup(): Promise<ProductLookup> {
@@ -210,7 +237,7 @@ async function getProductLookup(): Promise<ProductLookup> {
   if (productLookupCache && now - productLookupCache.at < LOOKUP_TTL_MS) {
     return productLookupCache.value;
   }
-  const options = await fetchProductItemOptions();
+  const options = await fetchAllProductItemOptions();
   const value = new Map(options.map((item) => [item._id, item]));
   productLookupCache = { at: now, value };
   return value;
@@ -238,10 +265,6 @@ async function getSupplierLookup(): Promise<SupplierLookup> {
   return value;
 }
 
-/**
- * Bổ sung tên SP / kho / NCC từ options API khi BE không populate đủ.
- * Không phụ thuộc thay đổi BE.
- */
 async function enrichMovement(movement: StockMovement): Promise<StockMovement> {
   const needsProducts = movement.details.some((d) => !d.productName || !d.sku);
   const needsLocations =
@@ -285,16 +308,10 @@ async function enrichMovement(movement: StockMovement): Promise<StockMovement> {
   };
 }
 
-async function enrichMovements(movements: StockMovement[]) {
-  if (movements.length === 0) return movements;
-  return Promise.all(movements.map(enrichMovement));
-}
-
 async function safeEnrichMovement(movement: StockMovement): Promise<StockMovement> {
   try {
     return await enrichMovement(movement);
   } catch {
-    // Keep core flow working even when lookup endpoints fail.
     return movement;
   }
 }
@@ -304,19 +321,21 @@ async function safeEnrichMovements(
 ): Promise<StockMovement[]> {
   if (movements.length === 0) return movements;
   try {
-    return await enrichMovements(movements);
+    return Promise.all(movements.map(enrichMovement));
   } catch {
     return movements;
   }
 }
 
 export const stockMovementApi = {
-  getList: async (params?: StockMovementQueryParams): Promise<StockMovementListResponse> => {
+  getList: async (
+    params?: StockMovementQueryParams,
+  ): Promise<StockMovementListResponse> => {
     const response = await client.get("/stock-movements", { params });
     const payload = response.data ?? {};
     const list = Array.isArray(payload.data) ? payload.data : [];
     const pagination = payload.pagination ?? {};
-    const mapped = list.map(mapMovement);
+    const mapped = list.map((raw: ApiMovement) => mapMovement(raw));
 
     return {
       data: await safeEnrichMovements(mapped),
@@ -337,17 +356,52 @@ export const stockMovementApi = {
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  createTransfer: async (payload: CreateTransferPayload): Promise<StockMovement> => {
+  createExport: async (payload: CreateExportPayload): Promise<StockMovement> => {
     const response = await client.post("/stock-movements", payload);
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  approve: async (id: string): Promise<StockMovement> => {
-    const response = await client.patch(`/stock-movements/${id}/approve`);
+  /** Create ADJUST and apply stock change immediately (create → approve). */
+  executeAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
+    const createResponse = await client.post("/stock-movements", payload);
+    const created = await safeEnrichMovement(
+      mapMovement(createResponse.data?.data as ApiMovement),
+    );
+    const approveResponse = await client.patch(
+      `/stock-movements/${created._id}/approve-adjust`,
+    );
+    return safeEnrichMovement(
+      mapMovement(approveResponse.data?.data as ApiMovement),
+    );
+  },
+
+  open: async (id: string): Promise<StockMovement> => {
+    const response = await client.patch(`/stock-movements/${id}/open`);
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  receive: async (id: string, payload: ReceiveRequestPayload): Promise<StockMovement> => {
+  close: async (id: string): Promise<StockMovement> => {
+    const response = await client.patch(`/stock-movements/${id}/close`);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
+  },
+
+  updateDetails: async (
+    id: string,
+    payload: UpdateDetailsPayload,
+  ): Promise<StockMovement> => {
+    const response = await client.patch(`/stock-movements/${id}/details`, payload);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
+  },
+
+  ship: async (id: string): Promise<StockMovement> => {
+    const response = await client.patch(`/stock-movements/${id}/ship`);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
+  },
+
+  receive: async (
+    id: string,
+    payload: ReceiveRequestPayload,
+  ): Promise<StockMovement> => {
     if (!Array.isArray(payload.details) || payload.details.length === 0) {
       throw new Error("Vui lòng nhập số lượng thực nhận");
     }
@@ -368,5 +422,36 @@ export const stockMovementApi = {
 
   getSupplierOptions: fetchSupplierOptions,
   getLocationOptions: fetchLocationOptions,
-  getProductItemOptions: fetchProductItemOptions,
+
+  /** Sản phẩm kèm cờ có tại location (nhập hàng) */
+  getProductItemsForDestination: async (
+    locationId: string,
+    locationType: LocationType,
+  ): Promise<StockMovementProductItemOption[]> => {
+    const [allItems, inventoryMap] = await Promise.all([
+      fetchAllProductItemOptions(),
+      fetchInventoryAtLocation(locationId, locationType),
+    ]);
+    return allItems.map((item) => ({
+      ...item,
+      atLocation: inventoryMap.has(item._id),
+      stock: inventoryMap.get(item._id),
+    }));
+  },
+
+  /** Sản phẩm có tồn tại kho nguồn (chuyển kho) */
+  getProductItemsAtSource: async (
+    locationId: string,
+    locationType: LocationType,
+  ): Promise<StockMovementProductItemOption[]> => {
+    const inventoryMap = await fetchInventoryAtLocation(locationId, locationType);
+    const allItems = await fetchAllProductItemOptions();
+    return allItems
+      .filter((item) => (inventoryMap.get(item._id) ?? 0) > 0)
+      .map((item) => ({
+        ...item,
+        atLocation: true,
+        stock: inventoryMap.get(item._id) ?? 0,
+      }));
+  },
 };

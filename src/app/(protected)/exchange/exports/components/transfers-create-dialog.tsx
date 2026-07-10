@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -14,32 +14,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
 import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
 import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/movement-notes'
 import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
+import { findDuplicateProductIds } from '@/app/(protected)/exchange/shared/movement-detail-validation'
 import type {
   StockMovementLocationOption,
   StockMovementProductItemOption,
 } from '@/types/stock-movement'
 import { useTransfers } from './transfers-provider'
 
-const transferFormSchema = z.object({
-  fromLocationId: z.string().min(1, 'Vui lòng chọn kho gửi'),
-  toLocationId: z.string().min(1, 'Vui lòng chọn kho nhận'),
-  note: z.string().optional(),
-  details: z.array(
-    z.object({
-      productItemId: z.string().min(1, 'Vui lòng chọn hàng hóa'),
-      quantity: z.number({ error: 'Nhập số nguyên' }).int().positive('Số lượng phải > 0'),
-      note: z.string().optional(),
-    })
-  ).min(1, 'Cần ít nhất 1 mặt hàng'),
-}).refine((d) => d.fromLocationId !== d.toLocationId, {
-  message: 'Kho gửi và kho nhận không được trùng nhau',
-  path: ['toLocationId'],
-})
-
-type TransferFormValues = z.infer<typeof transferFormSchema>
+type TransferFormValues = {
+  fromLocationId: string
+  toLocationId: string
+  note?: string
+  details: {
+    productItemId: string
+    quantity: number
+    note?: string
+  }[]
+}
 
 const EMPTY_VALUES: TransferFormValues = {
   fromLocationId: '',
@@ -54,10 +49,48 @@ interface TransfersCreateDialogProps {
 }
 
 export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDialogProps) {
-  const { fetchTransfers } = useTransfers()
+  const { fetchTransfers, labels } = useTransfers()
   const [locations, setLocations] = useState<StockMovementLocationOption[]>([])
   const [products, setProducts] = useState<StockMovementProductItemOption[]>([])
   const [isOptionsLoading, setIsOptionsLoading] = useState(false)
+  const authScope = getAuthScope()
+  const role = authScope.role
+
+  const transferFormSchema = useMemo(
+    () =>
+      z
+        .object({
+          fromLocationId: z.string().min(1, labels.fromRequired),
+          toLocationId: z.string().min(1, labels.toRequired),
+          note: z.string().optional(),
+          details: z
+            .array(
+              z.object({
+                productItemId: z.string().min(1, 'Vui lòng chọn hàng hóa'),
+                quantity: z
+                  .number({ error: 'Nhập số nguyên' })
+                  .int()
+                  .positive('Số lượng phải > 0'),
+                note: z.string().optional(),
+              }),
+            )
+            .min(1, 'Cần ít nhất 1 mặt hàng'),
+        })
+        .refine((d) => d.fromLocationId !== d.toLocationId, {
+          message: labels.sameLocationError,
+          path: ['toLocationId'],
+        })
+        .superRefine((data, ctx) => {
+          if (findDuplicateProductIds(data.details).length > 0) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Không được chọn trùng hàng hóa',
+              path: ['details'],
+            })
+          }
+        }),
+    [labels],
+  )
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferFormSchema),
@@ -69,37 +102,93 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   useEffect(() => {
     if (!open) return
     form.reset(EMPTY_VALUES)
+    setProducts([])
   }, [open, form])
 
   useEffect(() => {
     if (!open) return
+    setIsOptionsLoading(true)
+    stockMovementApi
+      .getLocationOptions()
+      .then(setLocations)
+      .catch(() => toast.error(labels.loadLocationsError))
+      .finally(() => setIsOptionsLoading(false))
+  }, [open, labels.loadLocationsError])
 
-    async function loadOptions() {
-      setIsOptionsLoading(true)
-      try {
-        const [locationOptions, productOptions] = await Promise.all([
-          stockMovementApi.getLocationOptions(),
-          stockMovementApi.getProductItemOptions(),
-        ])
-        setLocations(locationOptions)
-        setProducts(productOptions)
-      } catch (error) {
-        console.error(error)
-        toast.error('Không thể tải dữ liệu tạo yêu cầu chuyển kho')
-      } finally {
-        setIsOptionsLoading(false)
-      }
+  const fromLocationId = form.watch('fromLocationId')
+  const visibleFromLocations = useMemo(() => {
+    if (role === 'WAREHOUSE_MANAGER' && authScope.warehouseId) {
+      return locations.filter((l) => l._id === authScope.warehouseId && l.type === 'warehouse')
     }
+    if (role === 'BRANCH_MANAGER' && authScope.branchId) {
+      return locations.filter((l) => l._id === authScope.branchId && l.type === 'branch')
+    }
+    return locations
+  }, [locations, role, authScope.warehouseId, authScope.branchId])
+  const fromLocation = visibleFromLocations.find((l) => l._id === fromLocationId)
 
-    loadOptions()
-  }, [open])
+  const visibleToLocations = useMemo(() => {
+    if (!fromLocationId) return []
+    if (role === 'WAREHOUSE_MANAGER') {
+      return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
+    }
+    if (role === 'BRANCH_MANAGER') {
+      return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
+    }
+    return locations.filter((l) => l._id !== fromLocationId)
+  }, [locations, fromLocationId, role])
+
+  useEffect(() => {
+    if (!open || !fromLocationId || !fromLocation) {
+      setProducts([])
+      return
+    }
+    stockMovementApi
+      .getProductItemsAtSource(fromLocationId, fromLocation.type)
+      .then(setProducts)
+      .catch(() => toast.error(labels.loadProductsError))
+  }, [open, fromLocationId, fromLocation, labels.loadProductsError])
+
+  useEffect(() => {
+    if (!open) return
+    const currentTo = form.getValues('toLocationId')
+    if (currentTo && !visibleToLocations.some((l) => l._id === currentTo)) {
+      form.setValue('toLocationId', '')
+    }
+  }, [open, visibleToLocations, form])
+
+  useEffect(() => {
+    if (!open) return
+    if (role === 'WAREHOUSE_MANAGER' && authScope.warehouseId) {
+      form.setValue('fromLocationId', authScope.warehouseId)
+      form.setValue('toLocationId', '')
+    }
+    if (role === 'BRANCH_MANAGER' && authScope.branchId) {
+      form.setValue('fromLocationId', authScope.branchId)
+      form.setValue('toLocationId', '')
+    }
+  }, [open, role, authScope.warehouseId, authScope.branchId, form])
 
   async function onSubmit(data: TransferFormValues) {
     const fromLoc = locations.find((l) => l._id === data.fromLocationId)
     const toLoc = locations.find((l) => l._id === data.toLocationId)
+    if (role === 'WAREHOUSE_MANAGER' && data.fromLocationId !== authScope.warehouseId) {
+      toast.error('Kho chỉ được xuất từ kho của bạn')
+      return
+    }
+    if (role === 'BRANCH_MANAGER') {
+      if (data.fromLocationId !== authScope.branchId) {
+        toast.error('Chi nhánh chỉ được xuất từ chi nhánh của bạn')
+        return
+      }
+      if (toLoc?.type !== 'branch') {
+        toast.error('Chi nhánh chỉ được xuất sang chi nhánh khác')
+        return
+      }
+    }
     try {
-      await stockMovementApi.createTransfer({
-        movementType: 'TRANSFER',
+      await stockMovementApi.createExport({
+        movementType: 'EXPORT',
         fromLocationId: data.fromLocationId,
         fromLocationType: fromLoc?.type ?? 'warehouse',
         toLocationId: data.toLocationId,
@@ -111,7 +200,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
           note: normalizeOptionalNote(d.note),
         })),
       })
-      toast.success('Tạo yêu cầu chuyển kho thành công')
+      toast.success(labels.successToast)
       onOpenChange(false)
       await fetchTransfers()
     } catch (error) {
@@ -123,8 +212,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Tạo yêu cầu chuyển kho</DialogTitle>
-          <DialogDescription>Chọn kho gửi, kho nhận và danh sách hàng hóa cần chuyển.</DialogDescription>
+          <DialogTitle>{labels.createDialogTitle}</DialogTitle>
+          <DialogDescription>{labels.createDialogDescription}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -132,13 +221,17 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="fromLocationId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kho / Chi nhánh gửi <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>{labels.fromLabel} <span className="text-destructive">*</span></FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={role === 'WAREHOUSE_MANAGER' || role === 'BRANCH_MANAGER'}
+                  >
                     <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder="Chọn kho gửi" /></SelectTrigger>
+                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder={labels.fromPlaceholder} /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {locations.map((l) => (
+                      {visibleFromLocations.map((l) => (
                         <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
@@ -149,17 +242,26 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
               <FormField control={form.control} name="toLocationId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kho / Chi nhánh nhận <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>{labels.toLabel} <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder="Chọn kho nhận" /></SelectTrigger>
+                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder={labels.toPlaceholder} /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {locations.map((l) => (
+                      {visibleToLocations.map((l) => (
                         <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {visibleToLocations.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      {role === 'BRANCH_MANAGER'
+                        ? 'Chưa có chi nhánh đích khác trong tenant để chuyển.'
+                        : role === 'WAREHOUSE_MANAGER'
+                          ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
+                          : 'Không có nơi nhận phù hợp.'}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )} />
@@ -169,7 +271,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
               <FormItem>
                   <FormLabel>Ghi chú đơn</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Ghi chú cho cả phiếu chuyển kho (tùy chọn)" rows={2} className="resize-none" {...field} />
+                    <Textarea placeholder={labels.orderNotePlaceholder} rows={2} className="resize-none" {...field} />
                   </FormControl>
               </FormItem>
             )} />
@@ -183,6 +285,13 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   <Plus className="mr-1 size-4" />Thêm dòng
                 </Button>
               </div>
+
+              {!fromLocationId && (
+                <p className="text-xs text-muted-foreground">{labels.selectFromHint}</p>
+              )}
+              {fromLocationId && products.length === 0 && (
+                <p className="text-xs text-amber-600">{labels.noStockAtSource}</p>
+              )}
 
               {fields.map((f, idx) => (
                   <div key={f.id} className="space-y-3 rounded-lg border bg-muted/30 p-3">
@@ -237,6 +346,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                                           {p.sku ? (
                                             <span className="text-xs text-muted-foreground">
                                               SKU: {p.sku}
+                                              {typeof p.stock === 'number' ? ` · Tồn: ${p.stock}` : ''}
                                             </span>
                                           ) : null}
                                         </span>
@@ -306,7 +416,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">Hủy</Button>
               <Button type="submit" disabled={form.formState.isSubmitting || isOptionsLoading} className="cursor-pointer">
                 <Plus className="mr-2 size-4" />
-                {form.formState.isSubmitting ? 'Đang tạo...' : 'Tạo yêu cầu chuyển kho'}
+                {form.formState.isSubmitting ? 'Đang tạo...' : labels.submitButton}
               </Button>
             </DialogFooter>
           </form>

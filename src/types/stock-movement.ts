@@ -1,10 +1,14 @@
-export type MovementType = "IMPORT" | "TRANSFER" | "RETURN" | "ADJUST";
+export type MovementType = "IMPORT" | "EXPORT" | "RETURN" | "ADJUST";
 
 export type MovementStatus =
+  | "DRAFT"
+  | "OPENING"
+  | "CLOSED"
   | "PENDING"
   | "IN_TRANSIT"
   | "RECEIVED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "COMPLETED";
 
 export type LocationType = "branch" | "warehouse";
 
@@ -33,8 +37,6 @@ export interface StockMovement {
   toLocationType: LocationType;
   requestedBy: string;
   requestedByName: string;
-  approvedBy?: string;
-  approvedByName?: string;
   note?: string;
   details: StockMovementDetail[];
   createdAt: string;
@@ -55,8 +57,8 @@ export interface CreateImportPayload {
   }[];
 }
 
-export interface CreateTransferPayload {
-  movementType: "TRANSFER";
+export interface CreateExportPayload {
+  movementType: "EXPORT";
   fromLocationId: string;
   fromLocationType: LocationType;
   toLocationId: string;
@@ -69,10 +71,38 @@ export interface CreateTransferPayload {
   }[];
 }
 
+export interface CreateAdjustPayload {
+  movementType: "ADJUST";
+  /** Kho/chi nhánh cần điều chỉnh tồn kho */
+  fromLocationId: string;
+  fromLocationType: LocationType;
+  /** BE schema yêu cầu toLocationId – truyền cùng giá trị fromLocationId */
+  toLocationId: string;
+  toLocationType: LocationType;
+  note?: string;
+  details: {
+    productItemId: string;
+    /** Snapshot tồn hệ thống lúc tạo — BE tự điền nếu bỏ trống */
+    quantity?: number;
+    /** Tồn thực tế sau kiểm kê */
+    receivedQuantity: number;
+    note?: string;
+  }[];
+}
+
 export interface ReceiveRequestPayload {
   details: {
     productItemId: string;
     receivedQuantity: number;
+  }[];
+}
+
+export interface UpdateDetailsPayload {
+  details: {
+    productItemId: string;
+    quantity: number;
+    importPrice?: number;
+    note?: string;
   }[];
 }
 
@@ -89,8 +119,6 @@ export interface StockMovementQueryParams {
   limit?: number;
   status?: MovementStatus;
   movementType?: MovementType;
-  fromDate?: string;
-  toDate?: string;
 }
 
 export interface StockMovementSupplierOption {
@@ -108,4 +136,9 @@ export interface StockMovementProductItemOption {
   _id: string;
   name: string;
   sku: string;
+  costPrice?: number;
+  /** Có bản ghi tồn kho tại location đang chọn */
+  atLocation?: boolean;
+  /** Tồn tại location nguồn (chuyển kho) */
+  stock?: number;
 }

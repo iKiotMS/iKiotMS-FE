@@ -3,7 +3,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
 import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
+import { getTransferUiLabels } from '@/app/(protected)/exchange/shared/transfer-ui-labels'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
 export type TransfersDialogType = 'create'
@@ -14,57 +16,155 @@ interface TransfersContextType {
   isLoading: boolean
   open: TransfersDialogType | null
   setOpen: (v: TransfersDialogType | null) => void
-  currentRow: StockMovement | null
-  setCurrentRow: React.Dispatch<React.SetStateAction<StockMovement | null>>
   statusFilter: MovementStatus | 'ALL'
   setStatusFilter: (v: MovementStatus | 'ALL') => void
   fetchTransfers: () => Promise<void>
-  handleApprove: (id: string) => Promise<void>
+  handleOpen: (id: string) => Promise<void>
+  handleUpdateDetails: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleSubmitFromOpening: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleShipFromOpening: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleClose: (id: string) => Promise<void>
+  handleShip: (id: string) => Promise<void>
   handleReceive: (id: string, receivedDetails: { productItemId: string; receivedQuantity: number }[]) => Promise<void>
   handleCancel: (id: string) => Promise<void>
+  labels: ReturnType<typeof getTransferUiLabels>
 }
 
 const TransfersContext = createContext<TransfersContextType | null>(null)
 
 export function TransfersProvider({ children }: { children: React.ReactNode }) {
+  const authScope = getAuthScope()
+  const labels = React.useMemo(
+    () => getTransferUiLabels(authScope.role),
+    [authScope.role],
+  )
   const [transfers, setTransfers] = useState<StockMovement[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState<TransfersDialogType | null>(null)
-  const [currentRow, setCurrentRow] = useState<StockMovement | null>(null)
-  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('PENDING')
+  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('ALL')
 
   const fetchTransfers = useCallback(async () => {
     setIsLoading(true)
     try {
       const params = {
-        movementType: 'TRANSFER' as const,
+        movementType: 'EXPORT' as const,
+        limit: 50,
         ...(statusFilter !== 'ALL' && { status: statusFilter }),
       }
       const res = await stockMovementApi.getList(params)
-      setTransfers(res.data)
-      setTotal(res.total)
+      const authScope = getAuthScope()
+      const isBranchManager = authScope.role === 'BRANCH_MANAGER'
+      const data =
+        isBranchManager && authScope.branchId
+          ? res.data.filter((movement) => {
+              const isWarehouseToOwnBranch =
+                movement.fromLocationType === 'warehouse' &&
+                movement.toLocationType === 'branch' &&
+                movement.toLocationId === authScope.branchId
+              const isBranchToBranchRelated =
+                movement.fromLocationType === 'branch' &&
+                movement.toLocationType === 'branch' &&
+                (movement.fromLocationId === authScope.branchId ||
+                  movement.toLocationId === authScope.branchId)
+              return isWarehouseToOwnBranch || isBranchToBranchRelated
+            })
+          : res.data
+      setTransfers(data)
+      setTotal(data.length)
     } catch (error) {
       console.error(error)
       setTransfers([])
       setTotal(0)
-      toast.error(getStockMovementErrorMessage(error, 'Không thể tải danh sách chuyển kho'))
+      toast.error(getStockMovementErrorMessage(error, labels.listLoadError))
     } finally {
       setIsLoading(false)
     }
-  }, [statusFilter])
+  }, [statusFilter, labels.listLoadError])
 
   useEffect(() => { fetchTransfers() }, [fetchTransfers])
 
-  const handleApprove = async (id: string) => {
+  const handleOpen = async (id: string) => {
     try {
-      await stockMovementApi.approve(id)
-      toast.success('Đã duyệt yêu cầu chuyển kho')
-      setOpen(null)
+      await stockMovementApi.open(id)
+      toast.success('Đã mở phiếu — có thể chốt danh sách hàng')
       await fetchTransfers()
     } catch (error) {
-      console.error(error)
-      toast.error(getStockMovementErrorMessage(error, 'Không thể duyệt yêu cầu, vui lòng thử lại'))
+      toast.error(getStockMovementErrorMessage(error, 'Không thể mở phiếu'))
+    }
+  }
+
+  const handleUpdateDetails = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
+    try {
+      await stockMovementApi.updateDetails(id, { details })
+      toast.success('Đã cập nhật danh sách hàng cho phiếu')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể cập nhật danh sách hàng'))
+      throw error
+    }
+  }
+
+  const handleClose = async (id: string) => {
+    try {
+      await stockMovementApi.close(id)
+      toast.success('Đã chốt phiếu — sẵn sàng xuất hàng')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể chốt phiếu'))
+    }
+  }
+
+  const handleSubmitFromOpening = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
+    try {
+      await stockMovementApi.updateDetails(id, { details })
+      await stockMovementApi.close(id)
+      toast.success('Đã gửi phiếu về bên xuất để duyệt')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể gửi phiếu'))
+      throw error
+    }
+  }
+
+  const handleShipFromOpening = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
+    try {
+      await stockMovementApi.updateDetails(id, { details })
+      await stockMovementApi.close(id)
+      await stockMovementApi.ship(id)
+      toast.success('Đã submit và xuất hàng — phiếu đang vận chuyển')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể submit/xuất hàng'))
+      throw error
+    }
+  }
+
+  const handleShip = async (id: string) => {
+    try {
+      await stockMovementApi.ship(id)
+      toast.success('Đã xuất hàng — phiếu đang vận chuyển')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể xuất hàng'))
     }
   }
 
@@ -74,24 +174,20 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       await stockMovementApi.receive(id, { details: receivedDetails })
-      toast.success('Đã nhận hàng chuyển kho')
-      setOpen(null)
+      toast.success(labels.receiveSuccess)
       await fetchTransfers()
     } catch (error) {
-      console.error(error)
-      toast.error(getStockMovementErrorMessage(error, 'Không thể nhận hàng chuyển kho'))
+      toast.error(getStockMovementErrorMessage(error, labels.receiveError))
     }
   }
 
   const handleCancel = async (id: string) => {
     try {
       await stockMovementApi.cancel(id)
-      toast.success('Đã huỷ yêu cầu chuyển kho')
-      setOpen(null)
+      toast.success(labels.cancelSuccess)
       await fetchTransfers()
     } catch (error) {
-      console.error(error)
-      toast.error(getStockMovementErrorMessage(error, 'Không thể huỷ yêu cầu chuyển kho'))
+      toast.error(getStockMovementErrorMessage(error, labels.cancelError))
     }
   }
 
@@ -103,14 +199,18 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         open,
         setOpen,
-        currentRow,
-        setCurrentRow,
         statusFilter,
         setStatusFilter,
         fetchTransfers,
-        handleApprove,
+        handleOpen,
+        handleUpdateDetails,
+        handleSubmitFromOpening,
+        handleShipFromOpening,
+        handleClose,
+        handleShip,
         handleReceive,
         handleCancel,
+        labels,
       }}
     >
       {children}

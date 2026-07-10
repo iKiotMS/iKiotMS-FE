@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
 import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
@@ -14,12 +15,15 @@ interface ImportsContextType {
   isLoading: boolean
   open: ImportsDialogType | null
   setOpen: (v: ImportsDialogType | null) => void
-  currentRow: StockMovement | null
-  setCurrentRow: React.Dispatch<React.SetStateAction<StockMovement | null>>
   statusFilter: MovementStatus | 'ALL'
   setStatusFilter: (v: MovementStatus | 'ALL') => void
   fetchImports: () => Promise<void>
-  handleApprove: (id: string) => Promise<void>
+  handleUpdateDetails: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleClose: (id: string) => Promise<void>
+  handleShip: (id: string) => Promise<void>
   handleReceive: (id: string, receivedDetails: { productItemId: string; receivedQuantity: number }[]) => Promise<void>
   handleCancel: (id: string) => Promise<void>
 }
@@ -31,19 +35,31 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState<ImportsDialogType | null>(null)
-  const [currentRow, setCurrentRow] = useState<StockMovement | null>(null)
-  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('PENDING')
+  const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('ALL')
 
   const fetchImports = useCallback(async () => {
     setIsLoading(true)
     try {
+      const authScope = getAuthScope()
+      const isBranchManager = authScope.role === 'BRANCH_MANAGER'
       const params = {
-        movementType: 'IMPORT' as const,
+        movementType: isBranchManager ? ('EXPORT' as const) : ('IMPORT' as const),
+        limit: 50,
         ...(statusFilter !== 'ALL' && { status: statusFilter }),
       }
       const res = await stockMovementApi.getList(params)
-      setImports(res.data)
-      setTotal(res.total)
+      const data =
+        isBranchManager && authScope.branchId
+          ? res.data.filter(
+              (movement) =>
+                movement.fromLocationType === 'warehouse' &&
+                movement.toLocationType === 'branch' &&
+                movement.toLocationId === authScope.branchId &&
+                movement.status !== 'DRAFT',
+            )
+          : res.data
+      setImports(data)
+      setTotal(data.length)
     } catch (error) {
       console.error(error)
       setImports([])
@@ -58,15 +74,40 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
     fetchImports()
   }, [fetchImports])
 
-  const handleApprove = async (id: string) => {
+  const handleUpdateDetails = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
     try {
-      await stockMovementApi.approve(id)
-      toast.success('Đã duyệt đơn nhập hàng')
+      await stockMovementApi.updateDetails(id, { details })
+      toast.success('Đã cập nhật danh sách hàng')
+      await fetchImports()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể cập nhật danh sách hàng'))
+      throw error
+    }
+  }
+
+  const handleClose = async (id: string) => {
+    try {
+      await stockMovementApi.close(id)
+      toast.success('Đã gửi lại phiếu chờ xuất hàng')
+      await fetchImports()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể gửi lại phiếu'))
+      throw error
+    }
+  }
+
+  const handleShip = async (id: string) => {
+    try {
+      await stockMovementApi.ship(id)
+      toast.success('Đã giao hàng — phiếu chuyển sang đang vận chuyển')
       setOpen(null)
       await fetchImports()
     } catch (error) {
       console.error(error)
-      toast.error(getStockMovementErrorMessage(error, 'Không thể duyệt đơn, vui lòng thử lại'))
+      toast.error(getStockMovementErrorMessage(error, 'Không thể giao hàng, vui lòng thử lại'))
     }
   }
 
@@ -75,9 +116,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
     receivedDetails: { productItemId: string; receivedQuantity: number }[],
   ) => {
     try {
-      await stockMovementApi.receive(id, {
-        details: receivedDetails,
-      })
+      await stockMovementApi.receive(id, { details: receivedDetails })
       toast.success('Đã nhận hàng thành công')
       setOpen(null)
       await fetchImports()
@@ -107,12 +146,12 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         open,
         setOpen,
-        currentRow,
-        setCurrentRow,
         statusFilter,
         setStatusFilter,
         fetchImports,
-        handleApprove,
+        handleUpdateDetails,
+        handleClose,
+        handleShip,
         handleReceive,
         handleCancel,
       }}

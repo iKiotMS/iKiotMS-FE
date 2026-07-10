@@ -5,7 +5,10 @@ export function getStockMovementErrorMessage(
   fallback: string,
 ): string {
   if (error instanceof AxiosError) {
-    const message = error.response?.data?.message;
+    const data = error.response?.data as
+      | { message?: string; error?: string }
+      | undefined;
+    const message = data?.message ?? data?.error;
     if (typeof message === "string" && message.trim()) {
       return message;
     }

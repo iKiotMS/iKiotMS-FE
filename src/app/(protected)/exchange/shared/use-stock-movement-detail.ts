@@ -1,65 +1,49 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { stockMovementApi } from "@/lib/api/stock-movement";
 import type { StockMovement } from "@/types/stock-movement";
 
-/**
- * Load full movement detail when a row is expanded.
- * Prefer GET-by-id (có tên SP) rồi sync lại khi list row đổi.
- */
+async function fetchMovement(id: string, fallback: StockMovement) {
+  try {
+    return await stockMovementApi.getById(id);
+  } catch {
+    return fallback;
+  }
+}
+
+/** Load chi tiết phiếu khi expand row (GET-by-id để có đủ tên SP). */
 export function useStockMovementDetail(
   request: StockMovement,
   isExpanded: boolean,
 ) {
-  const [detail, setDetail] = useState<StockMovement>(request);
+  const [detail, setDetail] = useState(request);
   const [loading, setLoading] = useState(false);
-  const loadedForIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setDetail(request);
-  }, [request]);
-
-  useEffect(() => {
-    if (!isExpanded) {
-      loadedForIdRef.current = null;
-      return;
-    }
-
+    if (!isExpanded) return;
     let cancelled = false;
 
-    async function loadDetail() {
-      if (loadedForIdRef.current === request._id) return;
+    async function load() {
       setLoading(true);
-      try {
-        const latest = await stockMovementApi.getById(request._id);
-        if (!cancelled) {
-          setDetail(latest);
-          loadedForIdRef.current = request._id;
-        }
-      } catch {
-        if (!cancelled) setDetail(request);
-      } finally {
-        if (!cancelled) setLoading(false);
+      const next = await fetchMovement(request._id, request);
+      if (!cancelled) {
+        setDetail(next);
+        setLoading(false);
       }
     }
 
-    loadDetail();
+    void load();
     return () => {
       cancelled = true;
     };
   }, [isExpanded, request]);
 
-  const refreshDetail = async () => {
-    loadedForIdRef.current = null;
-    try {
-      const latest = await stockMovementApi.getById(detail._id);
-      setDetail(latest);
-      loadedForIdRef.current = latest._id;
-    } catch {
-      /* provider list refresh vẫn cập nhật request prop */
-    }
-  };
+  const refreshDetail = useCallback(async () => {
+    setLoading(true);
+    setDetail(await fetchMovement(request._id, request));
+    setLoading(false);
+  }, [request]);
 
-  return { detail, loading, setDetail, refreshDetail };
+  return { detail, loading, refreshDetail };
 }
