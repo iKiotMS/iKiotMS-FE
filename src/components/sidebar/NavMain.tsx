@@ -70,7 +70,7 @@ export function NavMain({
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild className="cursor-pointer" isActive={pathname === subItem.url}>
+                           <SidebarMenuSubButton asChild className="cursor-pointer" isActive={pathname === subItem.url}>
                             <Link
                               href={subItem.url}
                               target={(item.title === "Auth Pages" || item.title === "Errors") ? "_blank" : undefined}
