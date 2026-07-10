@@ -4,7 +4,7 @@ import * as React from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Logo } from "./logo";
+import { Logo } from "@/components/logo";
 
 export function SidebarNotification() {
   const [isVisible, setIsVisible] = React.useState(true);

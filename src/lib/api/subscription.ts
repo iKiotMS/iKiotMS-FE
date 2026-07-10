@@ -69,3 +69,13 @@ export async function listInvoices(): Promise<Invoice[]> {
   const response = await client.get("/subscription/invoices");
   return response.data.data;
 }
+
+export interface AdminInvoice extends Omit<Invoice, "planId"> {
+  planId?: { planName: string; planCode: string };
+  tenantId?: { _id: string; name: string; phoneNumber?: string };
+}
+
+export async function listAllInvoices(): Promise<AdminInvoice[]> {
+  const response = await client.get("/subscription/admin/invoices");
+  return response.data.data;
+}
