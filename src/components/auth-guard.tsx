@@ -32,6 +32,41 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [router, fetchMe]);
 
+  useEffect(() => {
+    if (authenticated && user) {
+      try {
+        const { getSocket, joinRoom } = require("@/lib/socket");
+        const socket = getSocket();
+        
+        if (user.tenantId) {
+          joinRoom(`tenant:${user.tenantId}`);
+        }
+        if (user.id) {
+          joinRoom(`user:${user.id}`);
+        }
+        if (user.role === "SUPER_ADMIN") {
+          joinRoom("admin");
+          
+          // Fetch initial unread count
+          const { useNotificationStore } = require("@/store/notification-store");
+          useNotificationStore.getState().fetchUnreadCount();
+
+          // Listen for new system notifications to increment count
+          const handleNewNotification = () => {
+            useNotificationStore.getState().incrementUnreadCount();
+          };
+          socket.on("system-notification", handleNewNotification);
+
+          return () => {
+            socket.off("system-notification", handleNewNotification);
+          };
+        }
+      } catch (err) {
+        console.error("Socket room connection/join error:", err);
+      }
+    }
+  }, [authenticated, user]);
+
   if (isChecking || !authenticated) {
     return <Loading />;
   }

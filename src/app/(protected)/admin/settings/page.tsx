@@ -9,6 +9,7 @@ import { ThemeTab } from "@/components/theme-customizer/theme-tab";
 import { LayoutTab } from "@/components/theme-customizer/layout-tab";
 import { useThemeManager } from "@/hooks/use-theme-manager";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
+import { PageHeader } from "@/components/page-header";
 
 type TabType = "theme" | "layout";
 
@@ -74,19 +75,15 @@ export default function AdminSettingsPage() {
   ];
 
   return (
-    <div className="px-4 md:px-6">
-      {/* Header section of settings page */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 border-b">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Settings className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight">
-              Cấu hình hệ thống
-            </h1>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-6 px-4  lg:px-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: "Trang chủ", href: "/admin/dashboard" },
+          { label: "Cấu hình" },
+        ]}
+        title="Cấu hình hệ thống"
+        description="Quản lý các thiết lập và tùy chỉnh hệ thống."
+      />
       <div className="flex flex-col md:flex-row gap-8 items-start">
         {/* Left Navigation Sidebar */}
         <aside className="w-full md:w-64 shrink-0 md:sticky md:top-20 space-y-6">

@@ -12,6 +12,11 @@ const crmGroup = {
   items: [sidebarItems.khachHang, sidebarItems.khuyenMai],
 };
 
+const cskhGroup = {
+  label: "CSKH",
+  items: [sidebarItems.tenantPhanAnh],
+};
+
 export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   SUPER_ADMIN: [
     {
@@ -21,6 +26,10 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
         sidebarItems.adminUsers,
         sidebarItems.subscriptions,
         sidebarItems.adminGiaoDich,
+        sidebarItems.adminAuditLog,
+        sidebarItems.adminNotifications,
+        sidebarItems.adminSystemNotifications,
+        sidebarItems.adminTickets,
       ],
     },
     {
@@ -36,6 +45,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich, sidebarItems.donHang]),
     crmGroup,
+    cskhGroup,
   ],
 
   BRANCH_MANAGER: [
@@ -45,6 +55,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich, sidebarItems.donHang]),
     crmGroup,
+    cskhGroup,
   ],
 
   WAREHOUSE_MANAGER: [
@@ -54,6 +65,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   STAFF: [
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.donHang]),
     crmGroup,
+    cskhGroup,
   ],
 
   CUSTOMER: [],
