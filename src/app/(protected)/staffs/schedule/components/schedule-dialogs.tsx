@@ -11,25 +11,23 @@ export function ScheduleDialogs() {
   return (
     <>
       <ScheduleMutateDialog
-        key="schedule-add"
         open={open === "add"}
         onOpenChange={(value) => {
           if (!value) setOpen(null);
         }}
+        mode="add"
       />
-      {currentRow && (
-        <ScheduleMutateDialog
-          key="schedule-edit"
-          open={open === "edit"}
-          onOpenChange={(value) => {
-            if (!value) {
-              setOpen(null);
-              setCurrentRow(null);
-            }
-          }}
-          currentRow={currentRow}
-        />
-      )}
+      <ScheduleMutateDialog
+        open={open === "edit"}
+        onOpenChange={(value) => {
+          if (!value) {
+            setOpen(null);
+            setCurrentRow(null);
+          }
+        }}
+        mode="edit"
+        currentRow={currentRow}
+      />
       <ScheduleDeleteDialog
         open={open === "delete"}
         onOpenChange={(value) => {

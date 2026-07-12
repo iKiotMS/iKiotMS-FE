@@ -493,6 +493,74 @@ export const stockMovementApi = {
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
+  /**
+   * Tạo phiếu trả ngược (đổi from/to) từ phiếu đã nhận, rồi open → close → ship
+   * để nơi gửi gốc chỉ cần xác nhận nhận hàng.
+   */
+  createAndShipReverseReturn: async (
+    source: StockMovement,
+  ): Promise<StockMovement> => {
+    if (!source.fromLocationId || !source.fromLocationType) {
+      throw new Error("Phiếu không có nơi gửi để trả về");
+    }
+    if (!source.toLocationId || !source.toLocationType) {
+      throw new Error("Phiếu không có nơi nhận để trả hàng");
+    }
+
+    const details = source.details
+      .map((d) => {
+        const qty = Number(
+          d.receivedQuantity != null ? d.receivedQuantity : d.quantity,
+        );
+        return {
+          productItemId: d.productItemId,
+          quantity: qty,
+          importPrice:
+            typeof d.importPrice === "number" && d.importPrice > 0
+              ? d.importPrice
+              : undefined,
+          note: d.note,
+        };
+      })
+      .filter((d) => Number.isFinite(d.quantity) && d.quantity > 0);
+
+    if (details.length === 0) {
+      throw new Error("Không có số lượng hàng hợp lệ để trả");
+    }
+
+    const fromLocationId = source.toLocationId;
+    const fromLocationType = source.toLocationType;
+    const toLocationId = source.fromLocationId;
+    const toLocationType = source.fromLocationType;
+
+    const movementType =
+      fromLocationType === "branch" && toLocationType === "warehouse"
+        ? ("RETURN" as const)
+        : ("EXPORT" as const);
+
+    const createResponse = await client.post("/stock-movements", {
+      movementType,
+      fromLocationId,
+      fromLocationType,
+      toLocationId,
+      toLocationType,
+      note: `Trả hàng từ phiếu ${source._id}`,
+      details,
+    });
+    const created = await safeEnrichMovement(
+      mapMovement(createResponse.data?.data as ApiMovement),
+    );
+
+    await client.patch(`/stock-movements/${created._id}/open`);
+    await client.patch(`/stock-movements/${created._id}/close`);
+    const shipResponse = await client.patch(
+      `/stock-movements/${created._id}/ship`,
+    );
+    return safeEnrichMovement(
+      mapMovement(shipResponse.data?.data as ApiMovement),
+    );
+  },
+
   receive: async (
     id: string,
     payload: ReceiveRequestPayload,

@@ -1,6 +1,7 @@
 import type { VariantProps } from "class-variance-authority";
 import { badgeVariants } from "@/components/ui/badge";
 import type { AttendanceStatus } from "@/types/working-schedule";
+import { formatVietnamDateTime } from "@/app/(protected)/staffs/shared/vietnam-datetime";
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 
@@ -37,18 +38,7 @@ export function formatWorkedMinutes(minutes?: number | null): string {
 }
 
 export function formatAttendanceDateTime(iso?: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(iso));
-  } catch {
-    return "—";
-  }
+  return formatVietnamDateTime(iso);
 }
 
 export function formatVerificationStatus(status?: string): string {

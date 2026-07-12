@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -28,12 +28,15 @@ import {
   useOpeningEditor,
   useStockMovementDetail,
 } from "@/app/(protected)/exchange/shared/use-stock-movement-detail";
-import { getAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
+import { getEffectiveLocationScope } from "@/app/(protected)/exchange/shared/auth-scope";
 import type { TransferUiLabels } from "@/app/(protected)/exchange/shared/transfer-ui-labels";
 import {
   MovementActionBar,
   MovementDetailsTable,
 } from "@/app/(protected)/exchange/shared/movement-panel-sections";
+import { stockMovementApi } from "@/lib/api/stock-movement";
+import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
+import { useAuthStore } from "@/store/auth-store";
 import type { StockMovement } from "@/types/stock-movement";
 
 export type MovementImportActions = {
@@ -82,6 +85,8 @@ export type MovementTransferActions = {
     payload: { productItemId: string; receivedQuantity: number }[],
   ) => Promise<void>;
   handleCancel: (id: string) => Promise<void>;
+  /** Tạo phiếu trả ngược từ phiếu hiện tại và xuất đi (chờ nơi gửi gốc nhận). */
+  handleReturnGoods: (source: StockMovement) => Promise<void>;
   labels: TransferUiLabels;
 };
 
@@ -133,7 +138,12 @@ export function MovementExpandedPanel({
   });
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
-  const authScope = getAuthScope();
+  const [returnConfirmOpen, setReturnConfirmOpen] = useState(false);
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const effectiveScope = useMemo(
+    () => getEffectiveLocationScope(locationKey),
+    [locationKey],
+  );
   const labels = transferActions?.labels;
 
   const totalValue = detail.details.reduce(
@@ -157,25 +167,23 @@ export function MovementExpandedPanel({
   const isInTransit = detail.status === "IN_TRANSIT";
   const isReceived = detail.status === "RECEIVED";
 
-  const matchesFromLocation =
-    (detail.fromLocationType === "warehouse" &&
-      !!authScope.warehouseId &&
-      detail.fromLocationId === authScope.warehouseId) ||
-    (detail.fromLocationType === "branch" &&
-      !!authScope.branchId &&
-      detail.fromLocationId === authScope.branchId);
+  const isTenantOwner = effectiveScope.role === "TENANT_OWNER";
+  const matchesFromLocation = effectiveScope.locationId
+    ? detail.fromLocationId === effectiveScope.locationId &&
+      detail.fromLocationType === effectiveScope.locationType
+    : false;
+  const matchesToLocation = effectiveScope.locationId
+    ? detail.toLocationId === effectiveScope.locationId &&
+      detail.toLocationType === effectiveScope.locationType
+    : false;
 
-  const matchesToLocation =
-    (detail.toLocationType === "warehouse" &&
-      !!authScope.warehouseId &&
-      detail.toLocationId === authScope.warehouseId) ||
-    (detail.toLocationType === "branch" &&
-      !!authScope.branchId &&
-      detail.toLocationId === authScope.branchId);
-
-  const isTenantOwner = authScope.role === "TENANT_OWNER";
-  const canActAsFromLocation = isTenantOwner || matchesFromLocation;
-  const canActAsToLocation = isTenantOwner || matchesToLocation;
+  // Tenant "all" → mọi location; BM/WM hoặc tenant đã switch → khớp locationKey/JWT.
+  const canActAsFromLocation = effectiveScope.locationId
+    ? matchesFromLocation
+    : isTenantOwner;
+  const canActAsToLocation = effectiveScope.locationId
+    ? matchesToLocation
+    : isTenantOwner;
 
   const isSender = mode === "transfer" && canActAsFromLocation;
   const isReceiver = mode === "transfer" && canActAsToLocation;
@@ -202,6 +210,14 @@ export function MovementExpandedPanel({
         canActAsToLocation &&
         (isInTransit || (isPending && !canShipImportPending))
       : isInTransit && isReceiver;
+
+  // Người nhận (toLocation) trả hàng: IN_TRANSIT (nhận rồi trả) hoặc đã RECEIVED.
+  const canReturnGoods =
+    mode === "transfer" &&
+    isReceiver &&
+    !!detail.fromLocationId &&
+    !!transferActions?.handleReturnGoods &&
+    (isReceived || isInTransit);
 
   // Doc: cancel from fromLocation; không hủy RECEIVED / COMPLETED / CANCELLED.
   const canCancel =
@@ -314,6 +330,55 @@ export function MovementExpandedPanel({
     });
   };
 
+  const onReturnGoods = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canReturnGoods) return;
+    setReturnConfirmOpen(true);
+  };
+
+  const confirmReturnGoods = async () => {
+    if (!transferActions?.handleReturnGoods || !canReturnGoods) return;
+
+    await withRefresh(async () => {
+      let source: StockMovement = detail;
+
+      // IN_TRANSIT: nhận trước (đưa tồn vào nơi nhận) rồi mới tạo phiếu trả.
+      if (isInTransit) {
+        const payload = buildReceivePayload(detail.details, receivedQtys);
+        const err = validateReceiveDetails(payload);
+        if (err) {
+          toast.error(err);
+          throw new Error(err);
+        }
+        try {
+          await stockMovementApi.receive(detail._id, { details: payload });
+        } catch (error) {
+          toast.error(
+            getStockMovementErrorMessage(error, "Không thể nhận hàng"),
+          );
+          throw error;
+        }
+        const qtyByProduct = new Map(
+          payload.map((p) => [p.productItemId, p.receivedQuantity]),
+        );
+        source = {
+          ...detail,
+          status: "RECEIVED",
+          details: detail.details.map((d) => ({
+            ...d,
+            receivedQuantity:
+              qtyByProduct.get(d.productItemId) ?? d.receivedQuantity ?? 0,
+          })),
+        };
+      }
+
+      await transferActions.handleReturnGoods(source);
+      setShowReceiveForm(false);
+      setReceivedQtys({});
+      setReturnConfirmOpen(false);
+    });
+  };
+
   const onCancel = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canCancel) return;
@@ -331,11 +396,11 @@ export function MovementExpandedPanel({
     setCancelConfirmOpen(false);
   };
 
-  const cancelDescription = isInTransit
-    ? mode === "transfer"
-      ? "Phiếu đang vận chuyển. Huỷ sẽ hoàn lại tồn kho cho nơi gửi. Thao tác không thể hoàn tác."
-      : "Phiếu đang vận chuyển. Bạn có chắc muốn huỷ? Thao tác không thể hoàn tác."
-    : "Bạn có chắc muốn huỷ phiếu này? Thao tác không thể hoàn tác.";
+  const cancelDescription =
+    "Bạn có chắc muốn huỷ phiếu này? Thao tác không thể hoàn tác.";
+
+  const returnDescription =
+    "Bạn có chắc muốn trả hàng phiếu này? Thao tác không thể hoàn tác.";
 
   if (!isExpanded) return null;
 
@@ -465,14 +530,7 @@ export function MovementExpandedPanel({
       <MovementOrderNote note={detail.note} />
 
       {canEditOpening && !showReceiveForm && (
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">
-            {mode === "import"
-              ? "Có thể sửa mặt hàng, số lượng và giá nhập."
-              : isSender
-                ? "Có thể sửa mặt hàng, số lượng và giá trước khi chốt phiếu."
-                : "Có thể sửa mặt hàng, số lượng và giá rồi cập nhật phiếu."}
-          </p>
+        <div className="mb-3 flex items-center justify-end gap-2">
           <Button
             type="button"
             variant="outline"
@@ -514,11 +572,13 @@ export function MovementExpandedPanel({
         mode={mode}
         isPending={isPending}
         isInTransit={isInTransit}
+        isReceived={isReceived}
         canOpenDraft={canOpenDraft}
         canEditOpening={canEditOpening}
         canShipClosed={canShipClosed}
         canShipImportPending={canShipImportPending}
         canReceiveTransit={canReceiveTransit}
+        canReturnGoods={canReturnGoods}
         canCancel={canCancel}
         showReceiveForm={showReceiveForm}
         setShowReceiveForm={setShowReceiveForm}
@@ -532,6 +592,7 @@ export function MovementExpandedPanel({
         onTransferShipFromOpening={onTransferShipFromOpening}
         onTransferShip={onTransferShip}
         onReceive={onReceive}
+        onReturnGoods={onReturnGoods}
         onCancel={onCancel}
       />
 
@@ -543,6 +604,17 @@ export function MovementExpandedPanel({
         confirmLabel={mode === "import" ? "Huỷ đơn" : "Huỷ yêu cầu"}
         isLoading={isActionLoading}
         onConfirm={confirmCancel}
+      />
+
+      <CancelConfirmDialog
+        open={returnConfirmOpen}
+        onOpenChange={setReturnConfirmOpen}
+        title="Xác nhận trả hàng"
+        description={returnDescription}
+        confirmLabel="Trả hàng"
+        loadingLabel="Đang trả hàng..."
+        isLoading={isActionLoading}
+        onConfirm={confirmReturnGoods}
       />
 
       <Separator className="mt-4" />

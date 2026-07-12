@@ -16,6 +16,7 @@ type CancelConfirmDialogProps = {
   title?: string;
   description?: string;
   confirmLabel?: string;
+  loadingLabel?: string;
   isLoading?: boolean;
   onConfirm: () => void | Promise<void>;
 };
@@ -26,6 +27,7 @@ export function CancelConfirmDialog({
   title = "Xác nhận huỷ yêu cầu",
   description = "Bạn có chắc muốn huỷ phiếu này? Thao tác không thể hoàn tác.",
   confirmLabel = "Huỷ yêu cầu",
+  loadingLabel,
   isLoading = false,
   onConfirm,
 }: CancelConfirmDialogProps) {
@@ -40,7 +42,7 @@ export function CancelConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <Button
             type="button"
             variant="outline"
@@ -57,7 +59,7 @@ export function CancelConfirmDialog({
             disabled={isLoading}
             onClick={() => void onConfirm()}
           >
-            {isLoading ? "Đang huỷ..." : confirmLabel}
+            {isLoading ? (loadingLabel ?? `Đang ${confirmLabel.toLowerCase()}...`) : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

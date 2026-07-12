@@ -31,10 +31,13 @@ import { ProductSelect } from "@/app/(protected)/exchange/shared/form-fields";
 import { getAdjustQtyChange } from "@/app/(protected)/exchange/shared/qty";
 import { refineDuplicateProducts } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import { stockMovementApi } from "@/lib/api/stock-movement";
-import { getAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
-import { filterLocationsByAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
+import {
+  filterLocationsByAuthScope,
+  getEffectiveLocationScope,
+} from "@/app/(protected)/exchange/shared/auth-scope";
 import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
 import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
+import { useAuthStore } from "@/store/auth-store";
 import type {
   LocationType,
   StockMovementLocationOption,
@@ -82,9 +85,12 @@ export function AdjustmentsCreateDialog({
   const [products, setProducts] = useState<StockMovementProductItemOption[]>([])
   const [isOptionsLoading, setIsOptionsLoading] = useState(false)
 
-  const authScope = getAuthScope()
-  const role = authScope.role
-  const isLocationLocked = role === 'WAREHOUSE_MANAGER' || role === 'BRANCH_MANAGER'
+  const locationKey = useAuthStore((s) => s.locationKey)
+  const effectiveScope = useMemo(
+    () => getEffectiveLocationScope(locationKey),
+    [locationKey],
+  )
+  const isLocationLocked = !!effectiveScope.locationId
 
   const form = useForm<AdjustFormValues>({
     resolver: zodResolver(adjustFormSchema),
@@ -95,8 +101,8 @@ export function AdjustmentsCreateDialog({
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'details' })
 
   const visibleLocations = useMemo(
-    () => filterLocationsByAuthScope(locations, authScope),
-    [locations, authScope.role, authScope.warehouseId, authScope.branchId],
+    () => filterLocationsByAuthScope(locations, effectiveScope),
+    [locations, effectiveScope],
   )
 
   const locationId = form.watch('locationId')
@@ -120,14 +126,17 @@ export function AdjustmentsCreateDialog({
 
   useEffect(() => {
     if (!open || locations.length === 0) return
-    if (role === 'WAREHOUSE_MANAGER' && authScope.warehouseId) {
-      form.setValue('locationId', authScope.warehouseId)
-      form.setValue('locationType', 'warehouse')
-    } else if (role === 'BRANCH_MANAGER' && authScope.branchId) {
-      form.setValue('locationId', authScope.branchId)
-      form.setValue('locationType', 'branch')
+    if (effectiveScope.locationId && effectiveScope.locationType) {
+      form.setValue('locationId', effectiveScope.locationId)
+      form.setValue('locationType', effectiveScope.locationType)
     }
-  }, [open, locations, role, authScope.warehouseId, authScope.branchId, form])
+  }, [
+    open,
+    locations,
+    effectiveScope.locationId,
+    effectiveScope.locationType,
+    form,
+  ])
 
   useEffect(() => {
     if (!open || !locationId) {
@@ -154,7 +163,7 @@ export function AdjustmentsCreateDialog({
       return getAdjustQtyChange(snapshot, d.receivedQuantity) !== 0
     })
     if (!hasChange) {
-      toast.error('Tồn thực tế trùng hệ thống — không có gì cần điều chỉnh')
+      toast.error('Tồn thực tế không thay đổi')
       return
     }
 
@@ -172,7 +181,7 @@ export function AdjustmentsCreateDialog({
           note: normalizeOptionalNote(d.note),
         })),
       })
-      toast.success('Đã tạo phiếu kiểm kê (PENDING) — mở phiếu để duyệt')
+      toast.success('Đã tạo phiếu kiểm kê')
       onOpenChange(false)
       await fetchAdjustments()
     } catch (error) {
@@ -186,8 +195,7 @@ export function AdjustmentsCreateDialog({
         <DialogHeader>
           <DialogTitle>Điều chỉnh tồn kho</DialogTitle>
           <DialogDescription>
-            Chỉ nhập <strong>tồn thực tế</strong>. Backend tự snapshot tồn hệ thống.
-            Phiếu tạo ở trạng thái PENDING — mở phiếu để sửa (nếu cần) rồi duyệt.
+            Nhập tồn thực tế sau kiểm kê. Phiếu sẽ chờ duyệt trước khi cập nhật tồn kho.
           </DialogDescription>
         </DialogHeader>
 
@@ -235,7 +243,7 @@ export function AdjustmentsCreateDialog({
                   <FormLabel>Lý do điều chỉnh</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Vd: Kiểm kê thực tế, sai số kho..."
+                      placeholder="Lý do điều chỉnh (tùy chọn)"
                       rows={2}
                       className="resize-none"
                       {...field}

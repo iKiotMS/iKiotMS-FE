@@ -77,7 +77,7 @@ export function AdjustmentsProvider({ children }: { children: React.ReactNode })
   const handleApprove = async (id: string) => {
     try {
       await stockMovementApi.approveAdjust(id)
-      toast.success('Đã duyệt — tồn kho đã được điều chỉnh')
+      toast.success('Đã duyệt phiếu điều chỉnh')
       await fetchAdjustments()
     } catch (error) {
       toast.error(getStockMovementErrorMessage(error, 'Không thể duyệt phiếu điều chỉnh'))

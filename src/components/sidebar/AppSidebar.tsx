@@ -13,6 +13,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 
+import { filterHrNavItems } from "@/app/(protected)/staffs/shared/nav-hr-permissions";
 import { useAuthStore } from "@/store/auth-store";
 import { getSidebar } from "./utils/get-sidebar";
 
@@ -42,7 +43,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [user]);
 
   const navGroups = React.useMemo(() => {
-    return getSidebar(user?.role);
+    return getSidebar(user?.role).map((group) => ({
+      ...group,
+      items: group.items.map((item) =>
+        item.items
+          ? { ...item, items: filterHrNavItems(item.items, user?.role) }
+          : item,
+      ),
+    }));
   }, [user?.role]);
 
   return (

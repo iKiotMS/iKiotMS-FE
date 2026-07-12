@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addMonths,
   endOfMonth,
@@ -13,12 +13,24 @@ import {
   shiftTemplateApi,
   workingScheduleApi,
 } from "@/lib/api/schedule";
-import { mapShiftTemplatesToOptions } from "@/lib/api/schedule-mapper";
+import { holidayApi } from "@/lib/api/holiday";
+import {
+  mapShiftTemplatesToOptions,
+  scheduleMatchesUserFilter,
+} from "@/lib/api/schedule-mapper";
 import { staffApi } from "@/lib/api/staff";
+import { getSessionRole } from "@/lib/auth";
 import {
   getApiErrorMessage,
   getStaffRoleLabel,
 } from "@/lib/api/staff-mapper";
+import {
+  canCreateSchedule,
+  canManageShiftTemplates,
+  canViewSchedule,
+} from "@/app/(protected)/staffs/shared/schedule-permissions";
+import { buildHolidayNamesByDate } from "@/app/(protected)/staffs/shared/schedule-day-meta";
+import type { Holiday } from "@/types/holiday";
 import type {
   CreateWorkingSchedulePayload,
   ScheduleCalendarFilters,
@@ -26,9 +38,12 @@ import type {
   ShiftTemplate,
   ShiftTemplateOption,
   UpdateShiftTemplatePayload,
-  UpdateWorkingSchedulePayload,
   WorkingSchedule,
 } from "@/types/working-schedule";
+import type { ScheduleStaffOption } from "./schedule-staff-picker";
+
+const EMPTY_SCHEDULES: WorkingSchedule[] = [];
+const EMPTY_STAFF_OPTIONS: ScheduleStaffOption[] = [];
 
 type ScheduleDialogType = "add" | "edit" | "delete" | "shiftTemplate";
 
@@ -52,13 +67,19 @@ function clearPanelSelection(
     React.SetStateAction<WorkingSchedule | null>
   >,
   setSelectedDayDate: React.Dispatch<React.SetStateAction<string | null>>,
+  setSelectedAssigneeUserId?: React.Dispatch<
+    React.SetStateAction<string | null>
+  >,
 ) {
   setSelectedDayDate(null);
   setSelectedSchedule(null);
+  setSelectedAssigneeUserId?.(null);
 }
 
 type ScheduleContextType = {
   schedules: WorkingSchedule[];
+  /** YYYY-MM-DD → tên ngày lễ thật (từ /holidays, bổ sung dayInfo). */
+  holidaysByDate: Map<string, string>;
   isInitialLoading: boolean;
   isFetching: boolean;
   filters: ScheduleCalendarFilters;
@@ -66,11 +87,16 @@ type ScheduleContextType = {
   setOpen: (value: ScheduleDialogType | null) => void;
   currentRow: WorkingSchedule | null;
   setCurrentRow: React.Dispatch<React.SetStateAction<WorkingSchedule | null>>;
+  currentSchedule: WorkingSchedule | null;
   fetchScheduleById: (id: string) => Promise<WorkingSchedule | null>;
+  fetchScheduleDetail: (
+    scheduleId: string,
+    userId?: string | null,
+  ) => Promise<WorkingSchedule | null>;
   handleAdd: (payload: CreateWorkingSchedulePayload) => Promise<void>;
   handleEdit: (
-    id: string,
-    payload: UpdateWorkingSchedulePayload,
+    scheduleId: string,
+    payload: CreateWorkingSchedulePayload,
   ) => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
   handleCreateShiftTemplate: (
@@ -83,7 +109,7 @@ type ScheduleContextType = {
   handleDeleteShiftTemplate: (id: string) => Promise<void>;
   shiftTemplates: ShiftTemplate[];
   shiftTemplateOptions: ShiftTemplateOption[];
-  staffOptions: { value: string; label: string }[];
+  staffOptions: ScheduleStaffOption[];
   updateStatusFilter: (status: ScheduleStatus | "all") => void;
   updateUserFilter: (userId: string) => void;
   calendarMonth: Date;
@@ -95,15 +121,29 @@ type ScheduleContextType = {
   setSelectedSchedule: React.Dispatch<
     React.SetStateAction<WorkingSchedule | null>
   >;
+  selectedAssigneeUserId: string | null;
+  setSelectedAssigneeUserId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedDayDate: string | null;
   setSelectedDayDate: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 const ScheduleContext = React.createContext<ScheduleContextType | null>(null);
 
-export function ScheduleProvider({ children }: { children: React.ReactNode }) {
+type ScheduleProviderProps = {
+  children: React.ReactNode;
+  enabled?: boolean;
+};
+
+export function ScheduleProvider({
+  children,
+  enabled = true,
+}: ScheduleProviderProps) {
+  const userRole = getSessionRole();
+  const canFetch = enabled && canViewSchedule(userRole);
+  const canLoadStaffOptions = canCreateSchedule(userRole);
+
   const [schedules, setSchedules] = useState<WorkingSchedule[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(canFetch);
   const [isFetching, setIsFetching] = useState(false);
   const [filters, setFilters] = useState<ScheduleCalendarFilters>(
     DEFAULT_FILTERS,
@@ -114,17 +154,68 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [shiftTemplateOptions, setShiftTemplateOptions] = useState<
     ShiftTemplateOption[]
   >([]);
-  const [staffOptions, setStaffOptions] = useState<
-    { value: string; label: string }[]
-  >([]);
-  const [calendarMonth, setCalendarMonth] = useState(
+  const [staffOptions, setStaffOptions] =
+    useState<ScheduleStaffOption[]>(EMPTY_STAFF_OPTIONS);  const [calendarMonth, setCalendarMonth] = useState(
     () => DEFAULT_CALENDAR_MONTH,
   );
   const [selectedSchedule, setSelectedSchedule] =
     useState<WorkingSchedule | null>(null);
+  const [selectedAssigneeUserId, setSelectedAssigneeUserId] = useState<
+    string | null
+  >(null);
   const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
+  const [currentSchedule, setCurrentSchedule] =
+    useState<WorkingSchedule | null>(null);
+  const [monthHolidays, setMonthHolidays] = useState<Holiday[]>([]);
+  const holidayYear = calendarMonth.getFullYear();
+
+  // Có /holidays thì không scan lại schedules mỗi lần list ca đổi.
+  const holidayScheduleFallback = monthHolidays.length > 0 ? EMPTY_SCHEDULES : schedules;
+  const holidaysByDate = useMemo(
+    () => buildHolidayNamesByDate(monthHolidays, holidayScheduleFallback),
+    [monthHolidays, holidayScheduleFallback],
+  );
+  const visibleSchedules = useMemo(() => {
+    return schedules.filter((schedule) => {
+      if (
+        filters.userId !== "all" &&
+        !scheduleMatchesUserFilter(schedule, filters.userId)
+      ) {
+        return false;
+      }
+      if (filters.status !== "all" && schedule.status !== filters.status) {
+        return false;
+      }
+      return true;
+    });
+  }, [schedules, filters.userId, filters.status]);
+
+  const derivedStaffOptions = useMemo(() => {
+    if (staffOptions.length > 0) return staffOptions;
+
+    const map = new Map<string, ScheduleStaffOption>();
+    schedules.forEach((schedule) => {
+      schedule.assignees.forEach((assignee) => {
+        map.set(assignee.userId, {
+          value: assignee.userId,
+          label: assignee.staffName,
+          branchId: assignee.branchId || "",
+          branchName: "—",
+          phone: assignee.staffPhone || "",
+        });
+      });
+    });
+
+    return Array.from(map.values());
+  }, [staffOptions, schedules]);
 
   const refreshShiftTemplates = useCallback(async () => {
+    if (!canManageShiftTemplates(userRole)) {
+      setShiftTemplates([]);
+      setShiftTemplateOptions([]);
+      return;
+    }
+
     try {
       const res = await shiftTemplateApi.getList({ recordPerPage: 100 });
       const templates = res.data ?? [];
@@ -135,9 +226,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       setShiftTemplates([]);
       setShiftTemplateOptions([]);
     }
-  }, []);
+  }, [userRole]);
 
   const fetchSchedules = useCallback(async () => {
+    if (!canFetch) {
+      setIsInitialLoading(false);
+      return;
+    }
+
     setIsFetching(true);
     try {
       const baseParams = {
@@ -153,10 +249,10 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       let pages = 1;
 
       do {
-        const response = await workingScheduleApi.getList({
-          ...baseParams,
-          page,
-        });
+        const response = await workingScheduleApi.getList(
+          { ...baseParams, page },
+          userRole,
+        );
         allData = allData.concat(response.data);
         pages = response.totalPages;
         page += 1;
@@ -170,7 +266,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       setIsFetching(false);
       setIsInitialLoading(false);
     }
-  }, [filters.userId, filters.status, filters.startDate, filters.endDate]);
+  }, [
+    canFetch,
+    filters.endDate,
+    filters.startDate,
+    filters.status,
+    filters.userId,
+    userRole,
+  ]);
 
   const fetchScheduleById = useCallback(async (id: string) => {
     try {
@@ -181,15 +284,74 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const fetchScheduleDetail = useCallback(
+    async (scheduleId: string, userId?: string | null) => {
+      try {
+        if (userId) {
+          return await workingScheduleApi.getUserDetail(scheduleId, userId);
+        }
+        return await workingScheduleApi.getById(scheduleId);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+        return null;
+      }
+    },
+    [],
+  );
+
+  const fetchCurrentSchedule = useCallback(async () => {
+    if (!canFetch) {
+      setCurrentSchedule(null);
+      return;
+    }
+    try {
+      const res = await workingScheduleApi.getCurrent();
+      setCurrentSchedule(res.schedule);
+    } catch {
+      setCurrentSchedule(null);
+    }
+  }, [canFetch]);
+
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  useEffect(() => {
+    if (!canFetch) {
+      setMonthHolidays([]);
+      return;
+    }
+
+    let cancelled = false;
+    void holidayApi
+      .getActiveByYear(holidayYear)
+      .then((rows) => {
+        if (!cancelled) setMonthHolidays(rows);
+      })
+      .catch(() => {
+        // BM/WM có thể không có holidays:read — fallback dayInfo trên schedule.
+        if (!cancelled) setMonthHolidays([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canFetch, holidayYear]);
+
+  useEffect(() => {
+    void fetchCurrentSchedule();
+  }, [fetchCurrentSchedule]);
 
   useEffect(() => {
     void refreshShiftTemplates();
   }, [refreshShiftTemplates]);
 
   useEffect(() => {
+    if (!canLoadStaffOptions) {
+      setStaffOptions([]);
+      return;
+    }
+
     void staffApi
       .getActiveForScheduleOptions()
       .then((activeStaff) => {
@@ -197,19 +359,22 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           activeStaff.map((s) => ({
             value: s._id,
             label: `${s.fullName} (${getStaffRoleLabel(s.role)})`,
+            branchId: s.branchId || "",
+            branchName: s.branchName || "—",
+            phone: s.phoneNumber || "",
           })),
         );
       })
       .catch(() => {
-        setStaffOptions([]);
+        setStaffOptions(EMPTY_STAFF_OPTIONS);
       });
-  }, []);
+  }, [canLoadStaffOptions]);
 
   async function handleAdd(payload: CreateWorkingSchedulePayload) {
     try {
       await workingScheduleApi.create(payload);
       toast.success("Đã thêm lịch làm việc");
-      await fetchSchedules();
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -217,18 +382,17 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function handleEdit(
-    id: string,
-    payload: UpdateWorkingSchedulePayload,
+    scheduleId: string,
+    payload: CreateWorkingSchedulePayload,
   ) {
     try {
-      await workingScheduleApi.update(id, payload);
+      await workingScheduleApi.remove(scheduleId);
+      await workingScheduleApi.create(payload);
       toast.success("Đã cập nhật lịch làm việc");
-      await fetchSchedules();
-      const fresh = await fetchScheduleById(id);
-      if (fresh) {
-        setSelectedSchedule((prev) => (prev?._id === id ? fresh : prev));
-        setCurrentRow((prev) => (prev?._id === id ? fresh : prev));
-      }
+      setSelectedSchedule((prev) => (prev?._id === scheduleId ? null : prev));
+      setSelectedAssigneeUserId(null);
+      setCurrentRow((prev) => (prev?._id === scheduleId ? null : prev));
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -239,9 +403,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     try {
       await workingScheduleApi.remove(id);
       toast.success("Đã xóa lịch làm việc");
-      setSelectedSchedule((prev) => (prev?._id === id ? null : prev));
+      setSelectedSchedule((prev) => {
+        if (prev?._id === id) {
+          setSelectedAssigneeUserId(null);
+        }
+        return prev?._id === id ? null : prev;
+      });
       setCurrentRow((prev) => (prev?._id === id ? null : prev));
-      await fetchSchedules();
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -287,17 +456,29 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateStatusFilter = useCallback((status: ScheduleStatus | "all") => {
-    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    clearPanelSelection(
+      setSelectedSchedule,
+      setSelectedDayDate,
+      setSelectedAssigneeUserId,
+    );
     setFilters((prev) => ({ ...prev, status }));
   }, []);
 
   const updateUserFilter = useCallback((userId: string) => {
-    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    clearPanelSelection(
+      setSelectedSchedule,
+      setSelectedDayDate,
+      setSelectedAssigneeUserId,
+    );
     setFilters((prev) => ({ ...prev, userId }));
   }, []);
 
   const goToPreviousMonth = useCallback(() => {
-    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    clearPanelSelection(
+      setSelectedSchedule,
+      setSelectedDayDate,
+      setSelectedAssigneeUserId,
+    );
     setCalendarMonth((prev) => {
       const next = subMonths(prev, 1);
       const range = getMonthRange(next);
@@ -307,7 +488,11 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const goToNextMonth = useCallback(() => {
-    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    clearPanelSelection(
+      setSelectedSchedule,
+      setSelectedDayDate,
+      setSelectedAssigneeUserId,
+    );
     setCalendarMonth((prev) => {
       const next = addMonths(prev, 1);
       const range = getMonthRange(next);
@@ -317,7 +502,11 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const goToToday = useCallback(() => {
-    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    clearPanelSelection(
+      setSelectedSchedule,
+      setSelectedDayDate,
+      setSelectedAssigneeUserId,
+    );
     const today = new Date();
     const range = getMonthRange(today);
     setCalendarMonth(today);
@@ -325,7 +514,11 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const goToMonth = useCallback((date: Date) => {
-    clearPanelSelection(setSelectedSchedule, setSelectedDayDate);
+    clearPanelSelection(
+      setSelectedSchedule,
+      setSelectedDayDate,
+      setSelectedAssigneeUserId,
+    );
     const monthDate = startOfMonth(date);
     const range = getMonthRange(monthDate);
     setCalendarMonth(monthDate);
@@ -335,7 +528,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   return (
     <ScheduleContext.Provider
       value={{
-        schedules,
+        schedules: visibleSchedules,
+        holidaysByDate,
         isInitialLoading,
         isFetching,
         filters,
@@ -343,7 +537,9 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         setOpen,
         currentRow,
         setCurrentRow,
+        currentSchedule,
         fetchScheduleById,
+        fetchScheduleDetail,
         handleAdd,
         handleEdit,
         handleDelete,
@@ -352,7 +548,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         handleDeleteShiftTemplate,
         shiftTemplates,
         shiftTemplateOptions,
-        staffOptions,
+        staffOptions: derivedStaffOptions,
         updateStatusFilter,
         updateUserFilter,
         calendarMonth,
@@ -362,6 +558,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         goToMonth,
         selectedSchedule,
         setSelectedSchedule,
+        selectedAssigneeUserId,
+        setSelectedAssigneeUserId,
         selectedDayDate,
         setSelectedDayDate,
       }}

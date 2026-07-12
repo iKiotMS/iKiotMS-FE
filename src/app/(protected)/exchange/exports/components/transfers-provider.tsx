@@ -36,6 +36,7 @@ interface TransfersContextType {
   handleShip: (id: string) => Promise<void>
   handleReceive: (id: string, receivedDetails: { productItemId: string; receivedQuantity: number }[]) => Promise<void>
   handleCancel: (id: string) => Promise<void>
+  handleReturnGoods: (source: StockMovement) => Promise<void>
   labels: ReturnType<typeof getTransferUiLabels>
 }
 
@@ -84,7 +85,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   const handleOpen = async (id: string) => {
     try {
       await stockMovementApi.open(id)
-      toast.success('Đã mở phiếu — có thể chốt danh sách hàng')
+      toast.success('Đã mở phiếu')
       await fetchTransfers()
     } catch (error) {
       toast.error(getStockMovementErrorMessage(error, 'Không thể mở phiếu'))
@@ -97,7 +98,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       await stockMovementApi.updateDetails(id, { details })
-      toast.success('Đã cập nhật danh sách hàng cho phiếu')
+      toast.success('Đã cập nhật phiếu')
       await fetchTransfers()
     } catch (error) {
       toast.error(getStockMovementErrorMessage(error, 'Không thể cập nhật danh sách hàng'))
@@ -108,7 +109,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   const handleClose = async (id: string) => {
     try {
       await stockMovementApi.close(id)
-      toast.success('Đã chốt phiếu — sẵn sàng xuất hàng')
+      toast.success('Đã chốt phiếu')
       await fetchTransfers()
     } catch (error) {
       toast.error(getStockMovementErrorMessage(error, 'Không thể chốt phiếu'))
@@ -136,7 +137,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
     try {
       await stockMovementApi.updateDetails(id, { details })
       await stockMovementApi.close(id)
-      toast.success('Đã chốt phiếu — sẵn sàng xuất hàng')
+      toast.success('Đã chốt phiếu')
       await fetchTransfers()
     } catch (error) {
       toast.error(getStockMovementErrorMessage(error, 'Không thể chốt phiếu'))
@@ -147,7 +148,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   const handleShip = async (id: string) => {
     try {
       await stockMovementApi.ship(id)
-      toast.success('Đã xuất hàng — phiếu đang vận chuyển')
+      toast.success('Đã xuất hàng')
       await fetchTransfers()
     } catch (error) {
       toast.error(getStockMovementErrorMessage(error, 'Không thể xuất hàng'))
@@ -177,6 +178,19 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const handleReturnGoods = async (source: StockMovement) => {
+    try {
+      await stockMovementApi.createAndShipReverseReturn(source)
+      toast.success('Đã tạo phiếu trả hàng')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(
+        getStockMovementErrorMessage(error, 'Không thể tạo phiếu trả hàng'),
+      )
+      throw error
+    }
+  }
+
   return (
     <TransfersContext.Provider
       value={{
@@ -196,6 +210,7 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
         handleShip,
         handleReceive,
         handleCancel,
+        handleReturnGoods,
         labels,
       }}
     >

@@ -8,6 +8,11 @@ import {
   Ticket,
   CreditCard,
   Settings,
+  ShieldAlert,
+  Megaphone,
+  LifeBuoy,
+  Bell,
+  MessageSquarePlus,
 } from "lucide-react";
 import { type NavItem } from "./types";
 
@@ -31,6 +36,7 @@ export const sidebarItems = {
       { title: "Danh sách", url: "/staffs" },
       { title: "Lịch làm", url: "/staffs/schedule" },
       { title: "Nghỉ phép", url: "/staffs/schedule/leave-requests" },
+      { title: "Ngày lễ", url: "/staffs/holidays" },
       { title: "Bảng lương", url: "/staffs/payroll" },
     ],
   },
@@ -112,11 +118,38 @@ export const sidebarItems = {
     url: "/admin/transactions",
     icon: Shuffle,
   },
+  adminAuditLog: {
+    title: "Nhật ký hệ thống",
+    url: "/admin/audit-logs",
+    icon: ShieldAlert,
+  },
+  adminNotifications: {
+    title: "Gửi thông báo",
+    url: "/admin/notifications",
+    icon: Megaphone,
+  },
+  adminSystemNotifications: {
+    title: "Thông báo",
+    url: "/admin/system-notifications",
+    icon: Bell,
+  },
+  adminTickets: {
+    title: "Hỗ trợ kỹ thuật",
+    url: "/admin/tickets",
+    icon: LifeBuoy,
+  },
 
   // SUPER_ADMIN Cài đặt
   cauHinhHeThong: {
     title: "Cấu hình hệ thống",
     url: "/admin/settings",
     icon: Settings,
+  },
+
+  // CSKH (Tenant)
+  tenantPhanAnh: {
+    title: "Phản ánh",
+    url: "/tickets",
+    icon: MessageSquarePlus,
   },
 } as const satisfies Record<string, NavItem>;

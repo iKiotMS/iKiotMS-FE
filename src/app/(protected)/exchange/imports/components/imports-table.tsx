@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -40,7 +40,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseLocationKey } from "@/lib/location-key";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
 import { useImports } from "./imports-provider";
 import { importsColumns as columns } from "./imports-columns";
@@ -79,6 +81,22 @@ export function ImportsTable() {
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [fromFilter, setFromFilter] = useState("ALL");
   const [toFilter, setToFilter] = useState("ALL");
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const scopedLocationId = useMemo(
+    () => parseLocationKey(locationKey)?.locationId,
+    [locationKey],
+  );
+
+  // Tenant switch BR/WH → khóa filter nơi nhận theo location đang chọn.
+  useEffect(() => {
+    if (scopedLocationId) {
+      setToFilter(scopedLocationId);
+      setFromFilter("ALL");
+    } else {
+      setToFilter("ALL");
+      setFromFilter("ALL");
+    }
+  }, [scopedLocationId]);
 
   const fromOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -102,10 +120,13 @@ export function ImportsTable() {
         map.set(row.toLocationId, row.toLocationName || row.toLocationId);
       }
     }
+    if (scopedLocationId && !map.has(scopedLocationId)) {
+      map.set(scopedLocationId, scopedLocationId);
+    }
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  }, [imports]);
+  }, [imports, scopedLocationId]);
 
   const filteredImports = useMemo(() => {
     return imports.filter((row) => {
@@ -201,7 +222,11 @@ export function ImportsTable() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={toFilter} onValueChange={setToFilter}>
+          <Select
+            value={toFilter}
+            onValueChange={setToFilter}
+            disabled={!!scopedLocationId}
+          >
             <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
               <SelectValue placeholder="Nơi nhận" />
             </SelectTrigger>

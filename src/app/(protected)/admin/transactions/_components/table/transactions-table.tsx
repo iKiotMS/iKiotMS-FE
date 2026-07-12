@@ -46,6 +46,38 @@ export function TransactionsTable() {
     fetchInvoices()
   }, [fetchInvoices])
 
+  React.useEffect(() => {
+    try {
+      const { getSocket } = require("@/lib/socket");
+      const socket = getSocket();
+
+      const handleTransactionUpdate = (updatedInvoice: AdminInvoice) => {
+        setInvoices((prev) => {
+          const exists = prev.some((inv) => inv._id === updatedInvoice._id);
+          if (exists) {
+            return prev.map((inv) => (inv._id === updatedInvoice._id ? updatedInvoice : inv));
+          } else {
+            return [updatedInvoice, ...prev];
+          }
+        });
+
+        toast.info(
+          `Cập nhật giao dịch: ${updatedInvoice.tenantId?.name || "Cửa hàng"}`,
+          {
+            description: `Gói: ${updatedInvoice.planId?.planName || ""} &bull; Trạng thái: ${updatedInvoice.status}`,
+          }
+        );
+      };
+
+      socket.on("transaction-update", handleTransactionUpdate);
+      return () => {
+        socket.off("transaction-update", handleTransactionUpdate);
+      };
+    } catch (err) {
+      console.error("Socket transaction listener error:", err);
+    }
+  }, [])
+
   // Reset page index when search or filter values change
   React.useEffect(() => {
     setCurrentPage(1)

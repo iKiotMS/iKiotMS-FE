@@ -36,6 +36,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { getSessionRole } from "@/lib/auth";
+import {
+  canFilterStaffByBranch,
+  canFilterStaffByWarehouse,
+} from "@/components/sidebar/constants/role-permissions";
 import { staffsColumns as columns } from "./staffs-columns";
 import { StaffsEmpty } from "./staffs-empty";
 import { StaffsExpandedPanel } from "./staffs-expanded-panel";
@@ -71,6 +76,10 @@ export function StaffsTable() {
     updatePage,
     updatePageSize,
   } = useStaffs();
+
+  const userRole = getSessionRole();
+  const showBranchFilter = canFilterStaffByBranch(userRole);
+  const showWarehouseFilter = canFilterStaffByWarehouse(userRole);
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
@@ -148,7 +157,7 @@ export function StaffsTable() {
             </SelectContent>
           </Select>
 
-          {branchOptions.length > 0 && (
+          {showBranchFilter && branchOptions.length > 0 && (
             <Select
               value={listQuery.branchId}
               onValueChange={updateBranchFilter}
@@ -167,7 +176,7 @@ export function StaffsTable() {
             </Select>
           )}
 
-          {warehouseOptions.length > 0 && (
+          {showWarehouseFilter && warehouseOptions.length > 0 && (
             <Select
               value={listQuery.warehouseId}
               onValueChange={updateWarehouseFilter}

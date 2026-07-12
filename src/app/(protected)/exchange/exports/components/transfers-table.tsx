@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -40,7 +40,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseLocationKey } from "@/lib/location-key";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
 import { useTransfers } from "./transfers-provider";
 import { createTransfersColumns } from "./transfers-columns";
@@ -58,6 +60,7 @@ export function TransfersTable() {
     handleShip,
     handleReceive,
     handleCancel,
+    handleReturnGoods,
   } = useTransfers();
 
   const columns = useMemo(
@@ -86,6 +89,17 @@ export function TransfersTable() {
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [fromFilter, setFromFilter] = useState("ALL");
   const [toFilter, setToFilter] = useState("ALL");
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const scopedLocationId = useMemo(
+    () => parseLocationKey(locationKey)?.locationId,
+    [locationKey],
+  );
+
+  // Tenant switch BR/WH → reset filter thủ công; scope áp qua scopedLocationId (from OR to).
+  useEffect(() => {
+    setFromFilter("ALL");
+    setToFilter("ALL");
+  }, [scopedLocationId]);
 
   const fromOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -116,11 +130,18 @@ export function TransfersTable() {
 
   const filteredTransfers = useMemo(() => {
     return transfers.filter((row) => {
+      // Khi đứng ở 1 BR/WH: chỉ phiếu liên quan (gửi hoặc nhận tại location đó).
+      if (scopedLocationId) {
+        const involves =
+          row.fromLocationId === scopedLocationId ||
+          row.toLocationId === scopedLocationId;
+        if (!involves) return false;
+      }
       if (fromFilter !== "ALL" && row.fromLocationId !== fromFilter) return false;
       if (toFilter !== "ALL" && row.toLocationId !== toFilter) return false;
       return true;
     });
-  }, [transfers, fromFilter, toFilter]);
+  }, [transfers, fromFilter, toFilter, scopedLocationId]);
 
   const table = useReactTable({
     data: filteredTransfers,
@@ -187,7 +208,7 @@ export function TransfersTable() {
             <SelectContent>
               <SelectItem value="DRAFT">Nháp / cần xử lý</SelectItem>
               <SelectItem value="OPENING">Đang soạn</SelectItem>
-              <SelectItem value="CLOSED">Đã chốt — chờ xuất</SelectItem>
+              <SelectItem value="CLOSED">Đã chốt</SelectItem>
               <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
               <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
               <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
@@ -330,6 +351,7 @@ export function TransfersTable() {
                                 handleShip,
                                 handleReceive,
                                 handleCancel,
+                                handleReturnGoods,
                                 labels,
                               }}
                             />

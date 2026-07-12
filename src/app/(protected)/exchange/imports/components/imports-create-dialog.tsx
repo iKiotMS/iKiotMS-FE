@@ -36,10 +36,11 @@ import { Separator } from "@/components/ui/separator";
 import { stockMovementApi } from "@/lib/api/stock-movement";
 import {
   filterLocationsByAuthScope,
-  getAuthScope,
+  getEffectiveLocationScope,
 } from "@/app/(protected)/exchange/shared/auth-scope";
 import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
 import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
+import { useAuthStore } from "@/store/auth-store";
 import {
   DetailLineCard,
   MoneyInput,
@@ -224,8 +225,13 @@ export function ImportsCreateDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { fetchImports } = useImports();
-  const authScope = getAuthScope();
-  const role = authScope.role;
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const effectiveScope = useMemo(
+    () => getEffectiveLocationScope(locationKey),
+    [locationKey],
+  );
+  const role = effectiveScope.role;
+  const isToLocationLocked = !!effectiveScope.locationId;
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
@@ -248,8 +254,8 @@ export function ImportsCreateDialog({
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
 
   const visibleLocations = useMemo(
-    () => filterLocationsByAuthScope(locations, authScope),
-    [locations, authScope.role, authScope.warehouseId, authScope.branchId],
+    () => filterLocationsByAuthScope(locations, effectiveScope),
+    [locations, effectiveScope],
   );
   const selectedToLocation = visibleLocations.find((l) => l._id === toLocationId);
 
@@ -302,10 +308,10 @@ export function ImportsCreateDialog({
 
   useEffect(() => {
     if (!open) return;
-    if (role === "WAREHOUSE_MANAGER" && authScope.warehouseId) {
-      form.setValue("toLocationId", authScope.warehouseId);
+    if (effectiveScope.locationId) {
+      form.setValue("toLocationId", effectiveScope.locationId);
     }
-  }, [open, role, authScope.warehouseId, form]);
+  }, [open, effectiveScope.locationId, form]);
 
   const total = useMemo(
     () =>
@@ -318,7 +324,7 @@ export function ImportsCreateDialog({
 
   async function onSubmit(data: ImportFormValues) {
     if (role === "BRANCH_MANAGER") {
-      toast.error("Chi nhánh không được tạo đơn nhập hàng (IMPORT)")
+      toast.error("Chi nhánh không được tạo đơn nhập hàng")
       return
     }
     const location = visibleLocations.find((l) => l._id === data.toLocationId);
@@ -360,8 +366,7 @@ export function ImportsCreateDialog({
         <DialogHeader>
           <DialogTitle>Tạo đơn nhập hàng mới</DialogTitle>
           <DialogDescription>
-            Nhập hàng từ nhà cung cấp vào kho của bạn. Chọn kho nhận trước để
-            xem hàng đã có tại đó.
+            Chọn nhà cung cấp, kho nhận và danh sách hàng hóa.
           </DialogDescription>
         </DialogHeader>
 
@@ -406,7 +411,7 @@ export function ImportsCreateDialog({
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
-                      disabled={role === "WAREHOUSE_MANAGER"}
+                      disabled={isToLocationLocked}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full cursor-pointer">

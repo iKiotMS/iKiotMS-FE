@@ -1,5 +1,7 @@
-import { format, isValid, parseISO } from "date-fns";
-import { vi } from "date-fns/locale";
+import {
+  formatVietnamDateTime,
+  formatVietnamWorkDate,
+} from "@/app/(protected)/staffs/shared/vietnam-datetime";
 import { parseDateInput } from "@/app/(protected)/staffs/shared/staff-date-validation";
 
 export function getStaffInitials(fullName?: string): string {
@@ -13,44 +15,38 @@ export function getStaffInitials(fullName?: string): string {
   );
 }
 
-function toDate(value?: string): Date | null {
+/** YYYY-MM-DD từ chuỗi ngày bất kỳ. Dùng UTC noon để tránh lệch TZ khi tạo Date. */
+function normalizeDateText(value?: string): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
 
   const fromInput = parseDateInput(trimmed);
-  if (fromInput) return fromInput;
+  if (fromInput) {
+    const y = fromInput.getFullYear();
+    const m = String(fromInput.getMonth() + 1).padStart(2, "0");
+    const d = String(fromInput.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
 
-  // API returns Mongo dates as ISO strings (e.g. 2026-06-26T00:00:00.000Z).
-  const iso = parseISO(trimmed.includes("T") ? trimmed : `${trimmed}T00:00:00`);
-  return isValid(iso) ? iso : null;
+  const dateOnly = trimmed.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return dateOnly;
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
 }
 
-export function formatStaffDate(
-  value?: string,
-  pattern = "dd/MM/yyyy",
-): string {
-  const date = toDate(value);
-  if (!date) return "—";
-  return format(date, pattern, { locale: vi });
+export function formatStaffDate(value?: string): string {
+  const dateText = normalizeDateText(value);
+  if (!dateText) return "—";
+  return formatVietnamWorkDate(dateText);
 }
 
 export function formatStaffDateTime(value?: string): string {
-  return formatStaffDate(value, "dd/MM/yyyy HH:mm");
+  return formatVietnamDateTime(value);
 }
 
 export function toDateInputValue(value?: string): string {
-  const parsed = parseDateInput(value);
-  if (parsed) {
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, "0");
-    const day = String(parsed.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-
-  if (!value?.trim()) return "";
-
-  // Fallback for legacy API values that are full ISO timestamps.
-  const legacy = parseISO(value.includes("T") ? value : `${value}T00:00:00`);
-  if (!isValid(legacy)) return "";
-  return format(legacy, "yyyy-MM-dd");
+  const dateText = normalizeDateText(value);
+  return dateText ?? "";
 }
