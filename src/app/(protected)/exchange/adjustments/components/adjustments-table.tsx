@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -40,7 +40,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseLocationKey } from "@/lib/location-key";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 import { useAdjustments } from "./adjustments-provider";
 import { adjustmentsColumns as columns } from "./adjustments-columns";
 import { AdjustmentsExpandedPanel } from "./adjustments-expanded-panel";
@@ -65,6 +67,15 @@ export function AdjustmentsTable() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [locationFilter, setLocationFilter] = useState("ALL");
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const scopedLocationId = useMemo(
+    () => parseLocationKey(locationKey)?.locationId,
+    [locationKey],
+  );
+
+  useEffect(() => {
+    setLocationFilter(scopedLocationId ?? "ALL");
+  }, [scopedLocationId]);
 
   const locationOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -76,10 +87,13 @@ export function AdjustmentsTable() {
         );
       }
     }
+    if (scopedLocationId && !map.has(scopedLocationId)) {
+      map.set(scopedLocationId, scopedLocationId);
+    }
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  }, [adjustments]);
+  }, [adjustments, scopedLocationId]);
 
   const filteredAdjustments = useMemo(() => {
     if (locationFilter === "ALL") return adjustments;
@@ -140,7 +154,11 @@ export function AdjustmentsTable() {
               <SelectItem value="ALL">Tất cả</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <Select
+            value={locationFilter}
+            onValueChange={setLocationFilter}
+            disabled={!!scopedLocationId}
+          >
             <SelectTrigger className="h-9 w-48 cursor-pointer text-sm">
               <SelectValue placeholder="Kho / Chi nhánh" />
             </SelectTrigger>

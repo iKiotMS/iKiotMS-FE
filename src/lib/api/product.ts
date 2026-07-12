@@ -61,7 +61,11 @@ export const productApi = {
   },
 
   getById: async (id: string): Promise<ProductDetailResponse> => {
-    const res = await client.get<{ data: MongoProduct }>(`/products/${id}`)
+    const parsed = parseLocationKey(useAuthStore.getState().locationKey)
+    const params = parsed
+      ? { locationId: parsed.locationId, locationType: parsed.locationType }
+      : {}
+    const res = await client.get<{ data: MongoProduct }>(`/products/${id}`, { params })
     return mapProduct(res.data.data) as ProductDetailResponse
   },
 

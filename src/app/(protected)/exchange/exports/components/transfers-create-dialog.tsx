@@ -149,8 +149,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (branchRequestKind === 'return') {
       return {
         title: 'Tạo yêu cầu trả hàng',
-        description:
-          'Chi nhánh có thể trả/chuyển tới kho hoặc chi nhánh khác. Chọn kho = RETURN; chọn chi nhánh = EXPORT.',
+        description: 'Chọn nơi nhận và danh sách hàng hóa cần trả.',
         toLabel: 'Nơi nhận',
         toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
         listTitle: 'Danh sách hàng hóa cần trả / chuyển',
@@ -159,8 +158,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     }
     return {
       title: 'Tạo yêu cầu chuyển hàng',
-      description:
-        'Chi nhánh có thể chuyển tới chi nhánh khác hoặc kho. Chọn chi nhánh = EXPORT; chọn kho = RETURN.',
+      description: 'Chọn nơi nhận và danh sách hàng hóa cần chuyển.',
       toLabel: 'Nơi nhận',
       toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
       listTitle: 'Danh sách hàng hóa cần chuyển',
@@ -319,10 +317,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                     Yêu cầu trả hàng
                   </ToggleGroupItem>
                 </ToggleGroup>
-                <p className="text-xs text-muted-foreground">
-                  Nơi nhận có thể là chi nhánh khác hoặc kho. Hệ thống tự gán EXPORT
-                  (sang chi nhánh) hoặc RETURN (về kho).
-                </p>
               </div>
             )}
 
@@ -489,7 +483,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                             </FormControl>
                             {typeof stockMax === 'number' && (
                               <p className="text-[11px] text-muted-foreground">
-                                Tối đa tồn nguồn: {stockMax.toLocaleString('vi-VN')}
+                                Tồn: {stockMax.toLocaleString('vi-VN')}
                               </p>
                             )}
                             <FormMessage />

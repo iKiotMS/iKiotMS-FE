@@ -163,7 +163,7 @@ export function AdjustmentsCreateDialog({
       return getAdjustQtyChange(snapshot, d.receivedQuantity) !== 0
     })
     if (!hasChange) {
-      toast.error('Tồn thực tế trùng hệ thống — không có gì cần điều chỉnh')
+      toast.error('Tồn thực tế không thay đổi')
       return
     }
 
@@ -181,7 +181,7 @@ export function AdjustmentsCreateDialog({
           note: normalizeOptionalNote(d.note),
         })),
       })
-      toast.success('Đã tạo phiếu kiểm kê (PENDING) — mở phiếu để duyệt')
+      toast.success('Đã tạo phiếu kiểm kê')
       onOpenChange(false)
       await fetchAdjustments()
     } catch (error) {
@@ -195,8 +195,7 @@ export function AdjustmentsCreateDialog({
         <DialogHeader>
           <DialogTitle>Điều chỉnh tồn kho</DialogTitle>
           <DialogDescription>
-            Chỉ nhập <strong>tồn thực tế</strong>. Backend tự snapshot tồn hệ thống.
-            Phiếu tạo ở trạng thái PENDING — mở phiếu để sửa (nếu cần) rồi duyệt.
+            Nhập tồn thực tế sau kiểm kê. Phiếu sẽ chờ duyệt trước khi cập nhật tồn kho.
           </DialogDescription>
         </DialogHeader>
 
@@ -244,7 +243,7 @@ export function AdjustmentsCreateDialog({
                   <FormLabel>Lý do điều chỉnh</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Vd: Kiểm kê thực tế, sai số kho..."
+                      placeholder="Lý do điều chỉnh (tùy chọn)"
                       rows={2}
                       className="resize-none"
                       {...field}

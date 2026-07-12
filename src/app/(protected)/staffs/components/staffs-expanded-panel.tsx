@@ -14,6 +14,7 @@ import {
   Trash2,
   User,
   UserCheck,
+  UserCog,
   Warehouse,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,12 +30,19 @@ import {
   STAFF_ROLE_MAP,
   getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
-import { getCachedUser } from "@/lib/auth";
+import { getSessionBranchId, getSessionRole } from "@/lib/auth";
 import {
+  canAssignBranchManager,
+  canAssignWarehouseManager,
   canDeleteStaff,
   canManageStaffAccount,
   canUpdateStaff,
-} from "@/app/(protected)/staffs/shared/staff-permissions";
+} from "@/components/sidebar/constants/role-permissions";
+import {
+  canDeactivateStaffRow,
+  canDeleteStaffRow,
+  requiresManagerReplacement,
+} from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import {
   getStaffGenderLabel,
 } from "@/lib/api/staff-mapper";
@@ -69,11 +77,25 @@ export function StaffsExpandedPanel({
   staff: Staff;
   isExpanded: boolean;
 }) {
-  const { setOpen, setCurrentRow } = useStaffs();
-  const userRole = getCachedUser()?.role;
-  const showDelete = canDeleteStaff(userRole);
+  const { setOpen, setCurrentRow, openAssignBranchManager, openAssignWarehouseManager } =
+    useStaffs();
+  const userRole = getSessionRole();
+  const requesterBranchId = getSessionBranchId();
+  const showDelete =
+    canDeleteStaff(userRole) &&
+    canDeleteStaffRow(userRole, staff, requesterBranchId);
   const showEdit = canUpdateStaff(userRole);
   const showAccountActions = canManageStaffAccount(userRole);
+  const showAssignBranchManager =
+    canAssignBranchManager(userRole) &&
+    staff.role === "BRANCH_MANAGER" &&
+    Boolean(staff.branchId) &&
+    (userRole === "TENANT_OWNER" ||
+      staff.branchId === requesterBranchId);
+  const showAssignWarehouseManager =
+    canAssignWarehouseManager(userRole) &&
+    staff.role === "WAREHOUSE_MANAGER" &&
+    Boolean(staff.warehouseId);
 
   if (!isExpanded) return null;
 
@@ -82,9 +104,13 @@ export function StaffsExpandedPanel({
     label: staff.role,
     variant: "outline" as const,
   };
-  const canActivate = staff.status !== "ACTIVE";
-  const canDeactivate = staff.status === "ACTIVE";
-  const canChangePassword = staff.status === "ACTIVE";
+  const canActivate = showAccountActions && staff.status !== "ACTIVE";
+  const canDeactivate =
+    showAccountActions &&
+    staff.status === "ACTIVE" &&
+    canDeactivateStaffRow(userRole, staff, requesterBranchId);
+  const canChangePassword =
+    showAccountActions && staff.status === "ACTIVE";
 
   return (
     <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
@@ -143,6 +169,13 @@ export function StaffsExpandedPanel({
           label="Ngày vào làm"
           value={formatStaffDate(staff.joinedAt)}
         />
+        {staff.leaveBalance && (
+          <InfoItem
+            icon={<CalendarDays className="size-4" />}
+            label="Phép năm"
+            value={`${staff.leaveBalance.remainingDays}/${staff.leaveBalance.annualLeaveDays} ngày`}
+          />
+        )}
         {staff.profile?.identificationId && (
           <InfoItem
             icon={<CreditCard className="size-4" />}
@@ -205,24 +238,64 @@ export function StaffsExpandedPanel({
       <Separator className="mt-4" />
       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
         {showDelete ? (
-          <Button
-            variant="destructive"
-            size="sm"
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentRow(staff);
-              setOpen("delete");
-            }}
-          >
-            <Trash2 className="mr-2 size-4" />
-            Xóa nhân viên
-          </Button>
+          <div className="space-y-1">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("delete");
+              }}
+            >
+              <Trash2 className="mr-2 size-4" />
+              Xóa nhân viên
+            </Button>
+            {requiresManagerReplacement(staff) && (
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Quản lý cần chọn nhân viên thay thế trước khi xóa.
+              </p>
+            )}
+          </div>
         ) : (
           <div />
         )}
 
         <div className="flex flex-wrap items-center gap-2">
+          {showAssignBranchManager && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                openAssignBranchManager(staff.branchId, staff.branchName);
+              }}
+            >
+              <UserCog className="mr-2 size-4" />
+              {userRole === "BRANCH_MANAGER"
+                ? "Chuyển nhượng chi nhánh"
+                : "Thay quản lý chi nhánh"}
+            </Button>
+          )}
+          {showAssignWarehouseManager && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                openAssignWarehouseManager(
+                  staff.warehouseId,
+                  staff.warehouseName,
+                );
+              }}
+            >
+              <Warehouse className="mr-2 size-4" />
+              Thay quản lý kho
+            </Button>
+          )}
           {showAccountActions && canActivate && (
             <Button
               variant="outline"
@@ -239,19 +312,26 @@ export function StaffsExpandedPanel({
             </Button>
           )}
           {showAccountActions && canDeactivate && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentRow(staff);
-                setOpen("deactivate");
-              }}
-            >
-              <Lock className="mr-2 size-4" />
-              Khóa tài khoản
-            </Button>
+            <div className="space-y-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentRow(staff);
+                  setOpen("deactivate");
+                }}
+              >
+                <Lock className="mr-2 size-4" />
+                Khóa tài khoản
+              </Button>
+              {requiresManagerReplacement(staff) && (
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  Quản lý cần chọn nhân viên thay thế trước khi khóa.
+                </p>
+              )}
+            </div>
           )}
           {showAccountActions && canChangePassword && (
             <Button
@@ -266,6 +346,21 @@ export function StaffsExpandedPanel({
             >
               <KeyRound className="mr-2 size-4" />
               Đổi mật khẩu
+            </Button>
+          )}
+          {showEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("leaveBalance");
+              }}
+            >
+              <CalendarDays className="mr-2 size-4" />
+              {staff.leaveBalance ? "Sửa ngày phép" : "Tạo ngày phép"}
             </Button>
           )}
           {showEdit && (

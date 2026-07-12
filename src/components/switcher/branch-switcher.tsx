@@ -8,6 +8,7 @@ import {
   Warehouse,
   Edit2,
   Trash2,
+  UserCog,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { BranchFormDialog } from "./branch-form-dialog";
 import { WarehouseFormDialog } from "./warehouse-form-dialog";
+import { AssignBranchManagerDialog } from "@/components/branch/assign-branch-manager-dialog";
 import { useBranchSwitcher } from "./hooks/use-branch-switcher";
 
 export function BranchSwitcher() {
@@ -59,6 +61,9 @@ export function BranchSwitcher() {
     setDeleteConfirmOpen,
     deleteTarget,
     setDeleteTarget,
+    assignManagerBranch,
+    isAssignManagerDialogOpen,
+    closeAssignManagerDialog,
     mapBranchToItem,
     mapWarehouseToItem,
     handleSelect,
@@ -67,6 +72,8 @@ export function BranchSwitcher() {
     handleCreateWarehouse,
     handleEditWarehouse,
     handleConfirmDelete,
+    openAssignManagerDialog,
+    handleAssignManagerSuccess,
   } = useBranchSwitcher();
 
   if (loading || !activeItem) {
@@ -213,7 +220,21 @@ export function BranchSwitcher() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {item.status === "ACTIVE" && (
+                      <button
+                        title="Đổi quản lý chi nhánh"
+                        className="hover:bg-sidebar-accent p-1 rounded cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          openAssignManagerDialog(item);
+                        }}
+                      >
+                        <UserCog className="size-3" />
+                      </button>
+                    )}
                     <button
+                      title="Sửa chi nhánh"
                       className="hover:bg-sidebar-accent p-1 rounded cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -225,6 +246,7 @@ export function BranchSwitcher() {
                       <Edit2 className="size-3" />
                     </button>
                     <button
+                      title="Xóa chi nhánh"
                       className="hover:bg-destructive hover:text-destructive-foreground p-1 rounded cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -285,6 +307,7 @@ export function BranchSwitcher() {
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
+                      title="Sửa kho hàng"
                       className="hover:bg-sidebar-accent p-1 rounded cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -296,6 +319,7 @@ export function BranchSwitcher() {
                       <Edit2 className="size-3" />
                     </button>
                     <button
+                      title="Xóa kho hàng"
                       className="hover:bg-destructive hover:text-destructive-foreground p-1 rounded cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -356,6 +380,16 @@ export function BranchSwitcher() {
               }
             : undefined
         }
+      />
+
+      <AssignBranchManagerDialog
+        open={isAssignManagerDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeAssignManagerDialog();
+        }}
+        initialBranchId={assignManagerBranch?._id}
+        initialBranchName={assignManagerBranch?.name}
+        onSuccess={handleAssignManagerSuccess}
       />
 
       {/* Dialog for creating a new warehouse */}

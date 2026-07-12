@@ -37,7 +37,7 @@ const BRANCH_LABELS: TransferUiLabels = {
   createButton: 'Tạo yêu cầu chuyển hàng',
   createDialogTitle: 'Tạo yêu cầu chuyển hàng',
   createDialogDescription:
-    'Chi nhánh có thể chuyển sang chi nhánh khác (EXPORT) hoặc trả hàng về kho (RETURN).',
+    'Chọn nơi nhận và danh sách hàng hóa cần chuyển hoặc trả kho.',
   fromLabel: 'Chi nhánh gửi',
   toLabel: 'Nơi nhận',
   fromPlaceholder: 'Chọn chi nhánh gửi',

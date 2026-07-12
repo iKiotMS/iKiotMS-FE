@@ -5,7 +5,7 @@ import { Download, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCategories } from '../_context/categories-provider'
 import { getCachedUser } from '@/lib/auth'
-import { canCreateCategory, canDeleteCategory } from '../shared/category-permissions'
+import { canCreateCategory, canDeleteCategory } from '@/components/sidebar/constants/role-permissions'
 
 export function CategoriesButtonGroup() {
   const { setOpen, selectedIds } = useCategories()
