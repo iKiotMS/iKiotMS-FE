@@ -12,7 +12,7 @@ export const rolePermissions = {
   },
   staff: {
     write: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
-    delete: new Set(["TENANT_OWNER"]),
+    delete: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
   },
   leaveRequests: {
     view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER"]),
@@ -87,6 +87,53 @@ export function canManageStaffAccount(role?: string | null): boolean {
 export function canDeleteStaff(role?: string | null): boolean {
   if (!role) return false;
   return rolePermissions.staff.delete.has(role);
+}
+
+/** TENANT_OWNER can filter list by branch; BM is auto-scoped by BE. */
+export function canFilterStaffByBranch(role?: string | null): boolean {
+  return role === "TENANT_OWNER";
+}
+
+/** TENANT_OWNER can filter list by warehouse. */
+export function canFilterStaffByWarehouse(role?: string | null): boolean {
+  return role === "TENANT_OWNER";
+}
+
+/** BM create form: branch locked to their workplace. */
+export function shouldLockBranchOnCreate(role?: string | null): boolean {
+  return role === "BRANCH_MANAGER";
+}
+
+/** Chỉ TO gán nhân viên vào kho; BM chỉ quản lý chi nhánh. */
+export function canAssignWarehouseOnStaffForm(role?: string | null): boolean {
+  return role === "TENANT_OWNER";
+}
+
+/** Manager role/workplace cannot be edited via PATCH /staff — BE blocks. */
+export function canEditStaffRoleAndWorkplace(
+  role: string | undefined | null,
+  targetRole: string,
+): boolean {
+  if (!canUpdateStaff(role)) return false;
+  if (targetRole === "BRANCH_MANAGER" || targetRole === "WAREHOUSE_MANAGER") {
+    return false;
+  }
+  return true;
+}
+
+/** PATCH /branches/:id/manager — TENANT_OWNER hoặc BRANCH_MANAGER. */
+export function canAssignBranchManager(role?: string | null): boolean {
+  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER";
+}
+
+/** PATCH /warehouses/:id/manager — chỉ TENANT_OWNER. */
+export function canAssignWarehouseManager(role?: string | null): boolean {
+  return role === "TENANT_OWNER";
+}
+
+/** Thăng STAFF → BM/WM qua form sửa — chỉ TENANT_OWNER. */
+export function canPromoteStaffToManager(role?: string | null): boolean {
+  return role === "TENANT_OWNER";
 }
 
 // Leave requests

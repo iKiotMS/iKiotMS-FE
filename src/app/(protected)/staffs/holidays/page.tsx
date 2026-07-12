@@ -2,13 +2,14 @@
 
 import { PageHeader } from "@/components/page-header";
 import { getSessionRole } from "@/lib/auth";
+import { canAccessHrNavItem } from "@/app/(protected)/staffs/shared/nav-hr-permissions";
 import { HolidaysButtonGroup } from "./components/holidays-button-group";
 import { HolidaysDialogs } from "./components/holidays-dialogs";
 import { HolidaysProvider } from "./components/holidays-provider";
 import { HolidaysTable } from "./components/holidays-table";
 
 export default function HolidaysPage() {
-  const canManage = getSessionRole() === "TENANT_OWNER";
+  const canManage = canAccessHrNavItem("holidays", getSessionRole());
 
   return (
     <HolidaysProvider enabled={canManage}>

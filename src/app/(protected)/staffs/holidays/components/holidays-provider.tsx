@@ -42,11 +42,11 @@ type HolidaysContextType = {
   handleAdd: (payload: CreateHolidayPayload) => Promise<void>;
   handleEdit: (id: string, payload: UpdateHolidayPayload) => Promise<void>;
   handleStatusChange: (holiday: Holiday) => Promise<void>;
-  handleRemove: (id: string) => Promise<void>;
   handleSyncVietnam: () => Promise<void>;
 };
 
 const currentYear = Number(getVietnamDateString().slice(0, 4));
+
 const DEFAULT_QUERY: HolidayListQuery = {
   page: 1,
   limit: 10,
@@ -159,24 +159,17 @@ export function HolidaysProvider({
     }
   }
 
-  async function handleRemove(id: string) {
-    try {
-      await holidayApi.remove(id);
-      toast.success("Đã xóa ngày lễ");
-      await fetchHolidays();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-      throw error;
-    }
-  }
-
   async function handleSyncVietnam() {
     setIsSyncing(true);
     try {
       await holidayApi.syncVietnam(currentYear);
       toast.success(`Đã đồng bộ ngày lễ Việt Nam năm ${currentYear}`);
       if (listQuery.year !== currentYear) {
-        setListQuery((previous) => ({ ...previous, year: currentYear, page: 1 }));
+        setListQuery((previous) => ({
+          ...previous,
+          year: currentYear,
+          page: 1,
+        }));
       } else {
         await fetchHolidays();
       }
@@ -214,7 +207,6 @@ export function HolidaysProvider({
         handleAdd,
         handleEdit,
         handleStatusChange,
-        handleRemove,
         handleSyncVietnam,
       }}
     >

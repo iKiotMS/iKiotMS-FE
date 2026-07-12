@@ -40,7 +40,7 @@ import { getSessionRole } from "@/lib/auth";
 import {
   canFilterStaffByBranch,
   canFilterStaffByWarehouse,
-} from "@/app/(protected)/staffs/shared/staff-permissions";
+} from "@/components/sidebar/constants/role-permissions";
 import { staffsColumns as columns } from "./staffs-columns";
 import { StaffsEmpty } from "./staffs-empty";
 import { StaffsExpandedPanel } from "./staffs-expanded-panel";

@@ -10,7 +10,7 @@ import {
   getApiErrorMessage,
   getStaffRoleLabel,
 } from "@/lib/api/staff-mapper";
-import { canViewStaff } from "@/app/(protected)/staffs/shared/staff-permissions";
+import { canViewStaff } from "@/components/sidebar/constants/role-permissions";
 import type {
   CreateStaffAccountPayload,
   CreateStaffPayload,

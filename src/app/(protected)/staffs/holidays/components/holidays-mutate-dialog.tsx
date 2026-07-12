@@ -43,10 +43,6 @@ export function HolidaysMutateDialog({
     setError("");
   }, [open, currentRow]);
 
-  function handleDialogOpenChange(value: boolean) {
-    onOpenChange(value);
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedName = name.trim();
@@ -63,16 +59,16 @@ export function HolidaysMutateDialog({
       } else {
         await handleAdd({ date, name: trimmedName });
       }
-      handleDialogOpenChange(false);
+      onOpenChange(false);
     } catch {
-      // Provider đã hiển thị thông báo lỗi từ API.
+      // Provider đã toast lỗi API.
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -119,7 +115,7 @@ export function HolidaysMutateDialog({
               type="button"
               variant="outline"
               disabled={isSubmitting}
-              onClick={() => handleDialogOpenChange(false)}
+              onClick={() => onOpenChange(false)}
             >
               Hủy
             </Button>

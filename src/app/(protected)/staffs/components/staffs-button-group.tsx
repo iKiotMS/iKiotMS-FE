@@ -8,7 +8,7 @@ import {
   canAssignBranchManager,
   canAssignWarehouseManager,
   canCreateStaff,
-} from "@/app/(protected)/staffs/shared/staff-permissions";
+} from "@/components/sidebar/constants/role-permissions";
 import { useStaffs } from "./staffs-provider";
 
 export function StaffsButtonGroup() {

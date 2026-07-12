@@ -61,7 +61,7 @@ import {
   canEditStaffRoleAndWorkplace,
   canPromoteStaffToManager,
   shouldLockBranchOnCreate,
-} from "@/app/(protected)/staffs/shared/staff-permissions";
+} from "@/components/sidebar/constants/role-permissions";
 import { isManagerRole } from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import {
   resolveBranchIdForRole,

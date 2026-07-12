@@ -1,7 +1,7 @@
 "use client";
 
 import { getSessionRole } from "@/lib/auth";
-import { canViewStaff } from "@/app/(protected)/staffs/shared/staff-permissions";
+import { canViewStaff } from "@/components/sidebar/constants/role-permissions";
 import { StaffsButtonGroup } from "./components/staffs-button-group";
 import { StaffsDialogs } from "./components/staffs-dialogs";
 import { StaffsProvider } from "./components/staffs-provider";

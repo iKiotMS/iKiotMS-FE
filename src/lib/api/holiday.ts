@@ -75,10 +75,6 @@ export const holidayApi = {
     return unwrapHoliday(response);
   },
 
-  remove: async (holidayId: string): Promise<void> => {
-    await client.delete(`/holidays/${holidayId}`);
-  },
-
   syncVietnam: async (year: number): Promise<void> => {
     await client.post("/holidays/sync/vietnam", { year: Number(year) });
   },
