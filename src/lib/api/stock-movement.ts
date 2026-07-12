@@ -361,9 +361,29 @@ export const stockMovementApi = {
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  /** Create ADJUST and apply stock change immediately (create → approve). */
+  createReturn: async (
+    payload: Omit<CreateExportPayload, "movementType"> & {
+      movementType?: "RETURN";
+    },
+  ): Promise<StockMovement> => {
+    const response = await client.post("/stock-movements", {
+      ...payload,
+      movementType: "RETURN",
+    });
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
+  },
+
+  /** Create ADJUST then approve (payload: productItemId + receivedQuantity only). */
   executeAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
-    const createResponse = await client.post("/stock-movements", payload);
+    const createBody: CreateAdjustPayload = {
+      ...payload,
+      details: payload.details.map((d) => ({
+        productItemId: d.productItemId,
+        receivedQuantity: d.receivedQuantity,
+        note: d.note,
+      })),
+    };
+    const createResponse = await client.post("/stock-movements", createBody);
     const created = await safeEnrichMovement(
       mapMovement(createResponse.data?.data as ApiMovement),
     );
@@ -373,6 +393,24 @@ export const stockMovementApi = {
     return safeEnrichMovement(
       mapMovement(approveResponse.data?.data as ApiMovement),
     );
+  },
+
+  createAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
+    const createBody: CreateAdjustPayload = {
+      ...payload,
+      details: payload.details.map((d) => ({
+        productItemId: d.productItemId,
+        receivedQuantity: d.receivedQuantity,
+        note: d.note,
+      })),
+    };
+    const response = await client.post("/stock-movements", createBody);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
+  },
+
+  approveAdjust: async (id: string): Promise<StockMovement> => {
+    const response = await client.patch(`/stock-movements/${id}/approve-adjust`);
+    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   open: async (id: string): Promise<StockMovement> => {

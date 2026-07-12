@@ -11,12 +11,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { sumAdjustQtyChange, formatQtyChange } from "@/app/(protected)/exchange/shared/adjust-qty";
-import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
+import { sumAdjustQtyChange, formatQtyChange } from "@/app/(protected)/exchange/shared/qty";
+import { getMovementStatusConfig } from "@/app/(protected)/exchange/shared/movement-labels";
 import {
   getMovementNotePreview,
   hasAnyMovementNote,
-} from "@/app/(protected)/exchange/shared/movement-notes";
+} from "@/app/(protected)/exchange/shared/qty";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -137,7 +137,7 @@ export const adjustmentsColumns: ColumnDef<StockMovement>[] = [
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.getValue("status") as MovementStatus;
-      const config = MOVEMENT_STATUS_MAP[status];
+      const config = getMovementStatusConfig(status, row.original.movementType);
       const hasNote = hasAnyMovementNote(row.original);
       const preview = getMovementNotePreview(row.original);
       return (

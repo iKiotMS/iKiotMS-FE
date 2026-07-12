@@ -41,12 +41,24 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
 import { useTransfers } from "./transfers-provider";
 import { createTransfersColumns } from "./transfers-columns";
-import { TransfersExpandedPanel } from "./transfers-expanded-panel";
 
 export function TransfersTable() {
-  const { transfers, isLoading, statusFilter, setStatusFilter, labels } = useTransfers();
+  const {
+    transfers,
+    isLoading,
+    statusFilter,
+    setStatusFilter,
+    labels,
+    handleOpen,
+    handleSubmitFromOpening,
+    handleShipFromOpening,
+    handleShip,
+    handleReceive,
+    handleCancel,
+  } = useTransfers();
 
   const columns = useMemo(
     () => createTransfersColumns(labels),
@@ -243,10 +255,20 @@ export function TransfersTable() {
                           className="p-0"
                         >
                           <div className="px-3 pb-3 pt-1">
-                            <TransfersExpandedPanel
+                            <MovementExpandedPanel
+                              mode="transfer"
                               request={row.original}
                               isExpanded
                               onClose={() => row.toggleExpanded(false)}
+                              transferActions={{
+                                handleOpen,
+                                handleSubmitFromOpening,
+                                handleShipFromOpening,
+                                handleShip,
+                                handleReceive,
+                                handleCancel,
+                                labels,
+                              }}
                             />
                           </div>
                         </TableCell>

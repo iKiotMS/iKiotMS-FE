@@ -3,14 +3,15 @@
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
-import type { MovementStatus } from "@/types/stock-movement";
+import { getMovementStatusConfig } from "@/app/(protected)/exchange/shared/movement-labels";
+import type { MovementStatus, MovementType } from "@/types/stock-movement";
 
 type MovementDetailHeaderProps = {
   movementId: string;
   title: string;
   subtitle?: string;
   status: MovementStatus;
+  movementType?: MovementType;
   onClose?: () => void;
 };
 
@@ -19,9 +20,10 @@ export function MovementDetailHeader({
   title,
   subtitle,
   status,
+  movementType,
   onClose,
 }: MovementDetailHeaderProps) {
-  const statusConfig = MOVEMENT_STATUS_MAP[status];
+  const statusConfig = getMovementStatusConfig(status, movementType);
   const code = `#${String(movementId).slice(-6).toUpperCase()}`;
 
   return (

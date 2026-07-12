@@ -1,4 +1,5 @@
 import { getAccessToken, getCachedUser } from "@/lib/auth";
+import type { StockMovementLocationOption } from "@/types/stock-movement";
 
 export interface AuthScope {
   userId?: string;
@@ -6,6 +7,21 @@ export interface AuthScope {
   role?: string;
   branchId?: string;
   warehouseId?: string;
+}
+
+/** Lọc location theo role + branch/warehouse gắn với user. */
+export function filterLocationsByAuthScope(
+  locations: StockMovementLocationOption[],
+  scope: AuthScope,
+): StockMovementLocationOption[] {
+  const { role, warehouseId, branchId } = scope;
+  if (role === "WAREHOUSE_MANAGER" && warehouseId) {
+    return locations.filter((l) => l._id === warehouseId);
+  }
+  if (role === "BRANCH_MANAGER" && branchId) {
+    return locations.filter((l) => l._id === branchId);
+  }
+  return locations;
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {

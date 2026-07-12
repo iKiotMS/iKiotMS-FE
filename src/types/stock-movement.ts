@@ -48,6 +48,9 @@ export interface CreateImportPayload {
   fromSupplierId: string;
   toLocationId: string;
   toLocationType: LocationType;
+  /** FE gắn = toLocation để WM ship/cancel (BE auth fromLocation). */
+  fromLocationId?: string;
+  fromLocationType?: LocationType;
   note?: string;
   details: {
     productItemId: string;
@@ -58,7 +61,7 @@ export interface CreateImportPayload {
 }
 
 export interface CreateExportPayload {
-  movementType: "EXPORT";
+  movementType: "EXPORT" | "RETURN";
   fromLocationId: string;
   fromLocationType: LocationType;
   toLocationId: string;
@@ -67,6 +70,7 @@ export interface CreateExportPayload {
   details: {
     productItemId: string;
     quantity: number;
+    importPrice?: number;
     note?: string;
   }[];
 }
@@ -82,9 +86,7 @@ export interface CreateAdjustPayload {
   note?: string;
   details: {
     productItemId: string;
-    /** Snapshot tồn hệ thống lúc tạo — BE tự điền nếu bỏ trống */
-    quantity?: number;
-    /** Tồn thực tế sau kiểm kê */
+    /** Tồn thực tế sau kiểm kê — BE tự snapshot quantity hệ thống */
     receivedQuantity: number;
     note?: string;
   }[];
@@ -100,7 +102,8 @@ export interface ReceiveRequestPayload {
 export interface UpdateDetailsPayload {
   details: {
     productItemId: string;
-    quantity: number;
+    quantity?: number;
+    receivedQuantity?: number;
     importPrice?: number;
     note?: string;
   }[];

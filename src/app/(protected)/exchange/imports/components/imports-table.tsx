@@ -41,10 +41,10 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
 import { useImports } from "./imports-provider";
 import { importsColumns as columns } from "./imports-columns";
 import { ImportsEmpty } from "./imports-empty";
-import { ImportsExpandedPanel } from "./imports-expanded-panel";
 
 const COLUMN_LABELS: Record<string, string> = {
   _id: "Mã đơn",
@@ -58,7 +58,16 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 
 export function ImportsTable() {
-  const { imports, isLoading, statusFilter, setStatusFilter } = useImports();
+  const {
+    imports,
+    isLoading,
+    statusFilter,
+    setStatusFilter,
+    handleUpdateDetails,
+    handleShip,
+    handleReceive,
+    handleCancel,
+  } = useImports();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -132,8 +141,6 @@ export function ImportsTable() {
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="OPENING">Đang nhập hàng</SelectItem>
-              <SelectItem value="CLOSED">Chờ kho xuất</SelectItem>
               <SelectItem value="PENDING">Chờ giao hàng</SelectItem>
               <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
               <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
@@ -239,10 +246,17 @@ export function ImportsTable() {
                           className="p-0"
                         >
                           <div className="px-3 pb-3 pt-1">
-                            <ImportsExpandedPanel
+                            <MovementExpandedPanel
+                              mode="import"
                               request={row.original}
                               isExpanded
                               onClose={() => row.toggleExpanded(false)}
+                              importActions={{
+                                handleUpdateDetails,
+                                handleShip,
+                                handleReceive,
+                                handleCancel,
+                              }}
                             />
                           </div>
                         </TableCell>

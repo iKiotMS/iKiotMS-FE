@@ -11,21 +11,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
-import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-type";
+import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
+import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
 import {
   getMovementNotePreview,
   hasAnyMovementNote,
-} from "@/app/(protected)/exchange/shared/movement-notes";
+} from "@/app/(protected)/exchange/shared/qty";
+import { formatMoneyVnd } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-
-const formatVND = (value: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(value);
 
 function SortableHeader({
   label,
@@ -148,11 +143,15 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     header: ({ column }) => <SortableHeader label="Giá trị" column={column} />,
     accessorFn: (row) =>
       row.details.reduce((sum, item) => sum + item.quantity * item.importPrice, 0),
-    cell: ({ getValue }) => (
-      <span className="tabular-nums font-medium">
-        {formatVND(getValue() as number)}
-      </span>
-    ),
+    cell: ({ getValue }) => {
+      const value = getValue() as number;
+      const text = formatMoneyVnd(value);
+      return (
+        <span className="block max-w-[9rem] truncate tabular-nums font-medium" title={text}>
+          {text}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "requestedByName",

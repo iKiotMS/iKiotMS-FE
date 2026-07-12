@@ -6,16 +6,8 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -23,24 +15,26 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Separator } from '@/components/ui/separator'
-import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
-import { getAdjustQtyChange } from '@/app/(protected)/exchange/shared/adjust-qty'
-import { findDuplicateProductIds } from '@/app/(protected)/exchange/shared/movement-detail-validation'
-import { stockMovementApi } from '@/lib/api/stock-movement'
-import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
-import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
-import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/movement-notes'
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
+import { ProductSelect } from "@/app/(protected)/exchange/shared/form-fields";
+import { getAdjustQtyChange } from "@/app/(protected)/exchange/shared/qty";
+import { refineDuplicateProducts } from "@/app/(protected)/exchange/shared/movement-detail-validation";
+import { stockMovementApi } from "@/lib/api/stock-movement";
+import { getAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
+import { filterLocationsByAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
+import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
+import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
 import type {
   LocationType,
   StockMovementLocationOption,
@@ -53,7 +47,7 @@ const adjustDetailSchema = z.object({
   receivedQuantity: z
     .number({ error: 'Nhập số nguyên' })
     .int('Phải là số nguyên')
-    .min(1, 'Tồn thực tế phải >= 1'),
+    .min(0, 'Tồn thực tế phải >= 0'),
   note: z.string().optional(),
 })
 
@@ -64,15 +58,7 @@ const adjustFormSchema = z
     note: z.string().optional(),
     details: z.array(adjustDetailSchema).min(1, 'Cần ít nhất 1 mặt hàng'),
   })
-  .superRefine((data, ctx) => {
-    if (findDuplicateProductIds(data.details).length > 0) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Không được chọn trùng hàng hóa',
-        path: ['details'],
-      })
-    }
-  })
+  .superRefine((data, ctx) => refineDuplicateProducts(data.details, ctx))
 
 type AdjustFormValues = z.infer<typeof adjustFormSchema>
 
@@ -103,16 +89,15 @@ export function AdjustmentsCreateDialog({
   const form = useForm<AdjustFormValues>({
     resolver: zodResolver(adjustFormSchema),
     defaultValues: EMPTY,
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'details' })
 
-  const visibleLocations = useMemo(() => {
-    if (role === 'WAREHOUSE_MANAGER' && authScope.warehouseId)
-      return locations.filter((l) => l._id === authScope.warehouseId)
-    if (role === 'BRANCH_MANAGER' && authScope.branchId)
-      return locations.filter((l) => l._id === authScope.branchId)
-    return locations
-  }, [locations, role, authScope.warehouseId, authScope.branchId])
+  const visibleLocations = useMemo(
+    () => filterLocationsByAuthScope(locations, authScope),
+    [locations, authScope.role, authScope.warehouseId, authScope.branchId],
+  )
 
   const locationId = form.watch('locationId')
   const locationType = form.watch('locationType') as LocationType
@@ -174,7 +159,7 @@ export function AdjustmentsCreateDialog({
     }
 
     try {
-      await stockMovementApi.executeAdjust({
+      await stockMovementApi.createAdjust({
         movementType: 'ADJUST',
         fromLocationId: data.locationId,
         fromLocationType: data.locationType,
@@ -184,13 +169,14 @@ export function AdjustmentsCreateDialog({
         details: data.details.map((d) => ({
           productItemId: d.productItemId,
           receivedQuantity: d.receivedQuantity,
+          note: normalizeOptionalNote(d.note),
         })),
       })
-      toast.success('Đã điều chỉnh tồn kho thành công')
+      toast.success('Đã tạo phiếu kiểm kê (PENDING) — mở phiếu để duyệt')
       onOpenChange(false)
       await fetchAdjustments()
     } catch (error) {
-      toast.error(getStockMovementErrorMessage(error, 'Không thể điều chỉnh tồn kho'))
+      toast.error(getStockMovementErrorMessage(error, 'Không thể tạo phiếu điều chỉnh'))
     }
   }
 
@@ -200,7 +186,8 @@ export function AdjustmentsCreateDialog({
         <DialogHeader>
           <DialogTitle>Điều chỉnh tồn kho</DialogTitle>
           <DialogDescription>
-            Nhập <strong>tồn thực tế</strong> sau kiểm kê. Hệ thống so với tồn hiện tại và cập nhật chênh lệch ngay khi bấm &quot;Điều chỉnh&quot;.
+            Chỉ nhập <strong>tồn thực tế</strong>. Backend tự snapshot tồn hệ thống.
+            Phiếu tạo ở trạng thái PENDING — mở phiếu để sửa (nếu cần) rồi duyệt.
           </DialogDescription>
         </DialogHeader>
 
@@ -299,45 +286,26 @@ export function AdjustmentsCreateDialog({
                               <FormLabel className="text-xs">
                                 Hàng hóa <span className="text-destructive">*</span>
                               </FormLabel>
-                              <Select
+                              <ProductSelect
+                                products={products}
+                                value={field.value}
+                                metaMode="stock"
+                                placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn hàng hóa'}
                                 onValueChange={(value) => {
                                   field.onChange(value)
                                   const p = products.find((x) => x._id === value)
                                   const stock = p?.stock ?? 0
-                                  form.setValue(`details.${idx}.receivedQuantity`, Math.max(1, stock))
+                                  form.setValue(
+                                    `details.${idx}.receivedQuantity`,
+                                    Math.max(0, stock),
+                                  )
+                                  void form.trigger('details')
                                 }}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-auto min-h-9 w-full cursor-pointer whitespace-normal py-1.5 text-left text-sm">
-                                    <SelectValue placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn hàng hóa'} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="max-w-[min(90vw,40rem)]">
-                                  {products.map((p) => (
-                                    <SelectItem
-                                      key={p._id}
-                                      value={p._id}
-                                      className="items-start whitespace-normal py-2"
-                                    >
-                                      <span className="flex min-w-0 flex-col gap-0.5">
-                                        <span className="break-words leading-snug">{p.name}</span>
-                                        <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                          {p.sku ? <span>SKU: {p.sku}</span> : null}
-                                          {typeof p.stock === 'number' ? (
-                                            <Badge variant="secondary" className="text-[10px]">
-                                              Tồn HT: {p.stock.toLocaleString('vi-VN')}
-                                            </Badge>
-                                          ) : null}
-                                        </span>
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              />
                               {selected && (
                                 <p className="text-xs text-muted-foreground">
-                                  Tồn hệ thống: <strong>{snapshot.toLocaleString('vi-VN')}</strong>
+                                  Tồn hệ thống:{' '}
+                                  <strong>{snapshot.toLocaleString('vi-VN')}</strong>
                                 </p>
                               )}
                               <FormMessage />
@@ -368,8 +336,12 @@ export function AdjustmentsCreateDialog({
                             </FormLabel>
                             <FormControl>
                               <QuantityStepper
-                                min={1}
-                                value={Number.isFinite(field.value) && field.value >= 1 ? field.value : 1}
+                                min={0}
+                                value={
+                                  Number.isFinite(field.value) && field.value >= 0
+                                    ? field.value
+                                    : 0
+                                }
                                 onChange={field.onChange}
                               />
                             </FormControl>
@@ -429,7 +401,7 @@ export function AdjustmentsCreateDialog({
                 className="cursor-pointer"
               >
                 <CheckCircle className="mr-2 size-4" />
-                {form.formState.isSubmitting ? 'Đang điều chỉnh...' : 'Điều chỉnh'}
+                {form.formState.isSubmitting ? 'Đang tạo...' : 'Tạo phiếu kiểm kê'}
               </Button>
             </DialogFooter>
           </form>

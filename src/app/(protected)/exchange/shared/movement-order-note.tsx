@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageSquareText } from "lucide-react";
-import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/movement-notes";
+import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
 
 export function MovementOrderNote({ note }: { note?: string | null }) {
   const value = normalizeOptionalNote(note);

@@ -11,12 +11,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
-import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-type";
+import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
+import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
 import {
   getMovementNotePreview,
   hasAnyMovementNote,
-} from "@/app/(protected)/exchange/shared/movement-notes";
+} from "@/app/(protected)/exchange/shared/qty";
 import type { TransferUiLabels } from "@/app/(protected)/exchange/shared/transfer-ui-labels";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";

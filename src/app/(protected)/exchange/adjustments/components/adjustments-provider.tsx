@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
-import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
 import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
@@ -18,32 +17,15 @@ interface AdjustmentsContextType {
   statusFilter: MovementStatus | 'ALL'
   setStatusFilter: (v: MovementStatus | 'ALL') => void
   fetchAdjustments: () => Promise<void>
+  handleUpdateDetails: (
+    id: string,
+    details: { productItemId: string; receivedQuantity: number; note?: string }[],
+  ) => Promise<void>
+  handleApprove: (id: string) => Promise<void>
+  handleCancel: (id: string) => Promise<void>
 }
 
 const AdjustmentsContext = createContext<AdjustmentsContextType | null>(null)
-
-function filterByRole(
-  data: StockMovement[],
-  role: string,
-  warehouseId?: string,
-  branchId?: string,
-): StockMovement[] {
-  if (role === 'TENANT_OWNER' || role === 'SUPER_ADMIN') return data
-
-  if (role === 'WAREHOUSE_MANAGER' && warehouseId) {
-    return data.filter(
-      (m) => m.fromLocationType === 'warehouse' && m.fromLocationId === warehouseId,
-    )
-  }
-
-  if (role === 'BRANCH_MANAGER' && branchId) {
-    return data.filter(
-      (m) => m.fromLocationType === 'branch' && m.fromLocationId === branchId,
-    )
-  }
-
-  return []
-}
 
 export function AdjustmentsProvider({ children }: { children: React.ReactNode }) {
   const [adjustments, setAdjustments] = useState<StockMovement[]>([])
@@ -55,16 +37,13 @@ export function AdjustmentsProvider({ children }: { children: React.ReactNode })
   const fetchAdjustments = useCallback(async () => {
     setIsLoading(true)
     try {
-      const { role, warehouseId, branchId } = getAuthScope()
       const res = await stockMovementApi.getList({
         movementType: 'ADJUST',
         limit: 100,
         ...(statusFilter !== 'ALL' && { status: statusFilter }),
       })
-
-      const filtered = filterByRole(res.data, role ?? '', warehouseId, branchId)
-      setAdjustments(filtered)
-      setTotal(filtered.length)
+      setAdjustments(res.data)
+      setTotal(res.total ?? res.data.length)
     } catch (error) {
       console.error(error)
       setAdjustments([])
@@ -78,8 +57,44 @@ export function AdjustmentsProvider({ children }: { children: React.ReactNode })
   }, [statusFilter])
 
   useEffect(() => {
-    fetchAdjustments()
+    void fetchAdjustments()
   }, [fetchAdjustments])
+
+  const handleUpdateDetails = async (
+    id: string,
+    details: { productItemId: string; receivedQuantity: number; note?: string }[],
+  ) => {
+    try {
+      await stockMovementApi.updateDetails(id, { details })
+      toast.success('Đã cập nhật chi tiết kiểm kê')
+      await fetchAdjustments()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể cập nhật chi tiết'))
+      throw error
+    }
+  }
+
+  const handleApprove = async (id: string) => {
+    try {
+      await stockMovementApi.approveAdjust(id)
+      toast.success('Đã duyệt — tồn kho đã được điều chỉnh')
+      await fetchAdjustments()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể duyệt phiếu điều chỉnh'))
+      throw error
+    }
+  }
+
+  const handleCancel = async (id: string) => {
+    try {
+      await stockMovementApi.cancel(id)
+      toast.success('Đã huỷ phiếu điều chỉnh')
+      await fetchAdjustments()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể huỷ phiếu'))
+      throw error
+    }
+  }
 
   return (
     <AdjustmentsContext.Provider
@@ -92,6 +107,9 @@ export function AdjustmentsProvider({ children }: { children: React.ReactNode })
         statusFilter,
         setStatusFilter,
         fetchAdjustments,
+        handleUpdateDetails,
+        handleApprove,
+        handleCancel,
       }}
     >
       {children}

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { parseNumberInput } from "@/app/(protected)/exchange/shared/number-input";
+import { parseNumberInput } from "@/app/(protected)/exchange/shared/qty";
 
 type QuantityStepperProps = {
   value: number;

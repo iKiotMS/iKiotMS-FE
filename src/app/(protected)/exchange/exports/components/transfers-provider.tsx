@@ -56,29 +56,17 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   const fetchTransfers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const params = {
-        movementType: 'EXPORT' as const,
+      const base = {
         limit: 50,
         ...(statusFilter !== 'ALL' && { status: statusFilter }),
       }
-      const res = await stockMovementApi.getList(params)
-      const authScope = getAuthScope()
-      const isBranchManager = authScope.role === 'BRANCH_MANAGER'
-      const data =
-        isBranchManager && authScope.branchId
-          ? res.data.filter((movement) => {
-              const isWarehouseToOwnBranch =
-                movement.fromLocationType === 'warehouse' &&
-                movement.toLocationType === 'branch' &&
-                movement.toLocationId === authScope.branchId
-              const isBranchToBranchRelated =
-                movement.fromLocationType === 'branch' &&
-                movement.toLocationType === 'branch' &&
-                (movement.fromLocationId === authScope.branchId ||
-                  movement.toLocationId === authScope.branchId)
-              return isWarehouseToOwnBranch || isBranchToBranchRelated
-            })
-          : res.data
+      const [exportRes, returnRes] = await Promise.all([
+        stockMovementApi.getList({ ...base, movementType: 'EXPORT' }),
+        stockMovementApi.getList({ ...base, movementType: 'RETURN' }),
+      ])
+      const data = [...exportRes.data, ...returnRes.data].sort((a, b) =>
+        String(b.createdAt).localeCompare(String(a.createdAt)),
+      )
       setTransfers(data)
       setTotal(data.length)
     } catch (error) {
@@ -133,11 +121,10 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       await stockMovementApi.updateDetails(id, { details })
-      await stockMovementApi.close(id)
-      toast.success('Đã gửi phiếu về bên xuất để duyệt')
+      toast.success('Đã lưu danh sách hàng')
       await fetchTransfers()
     } catch (error) {
-      toast.error(getStockMovementErrorMessage(error, 'Không thể gửi phiếu'))
+      toast.error(getStockMovementErrorMessage(error, 'Không thể lưu danh sách hàng'))
       throw error
     }
   }
@@ -149,11 +136,10 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
     try {
       await stockMovementApi.updateDetails(id, { details })
       await stockMovementApi.close(id)
-      await stockMovementApi.ship(id)
-      toast.success('Đã submit và xuất hàng — phiếu đang vận chuyển')
+      toast.success('Đã chốt phiếu — sẵn sàng xuất hàng')
       await fetchTransfers()
     } catch (error) {
-      toast.error(getStockMovementErrorMessage(error, 'Không thể submit/xuất hàng'))
+      toast.error(getStockMovementErrorMessage(error, 'Không thể chốt phiếu'))
       throw error
     }
   }

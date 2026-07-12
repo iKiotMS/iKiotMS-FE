@@ -30,6 +30,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import { getAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
 
 const data = {
   user: {
@@ -268,7 +269,37 @@ const warehouses = [
   { name: "Kho 2", logo: Logo, address: "456 Lê Lợi, Q1, TP.HCM" },
 ];
 
+function filterNavForRole(
+  groups: typeof data.navGroups,
+  role?: string,
+): typeof data.navGroups {
+  if (role !== "BRANCH_MANAGER") return groups;
+
+  return groups.map((group) => ({
+    ...group,
+    items: group.items.map((item) => {
+      if (!item.items) return item;
+      return {
+        ...item,
+        items: item.items
+          .filter((sub) => sub.url !== "/exchange/imports")
+          .map((sub) =>
+            sub.url === "/exchange/exports"
+              ? { ...sub, title: "Chuyển hàng" }
+              : sub,
+          ),
+      };
+    }),
+  }));
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const role = getAuthScope().role;
+  const navGroups = React.useMemo(
+    () => filterNavForRole(data.navGroups, role),
+    [role],
+  );
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -276,7 +307,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {data.navGroups.map((group) => (
+        {navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>
