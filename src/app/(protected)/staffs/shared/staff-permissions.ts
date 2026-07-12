@@ -64,7 +64,17 @@ export function canEditStaffRoleAndWorkplace(
   return true;
 }
 
-/** PATCH /branches/:id/manager — chỉ TENANT_OWNER. */
+/** PATCH /branches/:id/manager — TENANT_OWNER hoặc BRANCH_MANAGER (chi nhánh của mình). */
 export function canAssignBranchManager(userRole?: string | null): boolean {
+  return userRole === TENANT_OWNER || userRole === BRANCH_MANAGER;
+}
+
+/** PATCH /warehouses/:id/manager — chỉ TENANT_OWNER. */
+export function canAssignWarehouseManager(userRole?: string | null): boolean {
+  return userRole === TENANT_OWNER;
+}
+
+/** Thăng STAFF → BM/WM qua form sửa — chỉ TENANT_OWNER. */
+export function canPromoteStaffToManager(userRole?: string | null): boolean {
   return userRole === TENANT_OWNER;
 }

@@ -221,6 +221,17 @@ export function ScheduleDetailContent({
               </p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 <Badge variant={status.variant}>{status.label}</Badge>
+                <Badge variant={data.scheduleType === "OVERTIME" ? "default" : "outline"}>
+                  {data.scheduleType === "OVERTIME" ? "Tăng ca" : "Ca thường"}
+                </Badge>
+                {data.dayInfo?.isHoliday && (
+                  <Badge variant="secondary">
+                    {data.dayInfo.holidayName || "Ngày lễ"}
+                  </Badge>
+                )}
+                {data.dayInfo?.isSunday && !data.dayInfo?.isHoliday && (
+                  <Badge variant="secondary">Chủ nhật</Badge>
+                )}
               </div>
             </div>
           </div>
@@ -235,6 +246,17 @@ export function ScheduleDetailContent({
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge variant={status.variant}>{status.label}</Badge>
                 <Badge variant="outline">{assignees.length} nhân viên</Badge>
+                <Badge variant={data.scheduleType === "OVERTIME" ? "default" : "outline"}>
+                  {data.scheduleType === "OVERTIME" ? "Tăng ca" : "Ca thường"}
+                </Badge>
+                {data.dayInfo?.isHoliday && (
+                  <Badge variant="secondary">
+                    {data.dayInfo.holidayName || "Ngày lễ"}
+                  </Badge>
+                )}
+                {data.dayInfo?.isSunday && !data.dayInfo?.isHoliday && (
+                  <Badge variant="secondary">Chủ nhật</Badge>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -269,6 +291,24 @@ export function ScheduleDetailContent({
             label="Khung giờ ca"
             value={shiftTime}
           />
+          <InfoItem
+            icon={<Timer className="size-4" />}
+            label="Loại ca"
+            value={data.scheduleType === "OVERTIME" ? "Tăng ca" : "Ca thường"}
+          />
+          {data.dayInfo && (
+            <InfoItem
+              icon={<CalendarDays className="size-4" />}
+              label="Loại ngày"
+              value={
+                data.dayInfo.isHoliday
+                  ? data.dayInfo.holidayName || "Ngày lễ"
+                  : data.dayInfo.isSunday
+                    ? "Chủ nhật"
+                    : "Ngày thường"
+              }
+            />
+          )}
           {data.managedByName && (
             <InfoItem
               icon={<User className="size-4" />}

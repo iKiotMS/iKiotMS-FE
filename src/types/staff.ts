@@ -16,6 +16,11 @@ export interface StaffProfile {
   taxNumber?: string;
 }
 
+export interface StaffLeaveBalance {
+  annualLeaveDays: number;
+  remainingDays: number;
+}
+
 export interface Staff {
   _id: string;
   tenantId: string;
@@ -33,6 +38,7 @@ export interface Staff {
   joinedAt: string;
   profile?: StaffProfile;
   accountNote?: string;
+  leaveBalance?: StaffLeaveBalance;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,7 +98,7 @@ export interface UpdateStaffPayload {
   firstName?: string;
   lastName?: string;
   email?: string;
-  role?: StaffRole;
+  /** Không gửi qua PATCH /staff — đổi manager dùng API gán Branch/Warehouse. */
   branchId?: string | null;
   warehouseId?: string | null;
   hireDate?: string;

@@ -131,6 +131,58 @@ if (bmChips.length !== 1 || bmChips[0].displayName !== "An") {
   console.log("OK   BM calendar only shows branch staff");
 }
 
+function toHolidayDateKey(dateValue) {
+  if (!dateValue) return "";
+  return dateValue.slice(0, 10);
+}
+
+function buildHolidayNamesByDate(holidays, schedules = []) {
+  const map = new Map();
+  for (const holiday of holidays) {
+    if (holiday.isActive === false) continue;
+    const key = toHolidayDateKey(holiday.date);
+    const name = holiday.name?.trim();
+    if (key && name) map.set(key, name);
+  }
+  if (map.size > 0 || schedules.length === 0) return map;
+  for (const schedule of schedules) {
+    const name = schedule.dayInfo?.holidayName?.trim();
+    if (!schedule.dayInfo?.isHoliday || !name) continue;
+    const key = toHolidayDateKey(schedule.workDate);
+    if (key && !map.has(key)) map.set(key, name);
+  }
+  return map;
+}
+
+const holidayMap = buildHolidayNamesByDate(
+  [{ date: "2026-09-02T00:00:00.000Z", name: "Quốc khánh", isActive: true }],
+  [
+    {
+      workDate: "2026-09-02",
+      dayInfo: { isHoliday: true, holidayName: "Tên cũ" },
+    },
+  ],
+);
+if (holidayMap.get("2026-09-02") !== "Quốc khánh") {
+  failed += 1;
+  console.error("FAIL holiday map prefers /holidays name");
+} else {
+  console.log("OK   holiday map prefers /holidays name");
+}
+
+const holidayFallback = buildHolidayNamesByDate([], [
+  {
+    workDate: "2026-04-18",
+    dayInfo: { isHoliday: true, holidayName: "Giỗ Tổ Hùng Vương" },
+  },
+]);
+if (holidayFallback.get("2026-04-18") !== "Giỗ Tổ Hùng Vương") {
+  failed += 1;
+  console.error("FAIL holiday map falls back to dayInfo");
+} else {
+  console.log("OK   holiday map falls back to dayInfo");
+}
+
 if (failed > 0) {
   process.exit(1);
 }

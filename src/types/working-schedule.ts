@@ -1,5 +1,13 @@
 export type ScheduleStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
+export type ScheduleType = "NORMAL" | "OVERTIME";
+
+export type ScheduleDayType =
+  | "NORMAL"
+  | "SUNDAY"
+  | "HOLIDAY"
+  | "SUNDAY_HOLIDAY";
+
 export type AttendanceStatus =
   | "NOT_CHECKED_IN"
   | "CHECKED_IN"
@@ -29,6 +37,14 @@ export interface AttendanceDetail extends AttendanceSummary {
   workedMinutes?: number | null;
   overtimeMinute?: number | null;
   lateMinutes?: number | null;
+}
+
+export interface ScheduleDayInfo {
+  dayType: ScheduleDayType | string;
+  isSunday: boolean;
+  isHoliday: boolean;
+  holidayName?: string | null;
+  holidayType?: string | null;
 }
 
 export interface ShiftTemplate {
@@ -76,6 +92,8 @@ export interface ApiWorkingSchedule {
   workDate: string;
   startAt: string;
   endAt: string;
+  scheduleType?: ScheduleType | string;
+  dayInfo?: ScheduleDayInfo;
   status: ScheduleStatus | "DELETED";
   createdAt: string;
   updatedAt: string;
@@ -108,6 +126,8 @@ export interface WorkingSchedule {
   startTime: string;
   endTime: string;
   workDate: string;
+  scheduleType: ScheduleType;
+  dayInfo?: ScheduleDayInfo;
   status: ScheduleStatus;
   /** Attendance tổng hợp (assignee đầu hoặc tổng quan). */
   attendance: AttendanceDetail;
@@ -122,6 +142,7 @@ export interface WorkingScheduleQueryParams {
   startDate?: string;
   endDate?: string;
   status?: ScheduleStatus;
+  scheduleType?: ScheduleType;
 }
 
 export interface WorkingScheduleListApiResponse {
@@ -139,6 +160,7 @@ export interface CreateWorkingSchedulePayload {
   userId: string | string[];
   shiftTemplateId: string;
   workDate: string;
+  scheduleType?: ScheduleType;
 }
 
 export interface UpdateShiftTemplatePayload {

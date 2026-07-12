@@ -13,6 +13,7 @@ import {
   shiftTemplateApi,
   workingScheduleApi,
 } from "@/lib/api/schedule";
+import { holidayApi } from "@/lib/api/holiday";
 import {
   mapShiftTemplatesToOptions,
   scheduleMatchesUserFilter,
@@ -28,6 +29,8 @@ import {
   canManageShiftTemplates,
   canViewSchedule,
 } from "@/app/(protected)/staffs/shared/schedule-permissions";
+import { buildHolidayNamesByDate } from "@/app/(protected)/staffs/shared/schedule-day-meta";
+import type { Holiday } from "@/types/holiday";
 import type {
   CreateWorkingSchedulePayload,
   ScheduleCalendarFilters,
@@ -37,6 +40,10 @@ import type {
   UpdateShiftTemplatePayload,
   WorkingSchedule,
 } from "@/types/working-schedule";
+import type { ScheduleStaffOption } from "./schedule-staff-picker";
+
+const EMPTY_SCHEDULES: WorkingSchedule[] = [];
+const EMPTY_STAFF_OPTIONS: ScheduleStaffOption[] = [];
 
 type ScheduleDialogType = "add" | "edit" | "delete" | "shiftTemplate";
 
@@ -71,6 +78,8 @@ function clearPanelSelection(
 
 type ScheduleContextType = {
   schedules: WorkingSchedule[];
+  /** YYYY-MM-DD → tên ngày lễ thật (từ /holidays, bổ sung dayInfo). */
+  holidaysByDate: Map<string, string>;
   isInitialLoading: boolean;
   isFetching: boolean;
   filters: ScheduleCalendarFilters;
@@ -78,6 +87,7 @@ type ScheduleContextType = {
   setOpen: (value: ScheduleDialogType | null) => void;
   currentRow: WorkingSchedule | null;
   setCurrentRow: React.Dispatch<React.SetStateAction<WorkingSchedule | null>>;
+  currentSchedule: WorkingSchedule | null;
   fetchScheduleById: (id: string) => Promise<WorkingSchedule | null>;
   fetchScheduleDetail: (
     scheduleId: string,
@@ -99,7 +109,7 @@ type ScheduleContextType = {
   handleDeleteShiftTemplate: (id: string) => Promise<void>;
   shiftTemplates: ShiftTemplate[];
   shiftTemplateOptions: ShiftTemplateOption[];
-  staffOptions: { value: string; label: string }[];
+  staffOptions: ScheduleStaffOption[];
   updateStatusFilter: (status: ScheduleStatus | "all") => void;
   updateUserFilter: (userId: string) => void;
   calendarMonth: Date;
@@ -144,10 +154,8 @@ export function ScheduleProvider({
   const [shiftTemplateOptions, setShiftTemplateOptions] = useState<
     ShiftTemplateOption[]
   >([]);
-  const [staffOptions, setStaffOptions] = useState<
-    { value: string; label: string }[]
-  >([]);
-  const [calendarMonth, setCalendarMonth] = useState(
+  const [staffOptions, setStaffOptions] =
+    useState<ScheduleStaffOption[]>(EMPTY_STAFF_OPTIONS);  const [calendarMonth, setCalendarMonth] = useState(
     () => DEFAULT_CALENDAR_MONTH,
   );
   const [selectedSchedule, setSelectedSchedule] =
@@ -156,7 +164,17 @@ export function ScheduleProvider({
     string | null
   >(null);
   const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
+  const [currentSchedule, setCurrentSchedule] =
+    useState<WorkingSchedule | null>(null);
+  const [monthHolidays, setMonthHolidays] = useState<Holiday[]>([]);
+  const holidayYear = calendarMonth.getFullYear();
 
+  // Có /holidays thì không scan lại schedules mỗi lần list ca đổi.
+  const holidayScheduleFallback = monthHolidays.length > 0 ? EMPTY_SCHEDULES : schedules;
+  const holidaysByDate = useMemo(
+    () => buildHolidayNamesByDate(monthHolidays, holidayScheduleFallback),
+    [monthHolidays, holidayScheduleFallback],
+  );
   const visibleSchedules = useMemo(() => {
     return schedules.filter((schedule) => {
       if (
@@ -175,17 +193,20 @@ export function ScheduleProvider({
   const derivedStaffOptions = useMemo(() => {
     if (staffOptions.length > 0) return staffOptions;
 
-    const map = new Map<string, string>();
+    const map = new Map<string, ScheduleStaffOption>();
     schedules.forEach((schedule) => {
       schedule.assignees.forEach((assignee) => {
-        map.set(assignee.userId, assignee.staffName);
+        map.set(assignee.userId, {
+          value: assignee.userId,
+          label: assignee.staffName,
+          branchId: assignee.branchId || "",
+          branchName: "—",
+          phone: assignee.staffPhone || "",
+        });
       });
     });
 
-    return Array.from(map.entries()).map(([value, label]) => ({
-      value,
-      label,
-    }));
+    return Array.from(map.values());
   }, [staffOptions, schedules]);
 
   const refreshShiftTemplates = useCallback(async () => {
@@ -278,9 +299,48 @@ export function ScheduleProvider({
     [],
   );
 
+  const fetchCurrentSchedule = useCallback(async () => {
+    if (!canFetch) {
+      setCurrentSchedule(null);
+      return;
+    }
+    try {
+      const res = await workingScheduleApi.getCurrent();
+      setCurrentSchedule(res.schedule);
+    } catch {
+      setCurrentSchedule(null);
+    }
+  }, [canFetch]);
+
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  useEffect(() => {
+    if (!canFetch) {
+      setMonthHolidays([]);
+      return;
+    }
+
+    let cancelled = false;
+    void holidayApi
+      .getActiveByYear(holidayYear)
+      .then((rows) => {
+        if (!cancelled) setMonthHolidays(rows);
+      })
+      .catch(() => {
+        // BM/WM có thể không có holidays:read — fallback dayInfo trên schedule.
+        if (!cancelled) setMonthHolidays([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canFetch, holidayYear]);
+
+  useEffect(() => {
+    void fetchCurrentSchedule();
+  }, [fetchCurrentSchedule]);
 
   useEffect(() => {
     void refreshShiftTemplates();
@@ -299,11 +359,14 @@ export function ScheduleProvider({
           activeStaff.map((s) => ({
             value: s._id,
             label: `${s.fullName} (${getStaffRoleLabel(s.role)})`,
+            branchId: s.branchId || "",
+            branchName: s.branchName || "—",
+            phone: s.phoneNumber || "",
           })),
         );
       })
       .catch(() => {
-        setStaffOptions([]);
+        setStaffOptions(EMPTY_STAFF_OPTIONS);
       });
   }, [canLoadStaffOptions]);
 
@@ -311,7 +374,7 @@ export function ScheduleProvider({
     try {
       await workingScheduleApi.create(payload);
       toast.success("Đã thêm lịch làm việc");
-      await fetchSchedules();
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -329,7 +392,7 @@ export function ScheduleProvider({
       setSelectedSchedule((prev) => (prev?._id === scheduleId ? null : prev));
       setSelectedAssigneeUserId(null);
       setCurrentRow((prev) => (prev?._id === scheduleId ? null : prev));
-      await fetchSchedules();
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -347,7 +410,7 @@ export function ScheduleProvider({
         return prev?._id === id ? null : prev;
       });
       setCurrentRow((prev) => (prev?._id === id ? null : prev));
-      await fetchSchedules();
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       throw error;
@@ -466,6 +529,7 @@ export function ScheduleProvider({
     <ScheduleContext.Provider
       value={{
         schedules: visibleSchedules,
+        holidaysByDate,
         isInitialLoading,
         isFetching,
         filters,
@@ -473,6 +537,7 @@ export function ScheduleProvider({
         setOpen,
         currentRow,
         setCurrentRow,
+        currentSchedule,
         fetchScheduleById,
         fetchScheduleDetail,
         handleAdd,

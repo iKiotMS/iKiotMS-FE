@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -11,7 +11,6 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import { vi } from "date-fns/locale";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,17 +26,19 @@ import { getSessionRole } from "@/lib/auth";
 import { canFilterScheduleByStaff } from "@/app/(protected)/staffs/shared/schedule-permissions";
 import { getAttendanceStatusDisplay } from "@/app/(protected)/staffs/shared/attendance-status";
 import { SCHEDULE_STATUS_MAP } from "@/app/(protected)/staffs/shared/schedule-status";
-import { expandSchedulesForCalendar, type CalendarScheduleEntry } from "@/app/(protected)/staffs/shared/schedule-utils";
+import { toHolidayDateKey } from "@/app/(protected)/staffs/shared/schedule-day-meta";
+import {
+  expandSchedulesForCalendar,
+  formatShiftTimeRange,
+  type CalendarScheduleEntry,
+} from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { ScheduleMonthPicker } from "./schedule-month-picker";
 import { useSchedule } from "./schedule-provider";
 
 const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const MAX_VISIBLE_PER_DAY = 3;
-
-function toDateKey(workDate: string): string {
-  return workDate.slice(0, 10);
-}
+const EMPTY_DAY_ENTRIES: CalendarScheduleEntry[] = [];
 
 function attendanceDotClass(status?: string): string {
   switch (status) {
@@ -65,6 +66,7 @@ function ScheduleDayChip({
 }) {
   const { schedule, displayName, displayAttendance } = entry;
   const status = SCHEDULE_STATUS_MAP[schedule.status];
+  const isOvertime = schedule.scheduleType === "OVERTIME";
 
   return (
     <button
@@ -83,8 +85,9 @@ function ScheduleDayChip({
           "bg-sky-500/15 border-sky-500/30 text-sky-700 dark:text-sky-300",
         status.variant === "secondary" &&
           "bg-muted border-border text-muted-foreground",
+        isOvertime && "border-amber-500/50",
       )}
-      title={`${displayName} · ${schedule.shiftName} · ${getAttendanceStatusDisplay(displayAttendance?.status).label}`}
+      title={`${displayName} · ${schedule.shiftName}${isOvertime ? " · Tăng ca" : ""} · ${getAttendanceStatusDisplay(displayAttendance?.status).label}`}
     >
       <span
         className={cn(
@@ -96,9 +99,172 @@ function ScheduleDayChip({
         <span className="font-medium">{displayName}</span>
         <span className="opacity-75"> · {schedule.shiftName}</span>
       </span>
+      {isOvertime && (
+        <span className="ml-auto shrink-0 rounded bg-amber-500/20 px-1 text-[9px] font-semibold text-amber-700 dark:text-amber-300">
+          TC
+        </span>
+      )}
     </button>
   );
 }
+
+function CurrentShiftBanner({ schedule }: { schedule: WorkingSchedule }) {
+  const timeRange = formatShiftTimeRange(schedule.startTime, schedule.endTime);
+  const isOvertime = schedule.scheduleType === "OVERTIME";
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2.5 text-sm">
+      <span className="font-semibold text-sky-800 dark:text-sky-200">
+        Ca hiện tại
+      </span>
+      <span className="text-muted-foreground">
+        {schedule.shiftName !== "—" ? schedule.shiftName : "Ca làm"}
+        {" · "}
+        {timeRange}
+        {isOvertime ? " · Tăng ca" : ""}
+      </span>
+      {schedule.dayInfo?.isHoliday && schedule.dayInfo.holidayName && (
+        <span className="text-xs text-amber-700 dark:text-amber-300">
+          {schedule.dayInfo.holidayName}
+        </span>
+      )}
+    </div>
+  );
+}
+
+type CalendarDayCellProps = {
+  dateKey: string;
+  dayNumber: string;
+  inMonth: boolean;
+  today: boolean;
+  isSunday: boolean;
+  holidayName: string | null;
+  dayEntries: CalendarScheduleEntry[];
+  isSelected: boolean;
+  isLoading: boolean;
+  selectedScheduleId: string | null;
+  selectedAssigneeUserId: string | null;
+  onOpenDay: (dateKey: string) => void;
+  onSelectSchedule: (
+    schedule: WorkingSchedule,
+    dateKey: string,
+    userId?: string | null,
+  ) => void;
+};
+
+const CalendarDayCell = memo(function CalendarDayCell({
+  dateKey,
+  dayNumber,
+  inMonth,
+  today,
+  isSunday,
+  holidayName,
+  dayEntries,
+  isSelected,
+  isLoading,
+  selectedScheduleId,
+  selectedAssigneeUserId,
+  onOpenDay,
+  onSelectSchedule,
+}: CalendarDayCellProps) {
+  const visible = dayEntries.slice(0, MAX_VISIBLE_PER_DAY);
+  const hiddenCount = dayEntries.length - visible.length;
+  const canOpen = dayEntries.length > 0 || Boolean(holidayName);
+
+  return (
+    <div
+      onClick={() => {
+        if (canOpen) onOpenDay(dateKey);
+      }}
+      className={cn(
+        "min-h-[110px] border-b border-r p-1.5 flex flex-col gap-1",
+        !inMonth && "bg-muted/20",
+        today && "bg-primary/5",
+        holidayName && "bg-amber-500/5",
+        isSunday && !holidayName && "bg-rose-500/5",
+        isSelected && "bg-primary/10 ring-1 ring-inset ring-primary/30",
+        canOpen && "cursor-pointer hover:bg-muted/30 transition-colors",
+      )}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <span
+            className={cn(
+              "inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+              today && "bg-primary text-primary-foreground",
+              !inMonth && "text-muted-foreground",
+            )}
+          >
+            {dayNumber}
+          </span>
+          {isSunday && !holidayName && (
+            <span className="rounded bg-rose-500/15 px-1 py-0.5 text-[9px] font-medium text-rose-700 dark:text-rose-300">
+              CN
+            </span>
+          )}
+        </div>
+        {dayEntries.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDay(dateKey);
+            }}
+            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
+            title="Xem tất cả ca trong ngày"
+          >
+            {dayEntries.length} ca
+          </button>
+        )}
+      </div>
+
+      {holidayName && (
+        <p
+          className="w-full shrink-0 whitespace-normal break-words rounded bg-amber-500/20 px-1 py-0.5 text-left text-[10px] font-semibold leading-tight text-amber-950 dark:text-amber-100"
+          title={holidayName}
+        >
+          {holidayName}
+        </p>
+      )}
+
+      {isLoading ? (
+        <Skeleton className="h-5 w-full" />
+      ) : (
+        <div className="flex flex-col gap-0.5 flex-1">
+          {visible.map((entry) => (
+            <ScheduleDayChip
+              key={entry.chipKey}
+              entry={entry}
+              isSelected={
+                selectedScheduleId === entry.schedule._id &&
+                selectedAssigneeUserId === (entry.assignee?.userId ?? null)
+              }
+              onClick={() =>
+                onSelectSchedule(
+                  entry.schedule,
+                  dateKey,
+                  entry.assignee?.userId,
+                )
+              }
+            />
+          ))}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              className="w-full rounded px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10 cursor-pointer text-left transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDay(dateKey);
+              }}
+            >
+              +{hiddenCount} ca khác
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 export function ScheduleCalendar() {
   const {
@@ -116,9 +282,15 @@ export function ScheduleCalendar() {
     filters,
     updateStatusFilter,
     updateUserFilter,
+    currentSchedule,
+    holidaysByDate,
   } = useSchedule();
 
   const [keyword, setKeyword] = useState("");
+  const canFilterStaff = useMemo(
+    () => canFilterScheduleByStaff(getSessionRole()),
+    [],
+  );
 
   const filteredSchedules = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -144,51 +316,55 @@ export function ScheduleCalendar() {
   const entriesByDate = useMemo(() => {
     const map = new Map<string, CalendarScheduleEntry[]>();
     for (const entry of calendarEntries) {
-      const key = toDateKey(entry.schedule.workDate);
-      const list = map.get(key) ?? [];
-      list.push(entry);
-      map.set(key, list);
+      const key = toHolidayDateKey(entry.schedule.workDate);
+      const list = map.get(key);
+      if (list) list.push(entry);
+      else map.set(key, [entry]);
     }
     for (const [key, list] of map) {
-      map.set(
-        key,
-        [...list].sort((a, b) => {
-          const timeCmp = a.schedule.startTime.localeCompare(b.schedule.startTime);
-          if (timeCmp !== 0) return timeCmp;
-          return a.displayName.localeCompare(b.displayName, "vi");
-        }),
-      );
+      list.sort((a, b) => {
+        const timeCmp = a.schedule.startTime.localeCompare(b.schedule.startTime);
+        if (timeCmp !== 0) return timeCmp;
+        return a.displayName.localeCompare(b.displayName, "vi");
+      });
+      map.set(key, list);
     }
     return map;
   }, [calendarEntries]);
 
-  const monthStart = startOfMonth(calendarMonth);
-  const monthEnd = endOfMonth(calendarMonth);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const calendarDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(calendarMonth);
+    const monthEnd = endOfMonth(calendarMonth);
+    return eachDayOfInterval({
+      start: startOfWeek(monthStart, { weekStartsOn: 1 }),
+      end: endOfWeek(monthEnd, { weekStartsOn: 1 }),
+    });
+  }, [calendarMonth]);
 
   const isLoading = isInitialLoading || isFetching;
-  const canFilterStaff = canFilterScheduleByStaff(getSessionRole());
 
-  function openDayPanel(dateKey: string) {
-    setSelectedDayDate(dateKey);
-    setSelectedSchedule(null);
-    setSelectedAssigneeUserId(null);
-  }
+  const openDayPanel = useCallback(
+    (dateKey: string) => {
+      setSelectedDayDate(dateKey);
+      setSelectedSchedule(null);
+      setSelectedAssigneeUserId(null);
+    },
+    [setSelectedDayDate, setSelectedSchedule, setSelectedAssigneeUserId],
+  );
 
-  function selectSchedule(
-    schedule: WorkingSchedule,
-    dateKey: string,
-    userId?: string | null,
-  ) {
-    setSelectedDayDate(dateKey);
-    setSelectedAssigneeUserId(userId ?? null);
-    setSelectedSchedule(schedule);
-  }
+  const selectSchedule = useCallback(
+    (schedule: WorkingSchedule, dateKey: string, userId?: string | null) => {
+      setSelectedDayDate(dateKey);
+      setSelectedAssigneeUserId(userId ?? null);
+      setSelectedSchedule(schedule);
+    },
+    [setSelectedDayDate, setSelectedAssigneeUserId, setSelectedSchedule],
+  );
 
   return (
     <div className="space-y-4">
+      {currentSchedule && <CurrentShiftBanner schedule={currentSchedule} />}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ScheduleMonthPicker disabled={isLoading} />
 
@@ -237,9 +413,16 @@ export function ScheduleCalendar() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-        <span className="font-medium text-foreground">Chấm công:</span>
+        <span className="font-medium text-foreground">Chú thích:</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200">
+            Lễ
+          </span>
+          Ngày lễ
+        </span>
         <span className="inline-flex items-center gap-1">
           <span className="size-2 rounded-full bg-muted-foreground/40" /> Chưa
+          chấm
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="size-2 rounded-full bg-sky-500" /> Check-in
@@ -248,7 +431,7 @@ export function ScheduleCalendar() {
           <span className="size-2 rounded-full bg-emerald-500" /> Check-out
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="size-2 rounded-full bg-amber-500" /> Muộn
+          <span className="size-2 rounded-full bg-orange-500" /> Muộn
         </span>
       </div>
 
@@ -267,90 +450,23 @@ export function ScheduleCalendar() {
         <div className="grid grid-cols-7">
           {calendarDays.map((day) => {
             const dateKey = format(day, "yyyy-MM-dd");
-            const dayEntries = entriesByDate.get(dateKey) ?? [];
-            const inMonth = isSameMonth(day, calendarMonth);
-            const today = isToday(day);
-            const visible = dayEntries.slice(0, MAX_VISIBLE_PER_DAY);
-            const hiddenCount = dayEntries.length - visible.length;
-
-            const isDaySelected = selectedDayDate === dateKey;
-
             return (
-              <div
+              <CalendarDayCell
                 key={dateKey}
-                onClick={() => {
-                  if (dayEntries.length > 0) openDayPanel(dateKey);
-                }}
-                className={cn(
-                  "min-h-[110px] border-b border-r p-1.5 flex flex-col gap-1",
-                  !inMonth && "bg-muted/20",
-                  today && "bg-primary/5",
-                  isDaySelected && "bg-primary/10 ring-1 ring-inset ring-primary/30",
-                  dayEntries.length > 0 &&
-                    "cursor-pointer hover:bg-muted/30 transition-colors",
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "inline-flex size-6 items-center justify-center rounded-full text-xs font-medium",
-                      today && "bg-primary text-primary-foreground",
-                      !inMonth && "text-muted-foreground",
-                    )}
-                  >
-                    {format(day, "d")}
-                  </span>
-                  {dayEntries.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDayPanel(dateKey);
-                      }}
-                      className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
-                      title="Xem tất cả ca trong ngày"
-                    >
-                      {dayEntries.length} ca
-                    </button>
-                  )}
-                </div>
-
-                {isLoading ? (
-                  <Skeleton className="h-5 w-full" />
-                ) : (
-                  <div className="flex flex-col gap-0.5 flex-1">
-                    {visible.map((entry) => (
-                      <ScheduleDayChip
-                        key={entry.chipKey}
-                        entry={entry}
-                        isSelected={
-                          selectedSchedule?._id === entry.schedule._id &&
-                          selectedAssigneeUserId === (entry.assignee?.userId ?? null)
-                        }
-                        onClick={() =>
-                          selectSchedule(
-                            entry.schedule,
-                            dateKey,
-                            entry.assignee?.userId,
-                          )
-                        }
-                      />
-                    ))}
-                    {hiddenCount > 0 && (
-                      <button
-                        type="button"
-                        className="w-full rounded px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10 cursor-pointer text-left transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDayPanel(dateKey);
-                        }}
-                      >
-                        +{hiddenCount} ca khác
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                dateKey={dateKey}
+                dayNumber={format(day, "d")}
+                inMonth={isSameMonth(day, calendarMonth)}
+                today={isToday(day)}
+                isSunday={day.getDay() === 0}
+                holidayName={holidaysByDate.get(dateKey) ?? null}
+                dayEntries={entriesByDate.get(dateKey) ?? EMPTY_DAY_ENTRIES}
+                isSelected={selectedDayDate === dateKey}
+                isLoading={isLoading}
+                selectedScheduleId={selectedSchedule?._id ?? null}
+                selectedAssigneeUserId={selectedAssigneeUserId}
+                onOpenDay={openDayPanel}
+                onSelectSchedule={selectSchedule}
+              />
             );
           })}
         </div>

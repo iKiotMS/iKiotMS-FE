@@ -9,6 +9,7 @@ const HR_NAV_ROLES = {
     "WAREHOUSE_MANAGER",
     "STAFF",
   ],
+  holidays: ["TENANT_OWNER"],
   payroll: [] as string[], // hidden until page exists
 } as const;
 
@@ -30,6 +31,7 @@ export function filterHrNavItems<
     "/staffs": "staffList",
     "/staffs/schedule": "schedule",
     "/staffs/schedule/leave-requests": "leaveRequests",
+    "/staffs/holidays": "holidays",
     "/staffs/payroll": "payroll",
   };
 

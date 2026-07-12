@@ -67,6 +67,10 @@ const data = {
               url: "/staffs/schedule/leave-requests",
             },
             {
+              title: "Ngày lễ",
+              url: "/staffs/holidays",
+            },
+            {
               title: "Bảng lương",
               url: "/staffs/payroll",
             },

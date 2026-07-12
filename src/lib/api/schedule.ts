@@ -209,11 +209,21 @@ export const workingScheduleApi = {
     return scoped;
   },
 
-  getCurrent: async (): Promise<CurrentWorkingScheduleResponse> => {
+  getCurrent: async (): Promise<{
+    schedule: WorkingSchedule | null;
+    message?: string;
+    serverTime?: string;
+  }> => {
     const response = await client.get<CurrentWorkingScheduleResponse>(
       "/working-schedules/current",
     );
-    return response.data;
+    const raw = response.data;
+    const apiSchedule = raw?.data ?? null;
+    return {
+      schedule: apiSchedule ? mapScheduleFromApi(apiSchedule) : null,
+      message: raw?.message,
+      serverTime: raw?.serverTime,
+    };
   },
 
   createBulk: async (
@@ -223,8 +233,10 @@ export const workingScheduleApi = {
       "/working-schedules/bulk",
       {
         schedules: schedules.map((schedule) => ({
-          ...schedule,
           userId: normalizeBulkUserId(schedule.userId),
+          shiftTemplateId: schedule.shiftTemplateId,
+          workDate: schedule.workDate,
+          scheduleType: schedule.scheduleType ?? "NORMAL",
         })),
       },
     );

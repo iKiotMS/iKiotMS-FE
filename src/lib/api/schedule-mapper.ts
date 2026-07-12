@@ -170,6 +170,8 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
   const workDate = resolveWorkDateText(raw.workDate, raw.startAt);
 
   const { startTime, endTime } = resolveShiftTimes(raw, shiftTemplate);
+  const scheduleType =
+    raw.scheduleType === "OVERTIME" ? "OVERTIME" : "NORMAL";
 
   return {
     _id: raw._id,
@@ -185,6 +187,16 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     startTime,
     endTime,
     workDate,
+    scheduleType,
+    dayInfo: raw.dayInfo
+      ? {
+          dayType: raw.dayInfo.dayType ?? "NORMAL",
+          isSunday: Boolean(raw.dayInfo.isSunday),
+          isHoliday: Boolean(raw.dayInfo.isHoliday),
+          holidayName: raw.dayInfo.holidayName ?? null,
+          holidayType: raw.dayInfo.holidayType ?? null,
+        }
+      : undefined,
     status: raw.status as WorkingSchedule["status"],
     attendance: firstAssignee?.attendance ?? mapAttendance(undefined),
     createdAt: raw.createdAt,

@@ -6,7 +6,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -31,14 +30,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getSessionRole } from "@/lib/auth";
 import { getVietnamDateString } from "@/app/(protected)/staffs/shared/vietnam-datetime";
 import type { WorkingSchedule } from "@/types/working-schedule";
+import { ScheduleStaffPicker } from "./schedule-staff-picker";
 import { useSchedule } from "./schedule-provider";
 
 const scheduleFormSchema = z.object({
   userIds: z.array(z.string()).min(1, "Vui lòng chọn ít nhất một nhân viên"),
   shiftTemplateId: z.string().min(1, "Vui lòng chọn ca làm"),
   workDate: z.string().min(1, "Vui lòng chọn ngày"),
+  scheduleType: z.enum(["NORMAL", "OVERTIME"]),
 });
 
 type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
@@ -48,6 +50,7 @@ function getEditDefaults(schedule: WorkingSchedule): ScheduleFormValues {
     userIds: schedule.assignees.map((assignee) => assignee.userId),
     shiftTemplateId: schedule.shiftTemplateId,
     workDate: schedule.workDate.slice(0, 10),
+    scheduleType: schedule.scheduleType === "OVERTIME" ? "OVERTIME" : "NORMAL",
   };
 }
 
@@ -65,6 +68,7 @@ export function ScheduleMutateDialog({
   const isEdit = mode === "edit" && Boolean(currentRow);
   const { handleAdd, handleEdit, shiftTemplateOptions, staffOptions, setOpen } =
     useSchedule();
+  const isTenantOwner = getSessionRole() === "TENANT_OWNER";
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
@@ -72,6 +76,7 @@ export function ScheduleMutateDialog({
       userIds: [],
       shiftTemplateId: "",
       workDate: getVietnamDateString(),
+      scheduleType: "NORMAL",
     },
   });
 
@@ -87,6 +92,7 @@ export function ScheduleMutateDialog({
       userIds: [],
       shiftTemplateId: "",
       workDate: getVietnamDateString(),
+      scheduleType: "NORMAL",
     });
   }, [open, isEdit, currentRow, form]);
 
@@ -95,6 +101,7 @@ export function ScheduleMutateDialog({
       userId: values.userIds,
       shiftTemplateId: values.shiftTemplateId,
       workDate: values.workDate,
+      scheduleType: values.scheduleType,
     };
 
     try {
@@ -109,7 +116,6 @@ export function ScheduleMutateDialog({
     }
   }
 
-  const selectedUserIds = form.watch("userIds");
   const multiAssignee = (currentRow?.assignees.length ?? 0) > 1;
 
   return (
@@ -130,8 +136,10 @@ export function ScheduleMutateDialog({
                   </>
                 )}
               </>
+            ) : isTenantOwner ? (
+              "Chọn chi nhánh và nhân viên để phân ca."
             ) : (
-              "Tạo lịch làm mới theo ca cho một hoặc nhiều nhân viên đang hoạt động."
+              "Tạo lịch làm theo ca cho nhân viên đang hoạt động."
             )}
           </DialogDescription>
         </DialogHeader>
@@ -145,31 +153,25 @@ export function ScheduleMutateDialog({
                 <FormItem>
                   <FormLabel>Nhân viên</FormLabel>
                   {staffOptions.length > 0 ? (
-                    <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
-                      {staffOptions.map((item) => {
-                        const checked = field.value.includes(item.value);
-                        return (
-                          <label
-                            key={item.value}
-                            className="flex cursor-pointer items-center gap-2 text-sm"
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(value) => {
-                                if (value) {
-                                  field.onChange([...field.value, item.value]);
-                                } else {
-                                  field.onChange(
-                                    field.value.filter((id) => id !== item.value),
-                                  );
-                                }
-                              }}
-                            />
-                            <span className="truncate">{item.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <ScheduleStaffPicker
+                      key={
+                        isEdit && currentRow
+                          ? `edit-${currentRow._id}`
+                          : open
+                            ? "add"
+                            : "closed"
+                      }
+                      options={staffOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      requireBranchFilter={isTenantOwner}
+                      initialBranchId={
+                        isEdit
+                          ? currentRow?.assignees.find((a) => a.branchId)
+                              ?.branchId
+                          : undefined
+                      }
+                    />
                   ) : (
                     <FormControl>
                       <Input
@@ -184,11 +186,6 @@ export function ScheduleMutateDialog({
                         }}
                       />
                     </FormControl>
-                  )}
-                  {selectedUserIds.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Đã chọn {selectedUserIds.length} nhân viên
-                    </p>
                   )}
                   <FormMessage />
                 </FormItem>
@@ -245,6 +242,28 @@ export function ScheduleMutateDialog({
                       </button>
                     </p>
                   )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="scheduleType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Loại ca</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cursor-pointer w-full">
+                        <SelectValue placeholder="Chọn loại ca" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="NORMAL">Ca thường</SelectItem>
+                      <SelectItem value="OVERTIME">Tăng ca</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

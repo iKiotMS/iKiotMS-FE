@@ -2,6 +2,7 @@ import client from "./client";
 import {
   isDeletedStaff,
   mapStaffFromApi,
+  unwrapStaffPayload,
   type ApiStaffUser,
 } from "./staff-mapper";
 import { parseIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
@@ -13,6 +14,7 @@ import type {
   CreateStaffAccountPayload,
   CreateStaffPayload,
   Staff,
+  StaffLeaveBalance,
   StaffListResponse,
   StaffManagerActionPayload,
   StaffQueryParams,
@@ -28,6 +30,40 @@ interface StaffListApiResponse {
     page: number;
     recordPerPage: number;
     totalPages: number;
+  };
+}
+
+/** Response shape from POST/PATCH /staff/:staffId/leave-balance */
+type LeaveBalanceApiResponse = {
+  success?: boolean;
+  message?: string;
+  leaveBalance?: StaffLeaveBalance & { usedDays?: number };
+};
+
+export type StaffLeaveBalanceResult = {
+  message?: string;
+  leaveBalance: StaffLeaveBalance & { usedDays?: number };
+};
+
+function mapLeaveBalanceResult(
+  payload: LeaveBalanceApiResponse | undefined,
+): StaffLeaveBalanceResult {
+  const leaveBalance = payload?.leaveBalance;
+  const annual = Number(leaveBalance?.annualLeaveDays);
+  const remaining = Number(leaveBalance?.remainingDays);
+  if (!leaveBalance || !Number.isFinite(annual) || !Number.isFinite(remaining)) {
+    throw new Error("Không nhận được leaveBalance từ máy chủ");
+  }
+
+  return {
+    message: payload?.message,
+    leaveBalance: {
+      annualLeaveDays: annual,
+      remainingDays: remaining,
+      ...(leaveBalance.usedDays != null
+        ? { usedDays: Number(leaveBalance.usedDays) }
+        : {}),
+    },
   };
 }
 
@@ -75,11 +111,11 @@ function buildCreateBody(payload: CreateStaffPayload) {
   };
 }
 
+/** PATCH /staff — không gửi role (đổi manager qua Branch/Warehouse assign). */
 function buildUpdateBody(payload: UpdateStaffPayload) {
   const data: Record<string, unknown> = {};
 
   if (payload.email !== undefined) data.email = payload.email;
-  if (payload.role !== undefined) data.role = payload.role;
   if (payload.branchId !== undefined) data.branchId = payload.branchId;
   if (payload.warehouseId !== undefined) data.warehouseId = payload.warehouseId;
   if (payload.hireDate !== undefined) {
@@ -160,11 +196,10 @@ export const staffApi = {
   },
 
   create: async (payload: CreateStaffPayload): Promise<Staff> => {
-    const response = await client.post<ApiStaffUser>(
-      "/staff",
-      buildCreateBody(payload),
-    );
-    return mapStaffFromApi(response.data);
+    const response = await client.post<unknown>("/staff", buildCreateBody(payload));
+    const user = unwrapStaffPayload(response.data);
+    if (!user) throw new Error("Không nhận được dữ liệu nhân viên từ máy chủ");
+    return mapStaffFromApi(user);
   },
 
   createAccount: async (
@@ -210,5 +245,29 @@ export const staffApi = {
       "/staff/roles",
     );
     return response.data?.data ?? [];
+  },
+
+  /** POST /staff/:staffId/leave-balance — body: { annualLeaveDays } */
+  createLeaveBalance: async (
+    staffId: string,
+    annualLeaveDays: number,
+  ): Promise<StaffLeaveBalanceResult> => {
+    const response = await client.post<LeaveBalanceApiResponse>(
+      `/staff/${staffId}/leave-balance`,
+      { annualLeaveDays },
+    );
+    return mapLeaveBalanceResult(response.data);
+  },
+
+  /** PATCH /staff/:staffId/leave-balance — body: { annualLeaveDays } */
+  updateAnnualLeaveDays: async (
+    staffId: string,
+    annualLeaveDays: number,
+  ): Promise<StaffLeaveBalanceResult> => {
+    const response = await client.patch<LeaveBalanceApiResponse>(
+      `/staff/${staffId}/leave-balance`,
+      { annualLeaveDays },
+    );
+    return mapLeaveBalanceResult(response.data);
   },
 };

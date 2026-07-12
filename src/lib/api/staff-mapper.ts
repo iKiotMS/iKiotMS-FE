@@ -1,6 +1,7 @@
 import type {
   Staff,
   StaffGender,
+  StaffLeaveBalance,
   StaffProfile,
   StaffRole,
   StaffStatus,
@@ -13,20 +14,27 @@ export interface ApiBranchRef {
 }
 
 export interface ApiStaffUser {
-  _id: string;
-  tenantId: string;
+  _id?: string;
+  id?: string;
+  tenantId?: string;
   email?: string;
   phoneNumber: string;
   role: string;
   status: string;
   branchId?: string | ApiBranchRef | null;
   warehouseId?: string | { _id: string; name?: string } | null;
+  branch?: string | ApiBranchRef | null;
+  warehouse?: string | { _id: string; name?: string } | null;
   profile?: StaffProfile & {
     firstName?: string;
     lastName?: string;
   };
   hireDate?: string;
   accountNote?: string;
+  leaveBalance?: {
+    annualLeaveDays?: number;
+    remainingDays?: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -94,23 +102,55 @@ function mapProfile(profile?: ApiStaffUser["profile"]): StaffProfile | undefined
   return Object.keys(mapped).length > 0 ? mapped : undefined;
 }
 
+function mapLeaveBalance(
+  balance?: ApiStaffUser["leaveBalance"],
+): StaffLeaveBalance | undefined {
+  if (!balance) return undefined;
+  const annual = Number(balance.annualLeaveDays);
+  const remaining = Number(balance.remainingDays);
+  if (!Number.isFinite(annual) || !Number.isFinite(remaining)) return undefined;
+  return { annualLeaveDays: annual, remainingDays: remaining };
+}
+
 export function isDeletedStaff(user: ApiStaffUser): boolean {
   return user.status === "DELETED";
+}
+
+/** Unwrap create (raw user) hoặc { staff } / { data } từ các action khác. */
+export function unwrapStaffPayload(payload: unknown): ApiStaffUser | null {
+  if (!payload || typeof payload !== "object") return null;
+  const body = payload as Record<string, unknown>;
+
+  if (body.staff && typeof body.staff === "object") {
+    return body.staff as ApiStaffUser;
+  }
+  if (body.data && typeof body.data === "object" && !Array.isArray(body.data)) {
+    return body.data as ApiStaffUser;
+  }
+  if (
+    typeof body.phoneNumber === "string" ||
+    typeof body._id === "string" ||
+    typeof body.id === "string"
+  ) {
+    return body as unknown as ApiStaffUser;
+  }
+  return null;
 }
 
 export function mapStaffFromApi(user: ApiStaffUser): Staff {
   const firstName = user.profile?.firstName ?? "";
   const lastName = user.profile?.lastName ?? "";
+  const branchRef = user.branchId ?? user.branch;
+  const warehouseRef = user.warehouseId ?? user.warehouse;
+  const id = user._id ?? user.id ?? "";
 
   return {
-    _id: user._id,
-    tenantId: String(user.tenantId),
-    branchId: resolveRefId(user.branchId),
-    branchName: resolveRefName(user.branchId),
-    warehouseId: resolveRefId(user.warehouseId) || undefined,
-    warehouseName: user.warehouseId
-      ? resolveRefName(user.warehouseId)
-      : undefined,
+    _id: String(id),
+    tenantId: String(user.tenantId ?? ""),
+    branchId: resolveRefId(branchRef),
+    branchName: resolveRefName(branchRef),
+    warehouseId: resolveRefId(warehouseRef) || undefined,
+    warehouseName: warehouseRef ? resolveRefName(warehouseRef) : undefined,
     firstName,
     lastName,
     fullName: `${lastName} ${firstName}`.trim() || user.phoneNumber,
@@ -121,6 +161,7 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     joinedAt: user.hireDate ?? user.createdAt,
     profile: mapProfile(user.profile),
     accountNote: user.accountNote,
+    leaveBalance: mapLeaveBalance(user.leaveBalance),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

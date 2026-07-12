@@ -28,7 +28,8 @@ type StaffsDialogType =
   | "delete"
   | "deactivate"
   | "activate"
-  | "password";
+  | "password"
+  | "leaveBalance";
 
 const DEFAULT_LIST_QUERY: StaffListQuery = {
   page: 1,
@@ -85,6 +86,14 @@ type StaffsContextType = {
   assignManagerBranchName?: string;
   openAssignBranchManager: (branchId?: string, branchName?: string) => void;
   closeAssignBranchManager: () => void;
+  assignWarehouseManagerOpen: boolean;
+  assignManagerWarehouseId?: string;
+  assignManagerWarehouseName?: string;
+  openAssignWarehouseManager: (
+    warehouseId?: string,
+    warehouseName?: string,
+  ) => void;
+  closeAssignWarehouseManager: () => void;
 };
 
 const StaffsContext = React.createContext<StaffsContextType | null>(null);
@@ -130,6 +139,14 @@ export function StaffsProvider({
     string | undefined
   >();
   const [assignManagerBranchName, setAssignManagerBranchName] = useState<
+    string | undefined
+  >();
+  const [assignWarehouseManagerOpen, setAssignWarehouseManagerOpen] =
+    useState(false);
+  const [assignManagerWarehouseId, setAssignManagerWarehouseId] = useState<
+    string | undefined
+  >();
+  const [assignManagerWarehouseName, setAssignManagerWarehouseName] = useState<
     string | undefined
   >();
 
@@ -364,6 +381,21 @@ export function StaffsProvider({
     setAssignManagerBranchName(undefined);
   }
 
+  function openAssignWarehouseManager(
+    warehouseId?: string,
+    warehouseName?: string,
+  ) {
+    setAssignManagerWarehouseId(warehouseId);
+    setAssignManagerWarehouseName(warehouseName);
+    setAssignWarehouseManagerOpen(true);
+  }
+
+  function closeAssignWarehouseManager() {
+    setAssignWarehouseManagerOpen(false);
+    setAssignManagerWarehouseId(undefined);
+    setAssignManagerWarehouseName(undefined);
+  }
+
   return (
     <StaffsContext.Provider
       value={{
@@ -402,6 +434,11 @@ export function StaffsProvider({
         assignManagerBranchName,
         openAssignBranchManager,
         closeAssignBranchManager,
+        assignWarehouseManagerOpen,
+        assignManagerWarehouseId,
+        assignManagerWarehouseName,
+        openAssignWarehouseManager,
+        closeAssignWarehouseManager,
       }}
     >
       {children}

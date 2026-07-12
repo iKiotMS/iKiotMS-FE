@@ -32,6 +32,7 @@ import { useSchedule } from "./schedule-provider";
 export function ScheduleDetailPanel() {
   const {
     schedules,
+    holidaysByDate,
     selectedSchedule,
     setSelectedSchedule,
     selectedAssigneeUserId,
@@ -66,6 +67,10 @@ export function ScheduleDetailPanel() {
   const dateLabel = selectedDayDate
     ? format(parseISO(selectedDayDate), "EEEE, dd/MM/yyyy", { locale: vi })
     : "";
+
+  const dayHolidayName = selectedDayDate
+    ? holidaysByDate.get(selectedDayDate) ?? null
+    : null;
 
   /** Mỗi ca (schedule._id) cần đếm riêng để hiển thị số người. */
   const dayScheduleCount = useMemo(
@@ -196,8 +201,14 @@ export function ScheduleDetailPanel() {
                     {dateLabel}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {dayEntries.length} nhân viên ·{" "}
-                    {dayScheduleCount} ca
+                    {[
+                      dayHolidayName,
+                      dayEntries.length > 0
+                        ? `${dayEntries.length} nhân viên · ${dayScheduleCount} ca`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Không có lịch làm"}
                   </p>
                 </div>
               </div>
@@ -222,9 +233,21 @@ export function ScheduleDetailPanel() {
           {showDayList && (
             <div className="space-y-2 p-4">
               {dayEntries.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Không có lịch phù hợp bộ lọc hiện tại.
-                </p>
+                <div className="space-y-3 py-6 text-center">
+                  {dayHolidayName ? (
+                    <div className="mx-auto max-w-sm rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                        Ngày lễ
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-amber-950 dark:text-amber-100">
+                        {dayHolidayName}
+                      </p>
+                    </div>
+                  ) : null}
+                  <p className="text-sm text-muted-foreground">
+                    Không có lịch làm trong ngày này.
+                  </p>
+                </div>
               ) : (
                 dayEntries.map((entry) => (
                   <ScheduleDayListItem

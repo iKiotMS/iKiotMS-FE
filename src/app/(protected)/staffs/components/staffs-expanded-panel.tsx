@@ -33,6 +33,7 @@ import {
 import { getSessionBranchId, getSessionRole } from "@/lib/auth";
 import {
   canAssignBranchManager,
+  canAssignWarehouseManager,
   canDeleteStaff,
   canManageStaffAccount,
   canUpdateStaff,
@@ -76,7 +77,8 @@ export function StaffsExpandedPanel({
   staff: Staff;
   isExpanded: boolean;
 }) {
-  const { setOpen, setCurrentRow, openAssignBranchManager } = useStaffs();
+  const { setOpen, setCurrentRow, openAssignBranchManager, openAssignWarehouseManager } =
+    useStaffs();
   const userRole = getSessionRole();
   const requesterBranchId = getSessionBranchId();
   const showDelete =
@@ -87,7 +89,13 @@ export function StaffsExpandedPanel({
   const showAssignBranchManager =
     canAssignBranchManager(userRole) &&
     staff.role === "BRANCH_MANAGER" &&
-    Boolean(staff.branchId);
+    Boolean(staff.branchId) &&
+    (userRole === "TENANT_OWNER" ||
+      staff.branchId === requesterBranchId);
+  const showAssignWarehouseManager =
+    canAssignWarehouseManager(userRole) &&
+    staff.role === "WAREHOUSE_MANAGER" &&
+    Boolean(staff.warehouseId);
 
   if (!isExpanded) return null;
 
@@ -161,6 +169,13 @@ export function StaffsExpandedPanel({
           label="Ngày vào làm"
           value={formatStaffDate(staff.joinedAt)}
         />
+        {staff.leaveBalance && (
+          <InfoItem
+            icon={<CalendarDays className="size-4" />}
+            label="Phép năm"
+            value={`${staff.leaveBalance.remainingDays}/${staff.leaveBalance.annualLeaveDays} ngày`}
+          />
+        )}
         {staff.profile?.identificationId && (
           <InfoItem
             icon={<CreditCard className="size-4" />}
@@ -259,7 +274,26 @@ export function StaffsExpandedPanel({
               }}
             >
               <UserCog className="mr-2 size-4" />
-              Thay quản lý chi nhánh
+              {userRole === "BRANCH_MANAGER"
+                ? "Chuyển nhượng chi nhánh"
+                : "Thay quản lý chi nhánh"}
+            </Button>
+          )}
+          {showAssignWarehouseManager && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                openAssignWarehouseManager(
+                  staff.warehouseId,
+                  staff.warehouseName,
+                );
+              }}
+            >
+              <Warehouse className="mr-2 size-4" />
+              Thay quản lý kho
             </Button>
           )}
           {showAccountActions && canActivate && (
@@ -312,6 +346,21 @@ export function StaffsExpandedPanel({
             >
               <KeyRound className="mr-2 size-4" />
               Đổi mật khẩu
+            </Button>
+          )}
+          {showEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("leaveBalance");
+              }}
+            >
+              <CalendarDays className="mr-2 size-4" />
+              {staff.leaveBalance ? "Sửa ngày phép" : "Tạo ngày phép"}
             </Button>
           )}
           {showEdit && (

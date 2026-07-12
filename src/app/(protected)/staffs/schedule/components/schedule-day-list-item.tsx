@@ -50,6 +50,11 @@ export function ScheduleDayListItem({
           <Badge variant={attendance.variant} className="text-[10px] px-1.5 py-0">
             {attendance.label}
           </Badge>
+          {schedule.scheduleType === "OVERTIME" && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              Tăng ca
+            </Badge>
+          )}
         </div>
         <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="size-3 shrink-0" />
