@@ -5,199 +5,154 @@ import { Label, Pie, PieChart, Sector } from "recharts"
 import type { PieSectorDataItem } from "recharts/types/polar/Pie"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartStyle, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useDashboard } from "./dashboard-provider"
+import { formatCompactVND, PAYMENT_METHOD_LABELS } from "../shared/format"
 
-const revenueData = [
-  { category: "subscriptions", value: 45, amount: 24500, fill: "var(--color-subscriptions)" },
-  { category: "sales", value: 30, amount: 16300, fill: "var(--color-sales)" },
-  { category: "services", value: 15, amount: 8150, fill: "var(--color-services)" },
-  { category: "partnerships", value: 10, amount: 5430, fill: "var(--color-partnerships)" },
-]
-
-const chartConfig = {
-  revenue: {
-    label: "Revenue",
-  },
-  amount: {
-    label: "Amount",
-  },
-  subscriptions: {
-    label: "Subscriptions",
-    color: "var(--chart-1)",
-  },
-  sales: {
-    label: "One-time Sales",
-    color: "var(--chart-2)",
-  },
-  services: {
-    label: "Services",
-    color: "var(--chart-3)",
-  },
-  partnerships: {
-    label: "Partnerships",
-    color: "var(--chart-4)",
-  },
-}
+const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"]
 
 export function RevenueBreakdown() {
   const id = "revenue-breakdown"
-  const [activeCategory, setActiveCategory] = React.useState("sales")
+  const { revenueByPaymentMethod, isLoading } = useDashboard()
+
+  const breakdown = revenueByPaymentMethod?.breakdown ?? []
+  const totalRevenue = breakdown.reduce((sum, item) => sum + item.revenue, 0)
+
+  const chartData = breakdown.map((item, index) => ({
+    method: item.paymentMethod,
+    label: PAYMENT_METHOD_LABELS[item.paymentMethod] ?? item.paymentMethod,
+    amount: item.revenue,
+    orderCount: item.orderCount,
+    percent: totalRevenue ? Math.round((item.revenue / totalRevenue) * 100) : 0,
+    fill: CHART_COLORS[index % CHART_COLORS.length],
+  }))
+
+  const [activeMethod, setActiveMethod] = React.useState<string | null>(null)
 
   const activeIndex = React.useMemo(() => {
-    const index = revenueData.findIndex((item) => item.category === activeCategory)
+    if (!chartData.length) return 0
+    const index = chartData.findIndex((item) => item.method === activeMethod)
     return index === -1 ? 0 : index
-  }, [activeCategory])
+  }, [activeMethod, chartData])
 
-  const categories = React.useMemo(() => revenueData.map((item) => item.category), [])
+  const chartConfig = React.useMemo(() => {
+    return chartData.reduce((config, item) => {
+      config[item.method] = { label: item.label, color: item.fill }
+      return config
+    }, {} as Record<string, { label: string; color: string }>)
+  }, [chartData])
 
   return (
     <Card data-chart={id} className="flex flex-col cursor-pointer">
       <ChartStyle id={id} config={chartConfig} />
-      <CardHeader className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2">
-        <div>
-          <CardTitle>Revenue Breakdown</CardTitle>
-          <CardDescription>Revenue distribution by source</CardDescription>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Select value={activeCategory} onValueChange={setActiveCategory}>
-            <SelectTrigger
-              className="w-[175px] rounded-lg cursor-pointer"
-              aria-label="Select a category"
-            >
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent align="end" className="rounded-lg">
-              {categories.map((key) => {
-                const config = chartConfig[key as keyof typeof chartConfig]
-
-                if (!config) {
-                  return null
-                }
-
-                return (
-                  <SelectItem
-                    key={key}
-                    value={key}
-                    className="rounded-md [&_span]:flex cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="flex h-3 w-3 shrink-0 "
-                        style={{
-                          backgroundColor: `var(--color-${key})`,
-                        }}
-                      />
-                      {config?.label}
-                    </div>
-                  </SelectItem>
-                )
-              })}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" className="cursor-pointer">
-            Export
-          </Button>
-        </div>
+      <CardHeader className="pb-2">
+        <CardTitle>Cơ cấu doanh thu</CardTitle>
+        <CardDescription>Doanh thu theo phương thức thanh toán</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-          <div className="flex justify-center">
-            <ChartContainer
-              id={id}
-              config={chartConfig}
-              className="mx-auto aspect-square w-full max-w-[300px]"
-            >
-              <PieChart>
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent hideLabel />}
-                />
-                <Pie
-                  data={revenueData}
-                  dataKey="amount"
-                  nameKey="category"
-                  innerRadius={60}
-                  strokeWidth={5}
-                  activeShape={({
-                    outerRadius = 0,
-                    ...props
-                  }: PieSectorDataItem) => (
-                    <g>
-                      <Sector {...props} outerRadius={outerRadius + 10} />
-                      <Sector
-                        {...props}
-                        outerRadius={outerRadius + 25}
-                        innerRadius={outerRadius + 12}
-                      />
-                    </g>
-                  )}
-                >
-                  <Label
-                    content={({ viewBox }) => {
-                      if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                        return (
-                          <text
-                            x={viewBox.cx}
-                            y={viewBox.cy}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                          >
-                            <tspan
+        {isLoading && !revenueByPaymentMethod ? (
+          <Skeleton className="h-[300px] w-full" />
+        ) : chartData.length === 0 ? (
+          <div className="flex items-center justify-center text-sm text-muted-foreground py-12">
+            Chưa có dữ liệu doanh thu trong khoảng thời gian này
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            <div className="flex justify-center">
+              <ChartContainer
+                id={id}
+                config={chartConfig}
+                className="mx-auto aspect-square w-full max-w-[300px]"
+              >
+                <PieChart>
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel />}
+                  />
+                  <Pie
+                    data={chartData}
+                    dataKey="amount"
+                    nameKey="method"
+                    innerRadius={60}
+                    strokeWidth={5}
+                    activeShape={({
+                      outerRadius = 0,
+                      ...props
+                    }: PieSectorDataItem) => (
+                      <g>
+                        <Sector {...props} outerRadius={outerRadius + 10} />
+                        <Sector
+                          {...props}
+                          outerRadius={outerRadius + 25}
+                          innerRadius={outerRadius + 12}
+                        />
+                      </g>
+                    )}
+                  >
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                          const active = chartData[activeIndex]
+                          return (
+                            <text
                               x={viewBox.cx}
                               y={viewBox.cy}
-                              className="fill-foreground text-3xl font-bold"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
                             >
-                              ${(revenueData[activeIndex].amount / 1000).toFixed(0)}K
-                            </tspan>
-                            <tspan
-                              x={viewBox.cx}
-                              y={(viewBox.cy || 0) + 24}
-                              className="fill-muted-foreground"
-                            >
-                              Revenue
-                            </tspan>
-                          </text>
-                        )
-                      }
-                    }}
-                  />
-                </Pie>
-              </PieChart>
-            </ChartContainer>
-          </div>
-
-          <div className="flex flex-col justify-center space-y-4">
-            {revenueData.map((item, index) => {
-              const config = chartConfig[item.category as keyof typeof chartConfig]
-              const isActive = index === activeIndex
-
-              return (
-                <div
-                  key={item.category}
-                  className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
-                    isActive ? 'bg-muted' : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => setActiveCategory(item.category)}
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="flex h-3 w-3 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: `var(--color-${item.category})`,
+                              <tspan
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                className="fill-foreground text-2xl font-bold"
+                              >
+                                {formatCompactVND(active.amount)}
+                              </tspan>
+                              <tspan
+                                x={viewBox.cx}
+                                y={(viewBox.cy || 0) + 24}
+                                className="fill-muted-foreground"
+                              >
+                                {active.label}
+                              </tspan>
+                            </text>
+                          )
+                        }
                       }}
                     />
-                    <span className="font-medium">{config?.label}</span>
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            </div>
+
+            <div className="flex flex-col justify-center space-y-4">
+              {chartData.map((item, index) => {
+                const isActive = index === activeIndex
+
+                return (
+                  <div
+                    key={item.method}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
+                      isActive ? 'bg-muted' : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => setActiveMethod(item.method)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="flex h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <span className="font-medium">{item.label}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold">{formatCompactVND(item.amount)}</div>
+                      <div className="text-sm text-muted-foreground">{item.percent}%</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold">${(item.amount / 1000).toFixed(1)}K</div>
-                    <div className="text-sm text-muted-foreground">{item.value}%</div>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )
