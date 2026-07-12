@@ -145,6 +145,7 @@ export function InvoicesTable() {
   const table = useReactTable({
     data: invoices,
     columns,
+    getRowId: (row) => row.id,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -166,6 +167,46 @@ export function InvoicesTable() {
       expanded,
     },
   });
+
+  // Auto-expand invoice row from URL query parameter (id)
+  useEffect(() => {
+    if (invoices.length > 0) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const invoiceId = searchParams.get("id") || searchParams.get("invoiceId");
+      if (invoiceId) {
+        const index = invoices.findIndex((inv) => inv.id === invoiceId);
+        if (index !== -1) {
+          const pageSize = table.getState().pagination.pageSize || 10;
+          const pageIndex = Math.floor(index / pageSize);
+          table.setPageIndex(pageIndex);
+          // Wait for pagination re-render before setting expanded state
+          const t = setTimeout(() => setExpanded({ [invoiceId]: true }), 0);
+          return () => clearTimeout(t);
+        }
+      }
+    }
+  }, [invoices, table]);
+
+  // Listen to custom 'open-item' event for instant opening when already on the same page
+  useEffect(() => {
+    const handleOpenItem = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.type === "/sales/invoices" && customEvent.detail?.id) {
+        const invoiceId = customEvent.detail.id;
+        const index = invoices.findIndex((inv) => inv.id === invoiceId);
+        if (index !== -1) {
+          const pageSize = table.getState().pagination.pageSize || 10;
+          const pageIndex = Math.floor(index / pageSize);
+          table.setPageIndex(pageIndex);
+          // Wait for pagination re-render before setting expanded state
+          setTimeout(() => setExpanded({ [invoiceId]: true }), 0);
+        }
+      }
+    };
+
+    window.addEventListener("open-item", handleOpenItem);
+    return () => window.removeEventListener("open-item", handleOpenItem);
+  }, [invoices, table]);
 
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const hasSelected = selectedRows.length > 0;

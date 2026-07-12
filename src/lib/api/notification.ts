@@ -55,6 +55,16 @@ export async function markAllSystemNotificationsAsRead(): Promise<{ success: boo
   return response.data;
 }
 
+export async function deleteSystemNotification(id: string): Promise<{ success: boolean }> {
+  const response = await client.delete(`/admin/system-notifications/${id}`);
+  return response.data;
+}
+
+export async function deleteAllSystemNotifications(): Promise<{ success: boolean }> {
+  const response = await client.delete("/admin/system-notifications");
+  return response.data;
+}
+
 // ---- Hộp thư cấp tenant (khác hoàn toàn với /admin/* ở trên) ----
 
 export type NotificationType =
@@ -102,6 +112,14 @@ export const notificationApi = {
 
   async markAllAsRead(): Promise<void> {
     await client.patch("/notifications/read-all");
+  },
+
+  async deleteOne(id: string): Promise<void> {
+    await client.delete(`/notifications/${id}`);
+  },
+
+  async deleteAll(): Promise<void> {
+    await client.delete("/notifications");
   },
 
   async registerDevice(token: string): Promise<void> {

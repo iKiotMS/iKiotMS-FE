@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import {
   listSystemNotifications,
   markSystemNotificationAsRead,
   markAllSystemNotificationsAsRead,
+  deleteSystemNotification,
+  deleteAllSystemNotifications,
   type SystemNotification,
 } from "@/lib/api/notification";
 import { useNotificationStore } from "@/store/notification-store";
@@ -15,10 +17,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getSocket } from "@/lib/socket";
 import { toast } from "sonner";
-import { Bell, CreditCard, UserPlus, LifeBuoy } from "lucide-react";
+import { Bell, CreditCard, UserPlus, LifeBuoy, X, Trash2 } from "lucide-react";
 
 export default function SystemNotificationsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [systemNotifications, setSystemNotifications] = useState<
     SystemNotification[]
   >([]);
@@ -85,6 +88,13 @@ export default function SystemNotificationsPage() {
       await handleMarkAsRead(notif._id);
     }
     if (notif.type === "SYSTEM_TICKET_CREATED" && notif.referenceId) {
+      if (pathname === "/admin/tickets") {
+        window.dispatchEvent(
+          new CustomEvent("open-item", {
+            detail: { type: "/admin/tickets", id: notif.referenceId },
+          }),
+        );
+      }
       router.push(`/admin/tickets?ticketId=${notif.referenceId}`);
     } else if (notif.type === "SYSTEM_TENANT_CREATED" && notif.referenceId) {
       router.push(`/admin/users?tenantId=${notif.referenceId}`);
@@ -107,6 +117,38 @@ export default function SystemNotificationsPage() {
     } catch (err) {
       console.error(err);
       toast.error("Không thể cập nhật trạng thái!");
+    }
+  };
+
+  // Delete a single notification
+  const handleDeleteOne = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const target = systemNotifications.find((n) => n._id === id);
+    const wasUnread = target && !target.isRead;
+    // Optimistic
+    setSystemNotifications((prev) => prev.filter((n) => n._id !== id));
+    if (wasUnread) decrementUnreadCount();
+    try {
+      await deleteSystemNotification(id);
+    } catch {
+      toast.error("Không thể xóa thông báo!");
+      listSystemNotifications().then((data) =>
+        setSystemNotifications(data || []),
+      );
+    }
+  };
+
+  // Delete all notifications
+  const handleDeleteAll = async () => {
+    const prevList = systemNotifications;
+    setSystemNotifications([]);
+    setUnreadCount(0);
+    try {
+      await deleteAllSystemNotifications();
+      toast.success("Đã xóa tất cả thông báo!");
+    } catch {
+      toast.error("Không thể xóa thông báo!");
+      setSystemNotifications(prevList);
     }
   };
 
@@ -149,16 +191,29 @@ export default function SystemNotificationsPage() {
         title="Thông báo hệ thống"
         description="Theo dõi hoạt động giao dịch, đăng ký cửa hàng mới và yêu cầu hỗ trợ thời gian thực."
         actions={
-          systemNotifications.some((s) => !s.isRead) && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleMarkAllAsRead}
-              className="text-xs cursor-pointer"
-            >
-              Đánh dấu đọc tất cả
-            </Button>
-          )
+          <div className="flex items-center gap-2">
+            {systemNotifications.some((s) => !s.isRead) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleMarkAllAsRead}
+                className="text-xs cursor-pointer"
+              >
+                Đánh dấu đọc tất cả
+              </Button>
+            )}
+            {systemNotifications.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDeleteAll}
+                className="text-xs cursor-pointer text-destructive border-destructive/30 hover:bg-destructive/5"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Xóa tất cả
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -180,7 +235,7 @@ export default function SystemNotificationsPage() {
               <div
                 key={notif._id}
                 onClick={() => handleNotificationClick(notif)}
-                className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/30 ${
+                className={`group relative flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/30 ${
                   notif.isRead
                     ? "bg-muted/10 opacity-75"
                     : "bg-card border-l-4 border-l-primary shadow-xs"
@@ -199,9 +254,19 @@ export default function SystemNotificationsPage() {
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] text-muted-foreground font-mono shrink-0 whitespace-nowrap ml-4">
-                  {new Date(notif.createdAt).toLocaleString("vi-VN")}
-                </span>
+                <div className="flex items-center gap-3 shrink-0 ml-4">
+                  <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+                    {new Date(notif.createdAt).toLocaleString("vi-VN")}
+                  </span>
+                  {/* Delete button — visible on hover */}
+                  <button
+                    onClick={(e) => handleDeleteOne(e, notif._id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-1 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                    title="Xóa thông báo này"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

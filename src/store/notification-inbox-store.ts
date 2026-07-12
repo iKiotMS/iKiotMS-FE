@@ -10,6 +10,8 @@ interface NotificationInboxState {
   receive: (notification: AppNotification) => void;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteOne: (id: string) => Promise<void>;
+  deleteAll: () => Promise<void>;
   reset: () => void;
 }
 
@@ -67,6 +69,30 @@ export const useNotificationInboxStore = create<NotificationInboxState>((set, ge
     }));
     try {
       await notificationApi.markAllAsRead();
+    } catch {
+      get().fetchInbox();
+    }
+  },
+
+  deleteOne: async (id) => {
+    const target = get().items.find((item) => item._id === id);
+    const wasUnread = target && !target.isRead;
+    // Optimistic remove
+    set((state) => ({
+      items: state.items.filter((item) => item._id !== id),
+      unreadCount: wasUnread ? Math.max(state.unreadCount - 1, 0) : state.unreadCount,
+    }));
+    try {
+      await notificationApi.deleteOne(id);
+    } catch {
+      get().fetchInbox(); // rollback
+    }
+  },
+
+  deleteAll: async () => {
+    set({ items: [], unreadCount: 0 });
+    try {
+      await notificationApi.deleteAll();
     } catch {
       get().fetchInbox();
     }

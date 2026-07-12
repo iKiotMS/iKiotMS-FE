@@ -94,6 +94,25 @@ export default function AdminTicketsPage() {
     }
   }, [tickets]);
 
+  // Listen to custom 'open-item' event for instant opening when already on this page
+  useEffect(() => {
+    const handleOpenItem = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.type === "/admin/tickets" && customEvent.detail?.id) {
+        const ticketId = customEvent.detail.id;
+        const found = tickets.find(
+          (t) => t._id === ticketId || t.ticketId === ticketId,
+        );
+        if (found) {
+          setSelectedTicket(found);
+        }
+      }
+    };
+
+    window.addEventListener("open-item", handleOpenItem);
+    return () => window.removeEventListener("open-item", handleOpenItem);
+  }, [tickets]);
+
   // Listen to ticket-update real-time events
   useEffect(() => {
     try {

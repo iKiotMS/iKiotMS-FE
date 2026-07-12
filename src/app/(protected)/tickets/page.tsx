@@ -184,6 +184,25 @@ export default function TenantTicketsPage() {
     }
   }, [tickets]);
 
+  // ── Listen to custom 'open-item' event for instant opening when already on the same page
+  useEffect(() => {
+    const handleOpenItem = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.type === "/tickets" && customEvent.detail?.id) {
+        const ticketId = customEvent.detail.id;
+        const found = tickets.find(
+          (t) => t._id === ticketId || t.ticketId === ticketId,
+        );
+        if (found) {
+          setSelectedTicket(found);
+        }
+      }
+    };
+
+    window.addEventListener("open-item", handleOpenItem);
+    return () => window.removeEventListener("open-item", handleOpenItem);
+  }, [tickets]);
+
   // ── Real-time ticket updates
   useEffect(() => {
     try {
