@@ -137,18 +137,20 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (branchRequestKind === 'return') {
       return {
         title: 'Tạo yêu cầu trả hàng',
-        description: 'Trả hàng từ chi nhánh về kho (RETURN).',
-        toLabel: 'Kho nhận',
-        toPlaceholder: 'Chọn kho nhận',
-        listTitle: 'Danh sách hàng hóa trả về kho',
+        description:
+          'Chi nhánh có thể trả/chuyển tới kho hoặc chi nhánh khác. Chọn kho = RETURN; chọn chi nhánh = EXPORT.',
+        toLabel: 'Nơi nhận',
+        toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
+        listTitle: 'Danh sách hàng hóa cần trả / chuyển',
         submit: 'Tạo yêu cầu trả hàng',
       }
     }
     return {
       title: 'Tạo yêu cầu chuyển hàng',
-      description: 'Chuyển hàng sang chi nhánh khác (EXPORT).',
-      toLabel: 'Chi nhánh nhận',
-      toPlaceholder: 'Chọn chi nhánh nhận',
+      description:
+        'Chi nhánh có thể chuyển tới chi nhánh khác hoặc kho. Chọn chi nhánh = EXPORT; chọn kho = RETURN.',
+      toLabel: 'Nơi nhận',
+      toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
       listTitle: 'Danh sách hàng hóa cần chuyển',
       submit: 'Tạo yêu cầu chuyển hàng',
     }
@@ -187,14 +189,12 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (role === 'WAREHOUSE_MANAGER') {
       return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
     }
+    // BM: được chuyển/trả tới chi nhánh khác hoặc kho
     if (role === 'BRANCH_MANAGER') {
-      if (branchRequestKind === 'return') {
-        return locations.filter((l) => l.type === 'warehouse')
-      }
-      return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
+      return locations.filter((l) => l._id !== fromLocationId)
     }
     return locations.filter((l) => l._id !== fromLocationId)
-  }, [locations, fromLocationId, role, branchRequestKind])
+  }, [locations, fromLocationId, role])
 
   useEffect(() => {
     if (!open || !fromLocationId || !fromLocation) {
@@ -245,28 +245,13 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
         toast.error('Chi nhánh chỉ được xuất từ chi nhánh của bạn')
         return
       }
-      if (branchRequestKind === 'transfer' && toLoc?.type !== 'branch') {
-        toast.error('Yêu cầu chuyển hàng chỉ sang chi nhánh khác')
-        return
-      }
-      if (branchRequestKind === 'return' && toLoc?.type !== 'warehouse') {
-        toast.error('Yêu cầu trả hàng phải chọn kho nhận')
-        return
-      }
     }
 
-    const movementType = isBranchManager
-      ? branchRequestKind === 'return'
+    // BR→WH phải RETURN; còn lại EXPORT (kể cả BR→BR)
+    const movementType =
+      fromLoc?.type === 'branch' && toLoc?.type === 'warehouse'
         ? ('RETURN' as const)
         : ('EXPORT' as const)
-      : fromLoc?.type === 'branch' && toLoc?.type === 'warehouse'
-        ? ('RETURN' as const)
-        : ('EXPORT' as const)
-
-    if (role === 'BRANCH_MANAGER' && movementType === 'EXPORT' && toLoc?.type !== 'branch') {
-      toast.error('Xuất nội bộ chỉ sang chi nhánh khác; trả kho dùng yêu cầu trả hàng')
-      return
-    }
 
     try {
       await stockMovementApi.createExport({
@@ -331,9 +316,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   </ToggleGroupItem>
                 </ToggleGroup>
                 <p className="text-xs text-muted-foreground">
-                  {branchRequestKind === 'return'
-                    ? 'Chi nhánh → Kho (RETURN)'
-                    : 'Chi nhánh → Chi nhánh (EXPORT)'}
+                  Nơi nhận có thể là chi nhánh khác hoặc kho. Hệ thống tự gán EXPORT
+                  (sang chi nhánh) hoặc RETURN (về kho).
                 </p>
               </div>
             )}
@@ -377,16 +361,11 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   </Select>
                   {visibleToLocations.length === 0 && (
                     <p className="text-xs text-amber-600">
-                      {isBranchManager
-                        ? branchRequestKind === 'return'
-                          ? 'Chưa có kho đích phù hợp.'
-                          : 'Chưa có chi nhánh đích phù hợp.'
-                        : role === 'WAREHOUSE_MANAGER'
-                          ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
-                          : 'Không có nơi nhận phù hợp.'}
+                      {role === 'WAREHOUSE_MANAGER'
+                        ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
+                        : 'Không có nơi nhận phù hợp.'}
                     </p>
-                  )}
-                  <FormMessage />
+                  )}                  <FormMessage />
                 </FormItem>
               )} />
             </div>

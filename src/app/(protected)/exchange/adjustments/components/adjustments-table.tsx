@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -64,9 +64,30 @@ export function AdjustmentsTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [locationFilter, setLocationFilter] = useState("ALL");
+
+  const locationOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of adjustments) {
+      if (row.fromLocationId) {
+        map.set(
+          row.fromLocationId,
+          row.fromLocationName || row.fromLocationId,
+        );
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [adjustments]);
+
+  const filteredAdjustments = useMemo(() => {
+    if (locationFilter === "ALL") return adjustments;
+    return adjustments.filter((row) => row.fromLocationId === locationFilter);
+  }, [adjustments, locationFilter]);
 
   const table = useReactTable({
-    data: adjustments,
+    data: filteredAdjustments,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -117,6 +138,19 @@ export function AdjustmentsTable() {
               <SelectItem value="COMPLETED">Đã hoàn tất</SelectItem>
               <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
               <SelectItem value="ALL">Tất cả</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="h-9 w-48 cursor-pointer text-sm">
+              <SelectValue placeholder="Kho / Chi nhánh" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi gửi</SelectItem>
+              {locationOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -128,8 +128,5 @@ export function validateReceiveDetails(
   if (details.some((d) => d.receivedQuantity < 0)) {
     return "Số lượng thực nhận không được âm"
   }
-  if (details.every((d) => d.receivedQuantity === 0)) {
-    return "Số lượng thực nhận phải lớn hơn 0"
-  }
   return null
 }

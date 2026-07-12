@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
-import { CheckCircle, PackageCheck, Plus, Trash2, XCircle } from "lucide-react";
+import { CheckCircle, PackageCheck, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -408,10 +408,10 @@ export function MovementActionBar({
   isActionLoading,
   isSender,
   receiveTitle,
-  addOpeningRow,
   onImportSaveDetails,
   onImportShip,
   onTransferOpen,
+  onTransferSaveFromOpening,
   onTransferShipFromOpening,
   onTransferShip,
   onReceive,
@@ -431,10 +431,10 @@ export function MovementActionBar({
   isActionLoading: boolean;
   isSender: boolean;
   receiveTitle?: string;
-  addOpeningRow: () => void;
   onImportSaveDetails: (e: MouseEvent) => void;
   onImportShip: (e: MouseEvent) => void;
   onTransferOpen: (e: MouseEvent) => void;
+  onTransferSaveFromOpening: (e: MouseEvent) => void;
   onTransferShipFromOpening: (e: MouseEvent) => void;
   onTransferShip: (e: MouseEvent) => void;
   onReceive: (e: MouseEvent) => void;
@@ -443,28 +443,13 @@ export function MovementActionBar({
   return (
     <>
       {mode === "import" && isPending && canEditOpening && !showReceiveForm && (
-        <div className="mb-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Có thể sửa mặt hàng, số lượng và giá nhập.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addOpeningRow}
-              disabled={isActionLoading}
-            >
-              <Plus className="mr-1 size-4" />
-              Thêm mặt hàng
-            </Button>
-          </div>
+        <div className="mb-3">
           <Button
             className="w-full cursor-pointer"
             onClick={onImportSaveDetails}
             disabled={isActionLoading}
           >
-            Lưu chi tiết đơn
+            Cập nhật phiếu
           </Button>
         </div>
       )}
@@ -519,45 +504,36 @@ export function MovementActionBar({
       )}
 
       {mode === "transfer" && canEditOpening && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {isSender
-                ? "Có thể sửa mặt hàng, số lượng và giá trước khi chốt phiếu."
-                : "Có thể sửa mặt hàng, số lượng và giá."}
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="cursor-pointer"
-              onClick={addOpeningRow}
-            >
-              <Plus className="mr-1 size-4" />
-              Thêm mặt hàng
-            </Button>
-          </div>
-          <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={onTransferSaveFromOpening}
+            disabled={isActionLoading}
+          >
+            {isSender ? "Lưu phiếu" : "Cập nhật phiếu"}
+          </Button>
+          {isSender && (
             <Button
               className="flex-1 cursor-pointer"
               onClick={onTransferShipFromOpening}
               disabled={isActionLoading}
             >
               <CheckCircle className="mr-2 size-4" />
-              {isSender ? "Chốt phiếu (đóng)" : "Lưu danh sách hàng"}
+              Chốt phiếu (đóng)
             </Button>
-            {canCancel && (
-              <Button
-                variant="outline"
-                className="flex-1 cursor-pointer"
-                onClick={onCancel}
-                disabled={isActionLoading}
-              >
-                <XCircle className="mr-2 size-4" />
-                Huỷ
-              </Button>
-            )}
-          </div>
+          )}
+          {canCancel && (
+            <Button
+              variant="outline"
+              className="flex-1 cursor-pointer"
+              onClick={onCancel}
+              disabled={isActionLoading}
+            >
+              <XCircle className="mr-2 size-4" />
+              Huỷ
+            </Button>
+          )}
         </div>
       )}
 
@@ -634,10 +610,6 @@ export function MovementActionBar({
               ? "Xác nhận nhận hàng"
               : (receiveTitle ?? "Xác nhận nhận hàng")}
           </h4>
-          <p className="text-xs text-muted-foreground">
-            Số lượng thực nhận có thể khác SL trên phiếu. Tổng thực nhận phải &gt;
-            0.
-          </p>
           <div className="flex gap-2">
             <Button
               className="flex-1 cursor-pointer"

@@ -121,10 +121,10 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       await stockMovementApi.updateDetails(id, { details })
-      toast.success('Đã lưu danh sách hàng')
+      toast.success('Đã cập nhật phiếu')
       await fetchTransfers()
     } catch (error) {
-      toast.error(getStockMovementErrorMessage(error, 'Không thể lưu danh sách hàng'))
+      toast.error(getStockMovementErrorMessage(error, 'Không thể cập nhật phiếu'))
       throw error
     }
   }

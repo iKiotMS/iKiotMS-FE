@@ -8,9 +8,11 @@ import {
   ArrowRight,
   Building2,
   CalendarDays,
+  Plus,
   User,
   Warehouse,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MovementDetailHeader } from "@/app/(protected)/exchange/shared/movement-detail-header";
@@ -263,6 +265,17 @@ export function MovementExpandedPanel({
     void withRefresh(() => transferActions.handleOpen(detail._id));
   };
 
+  const onTransferSaveFromOpening = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!transferActions) return;
+    const { payload, ok } = validateOpening();
+    if (!ok) return;
+    const submitPayload = payload.filter((item) => item.productItemId);
+    void withRefresh(() =>
+      transferActions.handleSubmitFromOpening(detail._id, submitPayload),
+    );
+  };
+
   const onTransferShipFromOpening = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
@@ -270,9 +283,7 @@ export function MovementExpandedPanel({
     if (!ok) return;
     const submitPayload = payload.filter((item) => item.productItemId);
     void withRefresh(() =>
-      isSender
-        ? transferActions.handleShipFromOpening(detail._id, submitPayload)
-        : transferActions.handleSubmitFromOpening(detail._id, submitPayload),
+      transferActions.handleShipFromOpening(detail._id, submitPayload),
     );
   };
 
@@ -453,6 +464,29 @@ export function MovementExpandedPanel({
 
       <MovementOrderNote note={detail.note} />
 
+      {canEditOpening && !showReceiveForm && (
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {mode === "import"
+              ? "Có thể sửa mặt hàng, số lượng và giá nhập."
+              : isSender
+                ? "Có thể sửa mặt hàng, số lượng và giá trước khi chốt phiếu."
+                : "Có thể sửa mặt hàng, số lượng và giá rồi cập nhật phiếu."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="cursor-pointer shrink-0"
+            onClick={addOpeningRow}
+            disabled={isActionLoading}
+          >
+            <Plus className="mr-1 size-4" />
+            Thêm mặt hàng
+          </Button>
+        </div>
+      )}
+
       <MovementDetailsTable
         mode={mode}
         detail={detail}
@@ -491,10 +525,10 @@ export function MovementExpandedPanel({
         isActionLoading={isActionLoading}
         isSender={isSender}
         receiveTitle={labels?.receiveTitle}
-        addOpeningRow={addOpeningRow}
         onImportSaveDetails={onImportSaveDetails}
         onImportShip={onImportShip}
         onTransferOpen={onTransferOpen}
+        onTransferSaveFromOpening={onTransferSaveFromOpening}
         onTransferShipFromOpening={onTransferShipFromOpening}
         onTransferShip={onTransferShip}
         onReceive={onReceive}

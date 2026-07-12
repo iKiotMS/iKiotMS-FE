@@ -84,9 +84,46 @@ export function TransfersTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [fromFilter, setFromFilter] = useState("ALL");
+  const [toFilter, setToFilter] = useState("ALL");
+
+  const fromOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of transfers) {
+      if (row.fromLocationId) {
+        map.set(
+          row.fromLocationId,
+          row.fromLocationName || row.fromLocationId,
+        );
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [transfers]);
+
+  const toOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of transfers) {
+      if (row.toLocationId) {
+        map.set(row.toLocationId, row.toLocationName || row.toLocationId);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [transfers]);
+
+  const filteredTransfers = useMemo(() => {
+    return transfers.filter((row) => {
+      if (fromFilter !== "ALL" && row.fromLocationId !== fromFilter) return false;
+      if (toFilter !== "ALL" && row.toLocationId !== toFilter) return false;
+      return true;
+    });
+  }, [transfers, fromFilter, toFilter]);
 
   const table = useReactTable({
-    data: transfers,
+    data: filteredTransfers,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -155,6 +192,32 @@ export function TransfersTable() {
               <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
               <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
               <SelectItem value="ALL">Tất cả</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={fromFilter} onValueChange={setFromFilter}>
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
+              <SelectValue placeholder="Nơi gửi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi gửi</SelectItem>
+              {fromOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={toFilter} onValueChange={setToFilter}>
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
+              <SelectValue placeholder="Nơi nhận" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi nhận</SelectItem>
+              {toOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
