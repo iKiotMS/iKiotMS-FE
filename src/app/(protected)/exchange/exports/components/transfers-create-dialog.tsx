@@ -15,8 +15,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { stockMovementApi } from '@/lib/api/stock-movement'
-import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
+import {
+  filterLocationsByAuthScope,
+  getEffectiveLocationScope,
+} from '@/app/(protected)/exchange/shared/auth-scope'
 import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
+import { useAuthStore } from '@/store/auth-store'
 import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/qty'
 import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
 import { MoneyInput, ProductSelect } from '@/app/(protected)/exchange/shared/form-fields'
@@ -67,9 +71,17 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   const [isOptionsLoading, setIsOptionsLoading] = useState(false)
   const [branchRequestKind, setBranchRequestKind] =
     useState<BranchRequestKind>('transfer')
-  const authScope = getAuthScope()
-  const role = authScope.role
-  const isBranchManager = role === 'BRANCH_MANAGER'
+  const locationKey = useAuthStore((s) => s.locationKey)
+  const effectiveScope = useMemo(
+    () => getEffectiveLocationScope(locationKey),
+    [locationKey],
+  )
+  /** BM JWT hoặc tenant đang switch sang chi nhánh. */
+  const isBranchActor =
+    effectiveScope.locationType === 'branch' && !!effectiveScope.locationId
+  const isWarehouseActor =
+    effectiveScope.locationType === 'warehouse' && !!effectiveScope.locationId
+  const isFromLocationLocked = !!effectiveScope.locationId
 
   const transferFormSchema = useMemo(
     () =>
@@ -124,7 +136,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   )
 
   const dialogCopy = useMemo(() => {
-    if (!isBranchManager) {
+    if (!isBranchActor) {
       return {
         title: labels.createDialogTitle,
         description: labels.createDialogDescription,
@@ -154,7 +166,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
       listTitle: 'Danh sách hàng hóa cần chuyển',
       submit: 'Tạo yêu cầu chuyển hàng',
     }
-  }, [isBranchManager, branchRequestKind, labels])
+  }, [isBranchActor, branchRequestKind, labels])
 
   useEffect(() => {
     if (!open) return
@@ -173,28 +185,23 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
       .finally(() => setIsOptionsLoading(false))
   }, [open, labels.loadLocationsError])
 
-  const visibleFromLocations = useMemo(() => {
-    if (role === 'WAREHOUSE_MANAGER' && authScope.warehouseId) {
-      return locations.filter((l) => l._id === authScope.warehouseId && l.type === 'warehouse')
-    }
-    if (role === 'BRANCH_MANAGER' && authScope.branchId) {
-      return locations.filter((l) => l._id === authScope.branchId && l.type === 'branch')
-    }
-    return locations
-  }, [locations, role, authScope.warehouseId, authScope.branchId])
+  const visibleFromLocations = useMemo(
+    () => filterLocationsByAuthScope(locations, effectiveScope),
+    [locations, effectiveScope],
+  )
   const fromLocation = visibleFromLocations.find((l) => l._id === fromLocationId)
 
   const visibleToLocations = useMemo(() => {
     if (!fromLocationId) return []
-    if (role === 'WAREHOUSE_MANAGER') {
+    if (isWarehouseActor) {
       return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
     }
-    // BM: được chuyển/trả tới chi nhánh khác hoặc kho
-    if (role === 'BRANCH_MANAGER') {
+    // Branch actor (BM hoặc tenant switch BR): chuyển/trả tới CN khác hoặc kho
+    if (isBranchActor) {
       return locations.filter((l) => l._id !== fromLocationId)
     }
     return locations.filter((l) => l._id !== fromLocationId)
-  }, [locations, fromLocationId, role])
+  }, [locations, fromLocationId, isWarehouseActor, isBranchActor])
 
   useEffect(() => {
     if (!open || !fromLocationId || !fromLocation) {
@@ -217,15 +224,11 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
   useEffect(() => {
     if (!open) return
-    if (role === 'WAREHOUSE_MANAGER' && authScope.warehouseId) {
-      form.setValue('fromLocationId', authScope.warehouseId)
+    if (effectiveScope.locationId) {
+      form.setValue('fromLocationId', effectiveScope.locationId)
       form.setValue('toLocationId', '')
     }
-    if (role === 'BRANCH_MANAGER' && authScope.branchId) {
-      form.setValue('fromLocationId', authScope.branchId)
-      form.setValue('toLocationId', '')
-    }
-  }, [open, role, authScope.warehouseId, authScope.branchId, form])
+  }, [open, effectiveScope.locationId, form])
 
   const onBranchRequestKindChange = (value: string) => {
     if (value !== 'transfer' && value !== 'return') return
@@ -236,15 +239,16 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   async function onSubmit(data: TransferFormValues) {
     const fromLoc = locations.find((l) => l._id === data.fromLocationId)
     const toLoc = locations.find((l) => l._id === data.toLocationId)
-    if (role === 'WAREHOUSE_MANAGER' && data.fromLocationId !== authScope.warehouseId) {
-      toast.error('Kho chỉ được xuất từ kho của bạn')
+    if (
+      effectiveScope.locationId &&
+      data.fromLocationId !== effectiveScope.locationId
+    ) {
+      toast.error(
+        isWarehouseActor
+          ? 'Kho chỉ được xuất từ kho của bạn'
+          : 'Chi nhánh chỉ được xuất từ chi nhánh của bạn',
+      )
       return
-    }
-    if (role === 'BRANCH_MANAGER') {
-      if (data.fromLocationId !== authScope.branchId) {
-        toast.error('Chi nhánh chỉ được xuất từ chi nhánh của bạn')
-        return
-      }
     }
 
     // BR→WH phải RETURN; còn lại EXPORT (kể cả BR→BR)
@@ -290,7 +294,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {isBranchManager && (
+            {isBranchActor && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">
                   Loại yêu cầu <span className="text-destructive">*</span>
@@ -329,7 +333,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={role === 'WAREHOUSE_MANAGER' || role === 'BRANCH_MANAGER'}
+                    disabled={isFromLocationLocked}
                   >
                     <FormControl>
                       <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder={labels.fromPlaceholder} /></SelectTrigger>
@@ -361,7 +365,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   </Select>
                   {visibleToLocations.length === 0 && (
                     <p className="text-xs text-amber-600">
-                      {role === 'WAREHOUSE_MANAGER'
+                      {isWarehouseActor
                         ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
                         : 'Không có nơi nhận phù hợp.'}
                     </p>

@@ -1,4 +1,5 @@
 import client from '@/lib/api/client'
+import { parseLocationKey } from '@/lib/location-key'
 import { useAuthStore } from '@/store/auth-store'
 import type {
   Product,
@@ -39,19 +40,10 @@ function mapProduct(prod: MongoProduct): Product {
 
 export const productApi = {
   getList: async (params?: ProductQueryParams): Promise<ProductListResponse> => {
-    const state = useAuthStore.getState();
-    const locationKey = state.locationKey;
-    let locationParams: { locationId?: string; locationType?: string } = {};
-
-    if (locationKey && locationKey !== "all") {
-      const [type, id] = locationKey.split("-");
-      if ((type === "branch" || type === "warehouse") && id) {
-        locationParams = {
-          locationId: id,
-          locationType: type,
-        };
-      }
-    }
+    const parsed = parseLocationKey(useAuthStore.getState().locationKey)
+    const locationParams = parsed
+      ? { locationId: parsed.locationId, locationType: parsed.locationType }
+      : {}
 
     const mergedParams = {
       ...locationParams,
