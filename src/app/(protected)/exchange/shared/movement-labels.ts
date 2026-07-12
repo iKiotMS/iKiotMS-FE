@@ -13,7 +13,7 @@ export const MOVEMENT_STATUS_MAP: Record<MovementStatus, MovementStatusConfig> =
   {
     DRAFT: { label: "Nháp", variant: "secondary" },
     OPENING: { label: "Đang soạn", variant: "warning" },
-    CLOSED: { label: "Chờ duyệt xuất", variant: "info" },
+    CLOSED: { label: "Đã chốt", variant: "info" },
     PENDING: { label: "Chờ giao hàng", variant: "warning" },
     IN_TRANSIT: { label: "Đang vận chuyển", variant: "info" },
     RECEIVED: { label: "Đã nhận hàng", variant: "success" },

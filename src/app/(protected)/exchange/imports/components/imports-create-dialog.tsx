@@ -324,7 +324,7 @@ export function ImportsCreateDialog({
 
   async function onSubmit(data: ImportFormValues) {
     if (role === "BRANCH_MANAGER") {
-      toast.error("Chi nhánh không được tạo đơn nhập hàng (IMPORT)")
+      toast.error("Chi nhánh không được tạo đơn nhập hàng")
       return
     }
     const location = visibleLocations.find((l) => l._id === data.toLocationId);
@@ -366,8 +366,7 @@ export function ImportsCreateDialog({
         <DialogHeader>
           <DialogTitle>Tạo đơn nhập hàng mới</DialogTitle>
           <DialogDescription>
-            Nhập hàng từ nhà cung cấp vào kho của bạn. Chọn kho nhận trước để
-            xem hàng đã có tại đó.
+            Chọn nhà cung cấp, kho nhận và danh sách hàng hóa.
           </DialogDescription>
         </DialogHeader>
 

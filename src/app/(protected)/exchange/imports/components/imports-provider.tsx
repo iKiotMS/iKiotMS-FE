@@ -77,7 +77,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
   const handleShip = async (id: string) => {
     try {
       await stockMovementApi.ship(id)
-      toast.success('Đã giao hàng — phiếu chuyển sang đang vận chuyển')
+      toast.success('Đã giao hàng')
       setOpen(null)
       await fetchImports()
     } catch (error) {
@@ -92,7 +92,7 @@ export function ImportsProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       await stockMovementApi.receive(id, { details: receivedDetails })
-      toast.success('Đã nhận hàng thành công')
+      toast.success('Đã nhận hàng')
       setOpen(null)
       await fetchImports()
     } catch (error) {

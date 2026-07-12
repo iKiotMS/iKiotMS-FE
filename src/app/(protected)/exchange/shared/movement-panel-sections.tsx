@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
-import { CheckCircle, PackageCheck, Trash2, XCircle } from "lucide-react";
+import { CheckCircle, PackageCheck, Undo2, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -397,11 +397,13 @@ export function MovementActionBar({
   mode,
   isPending,
   isInTransit,
+  isReceived,
   canOpenDraft,
   canEditOpening,
   canShipClosed,
   canShipImportPending,
   canReceiveTransit,
+  canReturnGoods,
   canCancel,
   showReceiveForm,
   setShowReceiveForm,
@@ -415,16 +417,19 @@ export function MovementActionBar({
   onTransferShipFromOpening,
   onTransferShip,
   onReceive,
+  onReturnGoods,
   onCancel,
 }: {
   mode: Mode;
   isPending: boolean;
   isInTransit: boolean;
+  isReceived: boolean;
   canOpenDraft: boolean;
   canEditOpening: boolean;
   canShipClosed: boolean;
   canShipImportPending: boolean;
   canReceiveTransit: boolean;
+  canReturnGoods: boolean;
   canCancel: boolean;
   showReceiveForm: boolean;
   setShowReceiveForm: (v: boolean) => void;
@@ -438,6 +443,7 @@ export function MovementActionBar({
   onTransferShipFromOpening: (e: MouseEvent) => void;
   onTransferShip: (e: MouseEvent) => void;
   onReceive: (e: MouseEvent) => void;
+  onReturnGoods: (e: MouseEvent) => void;
   onCancel: (e: MouseEvent) => void;
 }) {
   return (
@@ -589,6 +595,17 @@ export function MovementActionBar({
             <PackageCheck className="mr-2 size-4" />
             {mode === "import" ? "Nhận hàng" : "Xác nhận đã nhận"}
           </Button>
+          {canReturnGoods && (
+            <Button
+              variant="outline"
+              className="flex-1 cursor-pointer"
+              onClick={onReturnGoods}
+              disabled={isActionLoading}
+            >
+              <Undo2 className="mr-2 size-4" />
+              Trả hàng
+            </Button>
+          )}
           {canCancel && (
             <Button
               variant="outline"
@@ -610,7 +627,7 @@ export function MovementActionBar({
               ? "Xác nhận nhận hàng"
               : (receiveTitle ?? "Xác nhận nhận hàng")}
           </h4>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               className="flex-1 cursor-pointer"
               onClick={onReceive}
@@ -618,6 +635,17 @@ export function MovementActionBar({
             >
               Xác nhận nhận hàng
             </Button>
+            {canReturnGoods && (
+              <Button
+                variant="outline"
+                className="flex-1 cursor-pointer"
+                onClick={onReturnGoods}
+                disabled={isActionLoading}
+              >
+                <Undo2 className="mr-2 size-4" />
+                Trả hàng
+              </Button>
+            )}
             <Button
               variant="outline"
               className="cursor-pointer"
@@ -629,6 +657,20 @@ export function MovementActionBar({
               Đóng
             </Button>
           </div>
+        </div>
+      )}
+
+      {isReceived && canReturnGoods && !canReceiveTransit && (
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={onReturnGoods}
+            disabled={isActionLoading}
+          >
+            <Undo2 className="mr-2 size-4" />
+            Trả hàng
+          </Button>
         </div>
       )}
     </>

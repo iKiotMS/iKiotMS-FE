@@ -177,7 +177,7 @@ export function AdjustmentsExpandedPanel({
       return;
     }
     if (rows.every((r) => getAdjustQtyChange(r.quantity, r.receivedQuantity) === 0)) {
-      toast.error("Tồn thực tế trùng hệ thống — không có gì cần điều chỉnh");
+      toast.error("Tồn thực tế không thay đổi");
       return;
     }
     await run(() =>
@@ -204,7 +204,7 @@ export function AdjustmentsExpandedPanel({
       return;
     }
     if (rows.every((r) => getAdjustQtyChange(r.quantity, r.receivedQuantity) === 0)) {
-      toast.error("Không thể duyệt khi mọi dòng lệch 0");
+      toast.error("Không thể duyệt khi không có thay đổi tồn");
       return;
     }
 
@@ -526,7 +526,7 @@ export function AdjustmentsExpandedPanel({
       )}
       {isPending && canActAsFrom && (
         <p className="mt-3 text-xs text-muted-foreground">
-          Phiếu đang chờ duyệt. Có thể sửa tồn thực tế rồi bấm Duyệt điều chỉnh.
+          Phiếu đang chờ duyệt.
         </p>
       )}
 
