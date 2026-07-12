@@ -77,8 +77,15 @@ client.interceptors.response.use(
       originalRequest.url?.includes("/auth/forgot-password") ||
       originalRequest.url?.includes("/auth/reset-password");
 
+    // Chỉ refresh token khi 401 hoặc 403 kèm message "Invalid or expired token."
+    // 403 thông thường là thiếu quyền/subscription — retry không giúp.
+    const isTokenExpired =
+      error.response?.status === 401 ||
+      (error.response?.status === 403 &&
+        (error.response.data as any)?.message === "Invalid or expired token.");
+
     if (
-      (error.response?.status === 401 || error.response?.status === 403) &&
+      isTokenExpired &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {

@@ -1,6 +1,30 @@
 // [Constants – Product]
 import type { ProductStatus } from '@/types/product'
 
+const PLACEHOLDER = '/placeholder-product.svg'
+
+export function safeImageSrc(url?: string | null): string {
+  if (!url) return PLACEHOLDER
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) return url
+  return PLACEHOLDER
+}
+
+export const formatVND = (value: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+
+export const formatPriceAmount = (value?: string | number | null): string => {
+  if (value === undefined || value === null || value === '') return ''
+  const digits = String(value).replace(/\D/g, '')
+  if (!digits) return ''
+  return Number(digits).toLocaleString('vi-VN')
+}
+
+export const parsePriceAmount = (value?: string): number => {
+  if (!value?.trim()) return 0
+  const digits = value.replace(/\D/g, '')
+  return digits ? (Number(digits) || 0) : 0
+}
+
 export const STATUS_MAP: Record<ProductStatus, { label: string; className: string }> = {
   ACTIVE: {
     label: 'Đang kinh doanh',
@@ -16,22 +40,12 @@ export const STATUS_MAP: Record<ProductStatus, { label: string; className: strin
   },
 }
 
-export const CATEGORIES = [
-  'Đồ uống',
-  'Thực phẩm',
-  'Văn phòng phẩm',
-  'Phụ kiện điện tử',
-  'Y tế & Vệ sinh',
-  'Chăm sóc cá nhân',
-  'Gia dụng',
-  'Khác',
-]
-
 export const COLUMN_LABELS: Record<string, string> = {
   image: '',
   productCode: 'Mã hàng',
   name: 'Tên hàng hóa',
-  categoryName: 'Danh mục',
+  brandId: 'Thương hiệu',
+  categoryId: 'Danh mục',
   costPrice: 'Giá vốn',
   retailPrice: 'Giá bán',
   stock: 'Tồn kho',

@@ -24,26 +24,17 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import type { Supplier } from '@/types/supplier'
 import { supplierFormSchema, type SupplierFormValues } from '../../_types/supplier.types'
 import { useSuppliers } from '../../_context/suppliers-provider'
 
 const EMPTY_VALUES: SupplierFormValues = {
-  supplierCode: '',
   supplierName: '',
   contactName: '',
   phoneNumber: '',
   email: '',
   address: '',
   creditLimit: 0,
-  status: 'ACTIVE',
 }
 
 type SuppliersMutateDialogProps = {
@@ -69,14 +60,12 @@ export function SuppliersMutateDialog({
     if (!open) return
     if (isEdit && currentRow) {
       form.reset({
-        supplierCode: currentRow.supplierCode,
         supplierName: currentRow.supplierName,
         contactName: currentRow.contactName,
         phoneNumber: currentRow.phoneNumber,
         email: currentRow.email,
         address: currentRow.address,
         creditLimit: currentRow.creditLimit,
-        status: currentRow.status,
       })
     } else {
       form.reset(EMPTY_VALUES)
@@ -117,44 +106,6 @@ export function SuppliersMutateDialog({
                     <FormControl>
                       <Input placeholder="Nhập tên nhà cung cấp" {...field} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="supplierCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Mã nhà cung cấp <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="VD: NCC-001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trạng thái</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn trạng thái" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ACTIVE">Đang hợp tác</SelectItem>
-                        <SelectItem value="INACTIVE">Ngừng hợp tác</SelectItem>
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

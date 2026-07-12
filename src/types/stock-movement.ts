@@ -1,96 +1,147 @@
-export type MovementType = 'IMPORT' | 'TRANSFER'
+export type MovementType = "IMPORT" | "EXPORT" | "RETURN" | "ADJUST";
 
 export type MovementStatus =
-  | 'PENDING'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'COMPLETED'
-  | 'CANCELLED'
+  | "DRAFT"
+  | "OPENING"
+  | "CLOSED"
+  | "PENDING"
+  | "IN_TRANSIT"
+  | "RECEIVED"
+  | "CANCELLED"
+  | "COMPLETED";
 
-export type LocationType = 'branch' | 'warehouse'
+export type LocationType = "branch" | "warehouse";
 
 export interface StockMovementDetail {
-  productItemId: string
-  productName: string
-  sku: string
-  quantity: number
-  importPrice: number
-  receivedQuantity: number
-  note?: string
+  productItemId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  importPrice: number;
+  receivedQuantity: number;
+  note?: string;
 }
 
 export interface StockMovement {
-  _id: string
-  tenantId: string
-  movementType: MovementType
-  status: MovementStatus
-  fromSupplierId?: string
-  supplierName?: string
-  fromLocationId?: string
-  fromLocationName?: string
-  fromLocationType?: LocationType
-  toLocationId: string
-  toLocationName: string
-  toLocationType: LocationType
-  requestedBy: string
-  requestedByName: string
-  approvedBy?: string
-  approvedByName?: string
-  note?: string
-  details: StockMovementDetail[]
-  createdAt: string
-  updatedAt: string
+  _id: string;
+  tenantId: string;
+  movementType: MovementType;
+  status: MovementStatus;
+  fromSupplierId?: string;
+  supplierName?: string;
+  fromLocationId?: string;
+  fromLocationName?: string;
+  fromLocationType?: LocationType;
+  toLocationId: string;
+  toLocationName: string;
+  toLocationType: LocationType;
+  requestedBy: string;
+  requestedByName: string;
+  note?: string;
+  details: StockMovementDetail[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateImportPayload {
-  movementType: 'IMPORT'
-  fromSupplierId: string
-  toLocationId: string
-  toLocationType: LocationType
-  note?: string
+  movementType: "IMPORT";
+  fromSupplierId: string;
+  toLocationId: string;
+  toLocationType: LocationType;
+  /** FE gắn = toLocation để WM ship/cancel (BE auth fromLocation). */
+  fromLocationId?: string;
+  fromLocationType?: LocationType;
+  note?: string;
   details: {
-    productItemId: string
-    quantity: number
-    importPrice: number
-    note?: string
-  }[]
+    productItemId: string;
+    quantity: number;
+    importPrice: number;
+    note?: string;
+  }[];
 }
 
-export interface CreateTransferPayload {
-  movementType: 'TRANSFER'
-  fromLocationId: string
-  fromLocationType: LocationType
-  toLocationId: string
-  toLocationType: LocationType
-  note?: string
+export interface CreateExportPayload {
+  movementType: "EXPORT" | "RETURN";
+  fromLocationId: string;
+  fromLocationType: LocationType;
+  toLocationId: string;
+  toLocationType: LocationType;
+  note?: string;
   details: {
-    productItemId: string
-    quantity: number
-    note?: string
-  }[]
+    productItemId: string;
+    quantity: number;
+    importPrice?: number;
+    note?: string;
+  }[];
 }
 
-export interface ApproveRequestPayload {
-  status: 'APPROVED' | 'REJECTED'
-  details?: {
-    productItemId: string
-    receivedQuantity: number
-  }[]
-  note?: string
+export interface CreateAdjustPayload {
+  movementType: "ADJUST";
+  /** Kho/chi nhánh cần điều chỉnh tồn kho */
+  fromLocationId: string;
+  fromLocationType: LocationType;
+  /** BE schema yêu cầu toLocationId – truyền cùng giá trị fromLocationId */
+  toLocationId: string;
+  toLocationType: LocationType;
+  note?: string;
+  details: {
+    productItemId: string;
+    /** Tồn thực tế sau kiểm kê — BE tự snapshot quantity hệ thống */
+    receivedQuantity: number;
+    note?: string;
+  }[];
+}
+
+export interface ReceiveRequestPayload {
+  details: {
+    productItemId: string;
+    receivedQuantity: number;
+  }[];
+}
+
+export interface UpdateDetailsPayload {
+  details: {
+    productItemId: string;
+    quantity?: number;
+    receivedQuantity?: number;
+    importPrice?: number;
+    note?: string;
+  }[];
 }
 
 export interface StockMovementListResponse {
-  data: StockMovement[]
-  total: number
-  page: number
-  limit: number
+  data: StockMovement[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export interface StockMovementQueryParams {
-  page?: number
-  limit?: number
-  status?: MovementStatus
-  movementType?: MovementType
-  fromDate?: string
-  toDate?: string
+  page?: number;
+  limit?: number;
+  status?: MovementStatus;
+  movementType?: MovementType;
+}
+
+export interface StockMovementSupplierOption {
+  _id: string;
+  name: string;
+}
+
+export interface StockMovementLocationOption {
+  _id: string;
+  name: string;
+  type: LocationType;
+}
+
+export interface StockMovementProductItemOption {
+  _id: string;
+  name: string;
+  sku: string;
+  costPrice?: number;
+  /** Có bản ghi tồn kho tại location đang chọn */
+  atLocation?: boolean;
+  /** Tồn tại location nguồn (chuyển kho) */
+  stock?: number;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -40,16 +40,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseLocationKey } from "@/lib/location-key";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
+import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
 import { useImports } from "./imports-provider";
 import { importsColumns as columns } from "./imports-columns";
 import { ImportsEmpty } from "./imports-empty";
-import { ImportsExpandedPanel } from "./imports-expanded-panel";
 
 const COLUMN_LABELS: Record<string, string> = {
   _id: "Mã đơn",
-  supplierName: "Nhà cung cấp",
-  toLocationName: "Kho nhận",
+  supplierName: "Nguồn hàng",
+  toLocationName: "Nơi nhận",
   totalItems: "Số mặt hàng",
   totalValue: "Giá trị",
   requestedByName: "Người tạo",
@@ -58,17 +60,87 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 
 export function ImportsTable() {
-  const { imports, isLoading, statusFilter, setStatusFilter } = useImports();
+  const {
+    imports,
+    isLoading,
+    statusFilter,
+    setStatusFilter,
+    handleUpdateDetails,
+    handleShip,
+    handleReceive,
+    handleCancel,
+  } = useImports();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    requestedByName: false,
+  });
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [fromFilter, setFromFilter] = useState("ALL");
+  const [toFilter, setToFilter] = useState("ALL");
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const scopedLocationId = useMemo(
+    () => parseLocationKey(locationKey)?.locationId,
+    [locationKey],
+  );
+
+  // Tenant switch BR/WH → khóa filter nơi nhận theo location đang chọn.
+  useEffect(() => {
+    if (scopedLocationId) {
+      setToFilter(scopedLocationId);
+      setFromFilter("ALL");
+    } else {
+      setToFilter("ALL");
+      setFromFilter("ALL");
+    }
+  }, [scopedLocationId]);
+
+  const fromOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of imports) {
+      const id = row.fromSupplierId || row.fromLocationId;
+      const name =
+        row.supplierName ||
+        row.fromLocationName ||
+        id;
+      if (id) map.set(id, name || id);
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [imports]);
+
+  const toOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of imports) {
+      if (row.toLocationId) {
+        map.set(row.toLocationId, row.toLocationName || row.toLocationId);
+      }
+    }
+    if (scopedLocationId && !map.has(scopedLocationId)) {
+      map.set(scopedLocationId, scopedLocationId);
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [imports, scopedLocationId]);
+
+  const filteredImports = useMemo(() => {
+    return imports.filter((row) => {
+      if (fromFilter !== "ALL") {
+        const fromId = row.fromSupplierId || row.fromLocationId;
+        if (fromId !== fromFilter) return false;
+      }
+      if (toFilter !== "ALL" && row.toLocationId !== toFilter) return false;
+      return true;
+    });
+  }, [imports, fromFilter, toFilter]);
 
   const table = useReactTable({
-    data: imports,
+    data: filteredImports,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -80,7 +152,23 @@ export function ImportsTable() {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
-    onExpandedChange: setExpanded,
+    onExpandedChange: (updater) => {
+      setExpanded((old) => {
+        const prev = typeof old === "boolean" ? {} : old;
+        const next = typeof updater === "function" ? updater(old) : updater;
+        if (next === true) return next;
+        const newlyOpened = Object.keys(next).filter(
+          (key) => next[key] && !prev[key],
+        );
+        if (newlyOpened.length > 0) {
+          return { [newlyOpened[0]]: true };
+        }
+        return next;
+      });
+    },
+    initialState: {
+      pagination: { pageSize: 10 },
+    },
     state: {
       sorting,
       columnFilters,
@@ -98,7 +186,7 @@ export function ImportsTable() {
           <div className="relative min-w-52 max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm nhà cung cấp, mã đơn..."
+              placeholder="Tìm nguồn hàng, mã đơn..."
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
               className="h-9 pl-9"
@@ -110,15 +198,45 @@ export function ImportsTable() {
               setStatusFilter(value as typeof statusFilter)
             }
           >
-            <SelectTrigger className="h-9 w-36 cursor-pointer text-sm">
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="PENDING">Chờ giao hàng</SelectItem>
+              <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
+              <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
+              <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
               <SelectItem value="ALL">Tất cả</SelectItem>
-              <SelectItem value="PENDING">Chờ duyệt</SelectItem>
-              <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-              <SelectItem value="REJECTED">Từ chối</SelectItem>
-              <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={fromFilter} onValueChange={setFromFilter}>
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
+              <SelectValue placeholder="Nơi gửi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi gửi</SelectItem>
+              {fromOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={toFilter}
+            onValueChange={setToFilter}
+            disabled={!!scopedLocationId}
+          >
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
+              <SelectValue placeholder="Nơi nhận" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi nhận</SelectItem>
+              {toOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -177,63 +295,67 @@ export function ImportsTable() {
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <Fragment key={row.id}>
-                  <TableRow
-                    data-state={row.getIsSelected() ? "selected" : undefined}
-                    onClick={() => row.toggleExpanded()}
-                    className={cn(
-                      "cursor-pointer",
-                      row.getIsExpanded() &&
-                        "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        onClick={
-                          cell.column.id === "select"
-                            ? (e) => e.stopPropagation()
-                            : undefined
-                        }
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                  <TableRow
-                    className={cn(
-                      "border-transparent transition-colors duration-300 hover:bg-transparent",
-                      row.getIsExpanded() &&
-                        "shadow-[inset_0_-1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
-                    )}
-                  >
-                    <TableCell
-                      colSpan={row.getVisibleCells().length}
-                      className="p-0"
+              table.getRowModel().rows.map((row) => {
+                const isExpanded = row.getIsExpanded();
+                const hasExpandedRow = table
+                  .getRowModel()
+                  .rows.some((item) => item.getIsExpanded());
+                return (
+                  <Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() ? "selected" : undefined}
+                      onClick={() => row.toggleExpanded()}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        isExpanded
+                          ? "bg-muted border-l-2 border-l-foreground/40"
+                          : hasExpandedRow
+                            ? "opacity-55 hover:opacity-100"
+                            : "hover:bg-muted/40",
+                      )}
                     >
-                      <div
-                        className={cn(
-                          "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                          row.getIsExpanded()
-                            ? "grid-rows-[1fr]"
-                            : "grid-rows-[0fr]",
-                        )}
-                      >
-                        <div className="overflow-hidden">
-                          <ImportsExpandedPanel
-                            request={row.original}
-                            isExpanded={row.getIsExpanded()}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </Fragment>
-              ))
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          onClick={
+                            cell.column.id === "select"
+                              ? (e) => e.stopPropagation()
+                              : undefined
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {isExpanded ? (
+                      <TableRow className="border-transparent bg-muted/40 hover:bg-muted/40">
+                        <TableCell
+                          colSpan={row.getVisibleCells().length}
+                          className="p-0"
+                        >
+                          <div className="px-3 pb-3 pt-1">
+                            <MovementExpandedPanel
+                              mode="import"
+                              request={row.original}
+                              isExpanded
+                              onClose={() => row.toggleExpanded(false)}
+                              importActions={{
+                                handleUpdateDetails,
+                                handleShip,
+                                handleReceive,
+                                handleCancel,
+                              }}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </Fragment>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length}>

@@ -24,8 +24,36 @@ export interface User {
   created_at?: string;
   updated_at?: string;
   role?: string;
+  phoneNumber?: string;
+  status?: string;
+  tenantId?: string;
   branchId?: string;
   warehouseId?: string;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+    dob?: string;
+    taxNumber?: string;
+    identificationId?: string;
+    address?: string;
+    gender?: "MALE" | "FEMALE" | "OTHER";
+  };
+  subscription?: {
+    id: string;
+    planName: string;
+    planCode: "TRIAL" | "PLUS" | "PRO" | "PLUS_YEARLY" | "PRO_YEARLY";
+    status: "TRIAL" | "ACTIVE" | "EXPIRED" | "PAST_DUE" | "CANCELLED";
+    startDate: string;
+    endDate: string;
+    trialEndDate?: string;
+    autoRenew: boolean;
+    currentQuotaSnapshot?: {
+      maxBranches: number;
+      maxUsers: number;
+      maxProducts: number;
+    };
+  };
 }
 
 /**

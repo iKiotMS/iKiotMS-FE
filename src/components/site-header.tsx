@@ -7,8 +7,11 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CommandSearch, SearchTrigger } from "@/components/command-search";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ShoppingCart } from "lucide-react";
+import { useAuthStore } from "@/store/auth-store";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function SiteHeader() {
+  const { user } = useAuthStore();
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -36,22 +39,25 @@ export function SiteHeader() {
             <SearchTrigger onClick={() => setSearchOpen(true)} />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="default"
-              asChild
-              size="sm"
-              className="hidden sm:flex"
-            >
-              <a
-                href="/check-out"
-                rel="noopener noreferrer"
-                target="_blank"
-                className="dark:text-foreground flex items-center"
+            {user?.role !== "SUPER_ADMIN" && (
+              <Button
+                variant="default"
+                asChild
+                size="sm"
+                className="hidden sm:flex mr-1"
               >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Bán hàng
-              </a>
-            </Button>
+                <a
+                  href="/check-out"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  className="dark:text-foreground flex items-center"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Bán hàng
+                </a>
+              </Button>
+            )}
+            {user?.role !== "SUPER_ADMIN" && <NotificationBell />}
             <ModeToggle />
           </div>
         </div>

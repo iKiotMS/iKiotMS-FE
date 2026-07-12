@@ -1,17 +1,19 @@
-import { PageHeader } from "@/components/page-header"
-import { MetricsOverview } from "./components/metrics-overview"
-import { SalesChart } from "./components/sales-chart"
-import { RecentTransactions } from "./components/recent-transactions"
-import { TopProducts } from "./components/top-products"
-import { CustomerInsights } from "./components/customer-insights"
-import { QuickActions } from "./components/quick-actions"
-import { RevenueBreakdown } from "./components/revenue-breakdown"
+import { PageHeader } from "@/components/page-header";
+import { MetricsOverview } from "./components/metrics-overview";
+import { SalesChart } from "./components/sales-chart";
+import { RevenueByStaff } from "./components/recent-transactions";
+import { TopProducts } from "./components/top-products";
+import { CashflowInventory } from "./components/customer-insights";
+import { QuickActions } from "./components/quick-actions";
+import { RevenueBreakdown } from "./components/revenue-breakdown";
+import { DashboardProvider } from "./components/dashboard-provider";
 
 export default function Dashboard2() {
   return (
-    <div className="flex-1 space-y-6 px-6 pt-0">
+    <DashboardProvider>
+      <div className="flex-1 space-y-6 px-6 pt-0">
         <PageHeader
-          breadcrumbs={[{ label: 'Trang chủ' }]}
+          breadcrumbs={[{ label: "Trang chủ" }]}
           title="Tổng quan kinh doanh"
           description="Theo dõi hiệu suất và các chỉ số kinh doanh theo thời gian thực"
           actions={<QuickActions />}
@@ -31,13 +33,14 @@ export default function Dashboard2() {
 
           {/* Third Row - Two Column Layout */}
           <div className="grid gap-6 grid-cols-1 @5xl:grid-cols-2">
-            <RecentTransactions />
+            <RevenueByStaff />
             <TopProducts />
           </div>
 
-          {/* Fourth Row - Customer Insights and Team Performance */}
-          <CustomerInsights />
+          {/* Fourth Row - Cashflow & Inventory */}
+          <CashflowInventory />
         </div>
       </div>
-  )
+    </DashboardProvider>
+  );
 }

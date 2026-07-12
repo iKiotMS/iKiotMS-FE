@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { UserPlus, X, CreditCard, Coins, Check, FileText } from "lucide-react";
+import {
+  UserPlus,
+  X,
+  Coins,
+  Check,
+  FileText,
+  QrCode,
+  Banknote,
+  AlertCircle,
+} from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -15,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import customersData from "../../customers/data/customers.json";
+import { customerApi } from "@/lib/api/customer";
 
 interface Customer {
   id: string;
@@ -31,18 +40,14 @@ interface CheckoutSidebarProps {
   subtotal: number;
   discount: number;
   discountType: "cash" | "percent";
-  vatPercent: number;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
   selectedCustomer: Customer | null;
   onCustomerChange: (customer: Customer | null) => void;
   onDiscountChange: (discount: number) => void;
   onDiscountTypeChange: (type: "cash" | "percent") => void;
-  onVatChange: (vat: number) => void;
-  onPaymentMethodChange: (
-    method: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY",
-  ) => void;
+  onPaymentMethodChange: (method: "CASH" | "SEPAY") => void;
   onCustomerPayChange: (pay: number) => void;
   onNoteChange: (note: string) => void;
   onCheckout: () => void;
@@ -60,7 +65,6 @@ export function CheckoutSidebar({
   subtotal,
   discount,
   discountType,
-  vatPercent,
   paymentMethod,
   customerPay,
   note,
@@ -68,7 +72,6 @@ export function CheckoutSidebar({
   onCustomerChange,
   onDiscountChange,
   onDiscountTypeChange,
-  onVatChange,
   onPaymentMethodChange,
   onCustomerPayChange,
   onNoteChange,
@@ -79,28 +82,39 @@ export function CheckoutSidebar({
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [isCustomerLoading, setIsCustomerLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Search customer records
+  // Search customer records dynamically from backend
   useEffect(() => {
     if (!customerQuery.trim()) {
       setCustomerResults([]);
       setIsCustomerDropdownOpen(false);
+      setIsCustomerLoading(false);
       return;
     }
 
-    const lowerQuery = customerQuery.toLowerCase();
-    const filtered = (customersData as Customer[]).filter((customer) => {
-      return (
-        customer.name.toLowerCase().includes(lowerQuery) ||
-        customer.phone.includes(lowerQuery) ||
-        customer.customerCode.toLowerCase().includes(lowerQuery)
-      );
-    });
-
-    setCustomerResults(filtered);
     setIsCustomerDropdownOpen(true);
+    setIsCustomerLoading(true);
+
+    const handler = setTimeout(async () => {
+      try {
+        const response = await customerApi.getList({
+          search: customerQuery,
+          limit: 10,
+        });
+        setCustomerResults(response.data);
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm khách hàng:", error);
+      } finally {
+        setIsCustomerLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
   }, [customerQuery]);
 
   // Click outside to close customer search dropdown
@@ -130,8 +144,7 @@ export function CheckoutSidebar({
   const calculatedDiscount =
     discountType === "cash" ? discount : (subtotal * discount) / 100;
   const subtotalAfterDiscount = Math.max(0, subtotal - calculatedDiscount);
-  const calculatedVat = (subtotalAfterDiscount * vatPercent) / 100;
-  const grandTotal = Math.max(0, subtotalAfterDiscount + calculatedVat);
+  const grandTotal = subtotalAfterDiscount;
   const changeDue = Math.max(0, customerPay - grandTotal);
 
   // Quick cash triggers
@@ -203,28 +216,40 @@ export function CheckoutSidebar({
                   className="h-11 w-full text-base"
                 />
 
-                {isCustomerDropdownOpen && customerResults.length > 0 && (
+                {isCustomerDropdownOpen && customerQuery.trim() !== "" && (
                   <div
                     ref={dropdownRef}
-                    className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-[200px] overflow-y-auto divide-y w-full text-base"
+                    className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-[200px] overflow-y-auto divide-y w-full text-base scrollbar-thin"
                   >
-                    {customerResults.map((cust) => (
-                      <div
-                        key={cust.id}
-                        onClick={() => {
-                          onCustomerChange(cust);
-                          setIsCustomerDropdownOpen(false);
-                        }}
-                        className="p-2 hover:bg-muted cursor-pointer flex flex-col gap-0.5"
-                      >
-                        <span className="font-bold text-base text-foreground">
-                          {cust.name}
-                        </span>
-                        <span className="text-sm text-muted-foreground font-mono">
-                          {cust.phone} • {cust.customerCode}
-                        </span>
+                    {isCustomerLoading ? (
+                      <div className="p-4 text-center text-muted-foreground flex items-center justify-center gap-2">
+                        <span className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+                        <span>Đang tìm kiếm khách hàng...</span>
                       </div>
-                    ))}
+                    ) : customerResults.length > 0 ? (
+                      customerResults.map((cust) => (
+                        <div
+                          key={cust.id}
+                          onClick={() => {
+                            onCustomerChange(cust);
+                            setIsCustomerDropdownOpen(false);
+                          }}
+                          className="p-2 hover:bg-muted cursor-pointer flex flex-col gap-0.5"
+                        >
+                          <span className="font-bold text-base text-foreground">
+                            {cust.name}
+                          </span>
+                          <span className="text-sm text-muted-foreground font-mono">
+                            {cust.phone} • {cust.customerCode}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-base text-muted-foreground flex flex-col items-center justify-center gap-1.5">
+                        <AlertCircle className="size-5 text-yellow-500" />
+                        <span>Khách hàng không tồn tại</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -233,7 +258,7 @@ export function CheckoutSidebar({
                 variant="outline"
                 size="icon"
                 onClick={onOpenNewCustomerModal}
-                className="h-9 w-9 cursor-pointer border-primary/30 text-primary hover:bg-primary/5 shrink-0"
+                className="h-11 w-11 cursor-pointer border-primary/30 text-primary hover:bg-primary/5 shrink-0"
                 title="Thêm khách hàng"
               >
                 <UserPlus className="size-4" />
@@ -310,28 +335,6 @@ export function CheckoutSidebar({
             </div>
           </div>
 
-          {/* VAT Selection */}
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground font-medium">Thuế VAT</span>
-            <div className="flex gap-1 border rounded-md p-0.5 bg-muted/40 shrink-0">
-              {[0, 5, 8, 10].map((rate) => (
-                <button
-                  key={rate}
-                  type="button"
-                  onClick={() => onVatChange(rate)}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-sm font-semibold transition-colors cursor-pointer",
-                    vatPercent === rate
-                      ? "bg-background text-primary shadow-xs border border-border"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {rate}%
-                </button>
-              ))}
-            </div>
-          </div>
-
           <Separator className="my-2" />
 
           {/* Grand total */}
@@ -350,50 +353,46 @@ export function CheckoutSidebar({
               Phương thức thanh toán
             </Label>
             <div className="grid grid-cols-2 gap-1.5">
-              {(["CASH", "BANK_TRANSFER", "MOMO", "VNPAY"] as const).map(
-                (method) => {
-                  const isSelected = paymentMethod === method;
-                  const methodLabel: Record<string, string> = {
-                    CASH: "Tiền mặt",
-                    BANK_TRANSFER: "Chuyển khoản",
-                    MOMO: "Ví MoMo",
-                    VNPAY: "Ví VNPay",
-                  };
-                  return (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => {
-                        onPaymentMethodChange(method);
-                        if (method !== "CASH") {
-                          onCustomerPayChange(grandTotal); // Auto-fill paid value for digital transfers
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center justify-between p-2 rounded-lg border text-left cursor-pointer transition-all duration-200",
-                        isSelected
-                          ? "bg-primary/5 border-primary text-primary font-bold shadow-xs"
-                          : "bg-background border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-                      )}
-                    >
-                      <span className="text-sm">{methodLabel[method]}</span>
-                      {isSelected && (
-                        <Check className="size-3.5 text-primary shrink-0" />
-                      )}
-                    </button>
-                  );
-                },
-              )}
+              {(
+                [
+                  { method: "CASH", label: "Tiền mặt", Icon: Banknote },
+                  { method: "SEPAY", label: "Chuyển khoản", Icon: QrCode },
+                ] as const
+              ).map(({ method, label, Icon }) => {
+                const isSelected = paymentMethod === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => {
+                      onPaymentMethodChange(method);
+                      onCustomerPayChange(grandTotal);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border text-left cursor-pointer transition-all duration-200",
+                      isSelected
+                        ? "bg-primary/5 border-primary text-primary font-bold shadow-xs"
+                        : "bg-background border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    <span className="text-sm">{label}</span>
+                    {isSelected && (
+                      <Check className="size-3.5 text-primary shrink-0 ml-auto" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Customer Pay Input */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between items-center">
-              <Label className="font-semibold text-base text-muted-foreground">
-                Tiền khách đưa
-              </Label>
-              {paymentMethod === "CASH" && (
+          {/* Customer Pay Input — chỉ hiện khi CASH */}
+          {paymentMethod === "CASH" && (
+            <div className="space-y-1.5 pt-1">
+              <div className="flex justify-between items-center">
+                <Label className="font-semibold text-base text-muted-foreground">
+                  Tiền khách đưa
+                </Label>
                 <button
                   type="button"
                   onClick={() => onCustomerPayChange(grandTotal)}
@@ -401,48 +400,56 @@ export function CheckoutSidebar({
                 >
                   Đủ tiền (F4)
                 </button>
-              )}
-            </div>
-            <div className="relative">
-              <Coins className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="number"
-                value={customerPay}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  onCustomerPayChange(isNaN(val) || val < 0 ? 0 : val);
-                }}
-                disabled={paymentMethod !== "CASH"}
-                className="pl-8 h-10 text-right font-bold tabular-nums text-base text-foreground focus-visible:ring-primary"
-              />
-            </div>
-
-            {/* Quick Cash Buttons */}
-            {paymentMethod === "CASH" && uniqueCashSuggestions.length > 0 && (
-              <div className="grid grid-cols-2 gap-1">
-                {uniqueCashSuggestions.map((amount) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    onClick={() => handleQuickCash(amount)}
-                    className="py-1 px-1 border rounded text-sm text-center font-semibold text-foreground hover:bg-primary/5 hover:border-primary/30 transition-all cursor-pointer truncate tabular-nums bg-background"
-                  >
-                    {formatVND(amount)}
-                  </button>
-                ))}
               </div>
-            )}
-          </div>
+              <div className="relative">
+                <Coins className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={customerPay}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onCustomerPayChange(isNaN(val) || val < 0 ? 0 : val);
+                  }}
+                  className="pl-8 h-10 text-right font-bold tabular-nums text-base text-foreground focus-visible:ring-primary"
+                />
+              </div>
 
-          {/* Change Due */}
-          <div className="flex justify-between items-center pt-1 border-t border-dashed">
-            <span className="text-muted-foreground font-semibold text-base">
-              Tiền thừa trả khách
-            </span>
-            <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums">
-              {formatVND(changeDue)}
-            </span>
-          </div>
+              {uniqueCashSuggestions.length > 0 && (
+                <div className="grid grid-cols-2 gap-1">
+                  {uniqueCashSuggestions.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => handleQuickCash(amount)}
+                      className="py-1 px-1 border rounded text-sm text-center font-semibold text-foreground hover:bg-primary/5 hover:border-primary/30 transition-all cursor-pointer truncate tabular-nums bg-background"
+                    >
+                      {formatVND(amount)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-1 border-t border-dashed">
+                <span className="text-muted-foreground font-semibold text-base">
+                  Tiền thừa trả khách
+                </span>
+                <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatVND(changeDue)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* SEPAY hint */}
+          {paymentMethod === "SEPAY" && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm">
+              <QrCode className="size-4 shrink-0 mt-0.5" />
+              <span>
+                Khách hàng sẽ quét mã QR để thanh toán đúng số tiền. Hệ thống tự
+                xác nhận khi nhận được giao dịch.
+              </span>
+            </div>
+          )}
 
           {/* Order Note */}
           <div className="space-y-1 pt-1">

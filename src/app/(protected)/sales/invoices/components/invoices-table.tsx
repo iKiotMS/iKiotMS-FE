@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -42,19 +42,82 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import mockInvoicesData from "../data/invoices.json";
+import { orderApi } from "@/lib/api/order";
+import { useAuthStore } from "@/store/auth-store";
 import { type Invoice, invoicesColumns as columns } from "./invoices-columns";
 import { InvoicesExpandedPanel } from "./invoices-expanded-panel";
 
+function mapBEOrderToInvoice(order: any): Invoice {
+  const customerObj = order.customerId || {};
+  const userObj = order.userId || {};
+
+  return {
+    id: order._id,
+    invoiceCode: order.paymentReference || `HD-${order._id.slice(-6).toUpperCase()}`,
+    tenantId: order.tenantId,
+    branchId: order.branchId,
+    customerId: customerObj._id || "",
+    customer: {
+      code: customerObj._id ? `KH-${customerObj._id.slice(-6).toUpperCase()}` : "KH00000",
+      name: customerObj.name || "Khách lẻ",
+      phone: customerObj.phone || "—",
+      gender: "MALE",
+      address: "—",
+    },
+    status: order.status || "COMPLETED",
+    userId: userObj._id || "",
+    seller: {
+      name: userObj.name || "Nhân viên",
+      email: userObj.email || "",
+      role: userObj.role || "BRANCH_STAFF",
+    },
+    paymentMethod: order.paymentMethod || "CASH",
+    grandTotal: order.grandTotal || 0,
+    customerPay: order.customerPay ?? order.grandTotal ?? 0,
+    change: order.change ?? 0,
+    note: order.note || "",
+    items: (order.items || []).map((item: any) => ({
+      productItemId: item.productItemId,
+      productName: item.productName || "Sản phẩm",
+      quantity: item.quantity || 1,
+      unitPrice: item.unitPrice || 0,
+      discountAmount: item.discountAmount || 0,
+    })),
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  };
+}
+
 export function InvoicesTable() {
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoicesData as Invoice[]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const locationKey = useAuthStore((state) => state.locationKey);
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
+
+  useEffect(() => {
+    setLoading(true);
+    orderApi
+      .getList({ limit: 200 })
+      .then((res) => {
+        const mapped = (res.data || []).map(mapBEOrderToInvoice);
+        setInvoices(mapped);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch orders:", err);
+        toast.error("Không thể tải danh sách hóa đơn");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [locationKey]);
 
   const COLUMN_LABELS: Record<string, string> = {
     invoiceCode: "Mã hóa đơn",
@@ -64,6 +127,7 @@ export function InvoicesTable() {
     "seller.name": "Người bán",
     grandTotal: "Tổng tiền hàng",
     customerPay: "Khách đã trả",
+    paymentMethod: "Thanh toán",
     status: "Trạng thái",
   };
 
@@ -271,7 +335,17 @@ export function InvoicesTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              Array.from({ length: 5 }).map((_, idx) => (
+                <TableRow key={idx}>
+                  {columns.map((col, cIdx) => (
+                    <TableCell key={cIdx}>
+                      <Skeleton className="h-5 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <Fragment key={row.id}>
                   {/* Master Data Row */}

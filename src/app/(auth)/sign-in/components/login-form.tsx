@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, LoginInput } from "@/lib/validation";
 import { loginUser } from "@/lib/api/auth";
-import { mergeUserWithJwtPayload, setTokens, setCachedUser } from "@/lib/auth";
+import { setTokens, setCachedUser } from "@/lib/auth";
+import { useAuthStore } from "@/store/auth-store";
 
 export function LoginForm2({
   className,
@@ -39,7 +40,9 @@ export function LoginForm2({
 
       if (accessToken) {
         setTokens({ accessToken, refreshToken });
-        setCachedUser(mergeUserWithJwtPayload(user));
+        // Fetch detailed user profile
+        await useAuthStore.getState().fetchMe();
+
         toast.success("Đăng nhập thành công!");
         router.push("/dashboard");
         router.refresh();

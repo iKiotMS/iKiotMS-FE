@@ -2,7 +2,7 @@
 'use client'
 
 import { type Table } from '@tanstack/react-table'
-import { CalendarIcon, Funnel, Search } from 'lucide-react'
+import { CalendarIcon, Coins, Funnel, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -27,6 +27,10 @@ type CustomersToolbarProps = {
   dateTo: string
   onDateFromChange: (v: string) => void
   onDateToChange: (v: string) => void
+  spendingFrom: string
+  spendingTo: string
+  onSpendingFromChange: (v: string) => void
+  onSpendingToChange: (v: string) => void
 }
 
 export function CustomersToolbar({
@@ -35,6 +39,10 @@ export function CustomersToolbar({
   dateTo,
   onDateFromChange,
   onDateToChange,
+  spendingFrom,
+  spendingTo,
+  onSpendingFromChange,
+  onSpendingToChange,
 }: CustomersToolbarProps) {
   const genderFilter = table.getColumn('gender')?.getFilterValue() as string
 
@@ -93,6 +101,40 @@ export function CustomersToolbar({
               onClick={() => {
                 onDateFromChange('')
                 onDateToChange('')
+              }}
+            >
+              Xóa
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Coins className="size-4 text-muted-foreground shrink-0" />
+          <Input
+            type="number"
+            placeholder="Chi tiêu từ"
+            value={spendingFrom}
+            onChange={(e) => onSpendingFromChange(e.target.value)}
+            className="h-9 w-32 text-sm cursor-pointer [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            title="Tổng chi tiêu từ"
+          />
+          <span className="text-muted-foreground text-sm">—</span>
+          <Input
+            type="number"
+            placeholder="Đến"
+            value={spendingTo}
+            onChange={(e) => onSpendingToChange(e.target.value)}
+            className="h-9 w-32 text-sm cursor-pointer [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            title="Tổng chi tiêu đến"
+          />
+          {(spendingFrom || spendingTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 px-2 cursor-pointer text-xs"
+              onClick={() => {
+                onSpendingFromChange('')
+                onSpendingToChange('')
               }}
             >
               Xóa

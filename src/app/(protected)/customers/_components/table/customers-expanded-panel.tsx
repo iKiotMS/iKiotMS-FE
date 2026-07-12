@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 import type { Customer } from '@/types/customer'
 import {
   GENDER_MAP,
@@ -117,7 +117,7 @@ export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpand
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Ngày tạo</span>
-              <span>{customer.createdAt}</span>
+              <span>{formatDateTime(customer.createdAt)}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Tổng chi tiêu</span>
@@ -171,10 +171,10 @@ export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpand
             <p className="text-sm text-muted-foreground text-center py-6">Chưa có đơn hàng nào</p>
           ) : (
             <div className="space-y-2">
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border [&_[data-slot=table-container]]:max-h-[300px] [&_[data-slot=table-container]]:overflow-y-auto">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40">
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow className="bg-muted">
                       <TableHead className="text-xs">Mã đơn</TableHead>
                       <TableHead className="text-xs">Ngày mua</TableHead>
                       <TableHead className="text-xs">Chi nhánh</TableHead>

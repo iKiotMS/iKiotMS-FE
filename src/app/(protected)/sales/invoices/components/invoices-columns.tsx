@@ -30,14 +30,14 @@ export interface Invoice {
     gender: "MALE" | "FEMALE" | "OTHER";
     address: string;
   };
-  status: "COMPLETED" | "CANCELLED" | "RETURNED";
+  status: "COMPLETED" | "CANCELLED" | "RETURNED" | "PENDING";
   userId: string;
   seller: {
     name: string;
     email: string;
     role: string;
   };
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY" | "SEPAY";
   grandTotal: number;
   customerPay: number;
   change: number;
@@ -79,6 +79,10 @@ export const STATUS_MAP: Record<
     label: "Trả hàng",
     variant: "info",
   },
+  PENDING: {
+    label: "Đang chờ",
+    variant: "warning",
+  },
 };
 
 export const PAYMENT_METHOD_MAP: Record<Invoice["paymentMethod"], string> = {
@@ -86,6 +90,7 @@ export const PAYMENT_METHOD_MAP: Record<Invoice["paymentMethod"], string> = {
   BANK_TRANSFER: "Chuyển khoản",
   MOMO: "Ví MoMo",
   VNPAY: "Ví VNPay",
+  SEPAY: "Cổng SePay",
 };
 
 function SortableHeader({
@@ -224,6 +229,18 @@ export const invoicesColumns: ColumnDef<Invoice>[] = [
         {formatVND(row.getValue("customerPay"))}
       </span>
     ),
+  },
+  {
+    accessorKey: "paymentMethod",
+    header: "Thanh toán",
+    cell: ({ row }) => {
+      const method = row.getValue("paymentMethod") as Invoice["paymentMethod"];
+      return PAYMENT_METHOD_MAP[method] || "—";
+    },
+    filterFn: (row, columnId, value: string) => {
+      if (!value || value === "all") return true;
+      return row.getValue(columnId) === value;
+    },
   },
   {
     accessorKey: "status",

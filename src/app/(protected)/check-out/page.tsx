@@ -11,6 +11,11 @@ import { CartItems } from "./components/cart-items";
 import { CheckoutSidebar } from "./components/checkout-sidebar";
 import { CustomerDialog } from "./components/customer-dialog";
 import { ReceiptDialog } from "./components/receipt-dialog";
+import { OrderQrDialog } from "./components/order-qr-dialog";
+import { orderApi } from "@/lib/api/order";
+import { branchApi } from "@/lib/api/branch";
+import { getCachedUser } from "@/lib/auth";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 interface Customer {
   id: string;
@@ -41,7 +46,7 @@ interface InvoiceState {
   discount: number;
   discountType: "cash" | "percent";
   vatPercent: number;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
 }
@@ -64,11 +69,44 @@ export default function CheckOutPage() {
     createNewInvoice("1", "Hóa đơn 1"),
   ]);
   const [activeTabId, setActiveTabId] = useState<string>("1");
+  const [branches, setBranches] = useState<any[]>([]);
+  const [direction, setDirection] = useState<"horizontal" | "vertical">("horizontal");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setDirection(e.matches ? "horizontal" : "vertical");
+    };
+    handleMediaChange(mediaQuery);
+    mediaQuery.addEventListener("change", handleMediaChange);
+    return () => mediaQuery.removeEventListener("change", handleMediaChange);
+  }, []);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await branchApi.getList({ limit: 100 });
+        setBranches(response.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách chi nhánh:", err);
+      }
+    };
+    fetchBranches();
+  }, []);
 
   // Modals state
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptOrder, setReceiptOrder] = useState<any | null>(null);
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [qrOrderData, setQrOrderData] = useState<{
+    orderId: string;
+    qrUrl: string;
+    paymentReference: string;
+    grandTotal: number;
+    receiptSnapshot: any;
+  } | null>(null);
 
   // Active invoice getter
   const activeInvoice = useMemo(() => {
@@ -224,33 +262,109 @@ export default function CheckOutPage() {
       return;
     }
 
-    if (activeInvoice.customerPay < grandTotal) {
+    if (activeInvoice.paymentMethod === "CASH" && activeInvoice.customerPay < grandTotal) {
       toast.error("Số tiền khách trả phải lớn hơn hoặc bằng tổng hóa đơn!");
       return;
     }
 
-    // Prepare printable receipt metadata
-    const orderDetails = {
-      orderCode: `HD-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: new Date().toISOString(),
-      branchName: "Chi nhánh A (Trụ sở chính)",
-      sellerName: "Quản trị viên (Admin)",
-      customer: activeInvoice.selectedCustomer,
-      items: activeInvoice.items,
+    // Resolve branchId
+    let resolvedBranchId = "";
+    if (typeof window !== "undefined") {
+      const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
+      const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
+      if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+        resolvedBranchId = activeSwitcherItemId;
+      }
+    }
+    
+    if (!resolvedBranchId) {
+      const cachedUser = getCachedUser() as any;
+      if (cachedUser?.branchId) {
+        resolvedBranchId = cachedUser.branchId;
+      }
+    }
+    
+    if (!resolvedBranchId && branches.length > 0) {
+      resolvedBranchId = branches[0]._id;
+    }
+
+    if (!resolvedBranchId) {
+      toast.error("Không xác định được chi nhánh hoạt động. Vui lòng chọn chi nhánh!");
+      return;
+    }
+
+    const payload = {
+      customerId: activeInvoice.selectedCustomer?.id,
+      branchId: resolvedBranchId,
+      paymentMethod: activeInvoice.paymentMethod,
+      items: activeInvoice.items.map((item) => ({
+        productItemId: item.productItemId,
+        productName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discountAmount: item.discountAmount,
+      })),
       grandTotal,
       customerPay: activeInvoice.customerPay,
-      change: Math.max(0, activeInvoice.customerPay - grandTotal),
-      paymentMethod: activeInvoice.paymentMethod,
       note: activeInvoice.note,
     };
 
-    setReceiptOrder(orderDetails);
-    setIsReceiptOpen(true);
+    const buildReceipt = (createdOrder: any, orderId: string) => ({
+      orderCode: createdOrder.paymentReference || `HD-${orderId.slice(-6).toUpperCase()}`,
+      createdAt: createdOrder.createdAt || new Date().toISOString(),
+      branchName: branches.find((b) => b._id === resolvedBranchId)?.name || "Chi nhánh chính",
+      sellerName: getCachedUser()?.full_name || "Quản trị viên (Admin)",
+      customer: activeInvoice.selectedCustomer,
+      items: activeInvoice.items.map((item) => ({
+        productName: item.name,
+        sku: item.sku,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discountAmount: item.discountAmount,
+      })),
+      grandTotal,
+      customerPay: activeInvoice.paymentMethod === "CASH" ? activeInvoice.customerPay : grandTotal,
+      change: activeInvoice.paymentMethod === "CASH"
+        ? (createdOrder.change ?? Math.max(0, activeInvoice.customerPay - grandTotal))
+        : 0,
+      paymentMethod: activeInvoice.paymentMethod,
+      note: activeInvoice.note,
+    });
 
-    // Reset checkout active state
-    updateActiveInvoice(
-      createNewInvoice(activeInvoice.id, activeInvoice.tabName),
-    );
+    const checkoutPromise = orderApi.create(payload);
+
+    toast.promise(checkoutPromise, {
+      loading: "Đang xử lý...",
+      success: (response) => {
+        const createdOrder = response.data.order;
+        const orderId = createdOrder.id || (createdOrder as any)._id || "";
+        const receipt = buildReceipt(createdOrder, orderId);
+
+        if (activeInvoice.paymentMethod === "SEPAY" && response.data.qrUrl) {
+          // SEPAY: hiện QR dialog, chờ xác nhận payment
+          setQrOrderData({
+            orderId,
+            qrUrl: response.data.qrUrl,
+            paymentReference: createdOrder.paymentReference || "",
+            grandTotal,
+            receiptSnapshot: receipt,
+          });
+          setIsQrDialogOpen(true);
+          updateActiveInvoice(createNewInvoice(activeInvoice.id, activeInvoice.tabName));
+          return "Đã tạo đơn! Mời khách quét mã QR.";
+        }
+
+        // CASH: hiện receipt ngay
+        setReceiptOrder(receipt);
+        setIsReceiptOpen(true);
+        updateActiveInvoice(createNewInvoice(activeInvoice.id, activeInvoice.tabName));
+        return "Thanh toán đơn hàng thành công!";
+      },
+      error: (err: any) => {
+        console.error("Lỗi thanh toán:", err);
+        return err?.response?.data?.message || err?.message || "Thanh toán đơn hàng thất bại";
+      },
+    });
   };
 
   // Reset/Cancel order cart
@@ -293,78 +407,82 @@ export default function CheckOutPage() {
 
   return (
     <div className="h-screen w-full flex flex-col gap-4 p-4 overflow-hidden bg-background">
-      {/* Main Grid: Left Column Cart + Search | Right Column Billing Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-1 min-h-0">
+      {/* Main Resizable Layout: Left Column Cart + Search | Right Column Billing Sidebar */}
+      <ResizablePanelGroup direction={direction} className="flex-1 min-h-0 gap-4">
         {/* Left Side: Search + Active Tab + Cart Items list */}
-        <div className="lg:col-span-8 flex flex-col gap-4 min-h-0">
-          <div className="flex flex-col gap-3 bg-card p-4 rounded-xl border shadow-sm shrink-0">
-            {/* Tabs Control */}
-            <CheckoutTabs
-              tabs={invoices.map((inv) => ({
-                id: inv.id,
-                tabName: inv.tabName,
-              }))}
-              activeTabId={activeTabId}
-              onTabChange={setActiveTabId}
-              onTabAdd={handleTabAdd}
-              onTabClose={handleTabClose}
-            />
+        <ResizablePanel defaultSize={65} minSize={30}>
+          <div className="h-full flex flex-col gap-4 min-h-0">
+            <div className="flex flex-col gap-3 bg-card p-4 rounded-xl border shadow-sm shrink-0">
+              {/* Tabs Control */}
+              <CheckoutTabs
+                tabs={invoices.map((inv) => ({
+                  id: inv.id,
+                  tabName: inv.tabName,
+                }))}
+                activeTabId={activeTabId}
+                onTabChange={setActiveTabId}
+                onTabAdd={handleTabAdd}
+                onTabClose={handleTabClose}
+              />
 
-            {/* Product Autocomplete Lookup */}
-            <ProductSearch onProductSelect={handleProductSelect} />
-          </div>
+              {/* Product Autocomplete Lookup */}
+              <ProductSearch onProductSelect={handleProductSelect} />
+            </div>
 
-          {/* Cart items list - scrollable wrapper */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <CartItems
-              items={activeInvoice.items}
-              onQuantityChange={handleItemQuantityChange}
-              onUnitPriceChange={handleItemUnitPriceChange}
-              onDiscountChange={handleItemDiscountChange}
-              onItemRemove={handleItemRemove}
-            />
+            {/* Cart items list - scrollable wrapper */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <CartItems
+                items={activeInvoice.items}
+                onQuantityChange={handleItemQuantityChange}
+                onUnitPriceChange={handleItemUnitPriceChange}
+                onDiscountChange={handleItemDiscountChange}
+                onItemRemove={handleItemRemove}
+              />
+            </div>
           </div>
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle className="hidden lg:flex" />
 
         {/* Right Side: Billing details card */}
-        <div className="lg:col-span-4 h-full min-h-0">
-          <CheckoutSidebar
-            totalQuantity={activeInvoice.items.reduce(
-              (acc, item) => acc + item.quantity,
-              0,
-            )}
-            subtotal={activeInvoice.items.reduce(
-              (acc, item) => acc + item.quantity * item.unitPrice,
-              0,
-            )}
-            discount={activeInvoice.discount}
-            discountType={activeInvoice.discountType}
-            vatPercent={activeInvoice.vatPercent}
-            paymentMethod={activeInvoice.paymentMethod}
-            customerPay={activeInvoice.customerPay}
-            note={activeInvoice.note}
-            selectedCustomer={activeInvoice.selectedCustomer}
-            onCustomerChange={(customer) =>
-              updateActiveInvoice({ selectedCustomer: customer })
-            }
-            onDiscountChange={(discount) => updateActiveInvoice({ discount })}
-            onDiscountTypeChange={(type) =>
-              updateActiveInvoice({ discountType: type })
-            }
-            onVatChange={(vat) => updateActiveInvoice({ vatPercent: vat })}
-            onPaymentMethodChange={(method) =>
-              updateActiveInvoice({ paymentMethod: method })
-            }
-            onCustomerPayChange={(pay) =>
-              updateActiveInvoice({ customerPay: pay })
-            }
-            onNoteChange={(note) => updateActiveInvoice({ note })}
-            onCheckout={handleCheckoutSubmit}
-            onCancel={handleCancelOrder}
-            onOpenNewCustomerModal={() => setIsCustomerModalOpen(true)}
-          />
-        </div>
-      </div>
+        <ResizablePanel defaultSize={35} minSize={25}>
+          <div className="h-full min-h-0">
+            <CheckoutSidebar
+              totalQuantity={activeInvoice.items.reduce(
+                (acc, item) => acc + item.quantity,
+                0,
+              )}
+              subtotal={activeInvoice.items.reduce(
+                (acc, item) => acc + item.quantity * item.unitPrice,
+                0,
+              )}
+              discount={activeInvoice.discount}
+              discountType={activeInvoice.discountType}
+              paymentMethod={activeInvoice.paymentMethod}
+              customerPay={activeInvoice.customerPay}
+              note={activeInvoice.note}
+              selectedCustomer={activeInvoice.selectedCustomer}
+              onCustomerChange={(customer) =>
+                updateActiveInvoice({ selectedCustomer: customer })
+              }
+              onDiscountChange={(discount) => updateActiveInvoice({ discount })}
+              onDiscountTypeChange={(type) =>
+                updateActiveInvoice({ discountType: type })
+              }
+              onPaymentMethodChange={(method) =>
+                updateActiveInvoice({ paymentMethod: method })
+              }
+              onCustomerPayChange={(pay) =>
+                updateActiveInvoice({ customerPay: pay })
+              }
+              onNoteChange={(note) => updateActiveInvoice({ note })}
+              onCheckout={handleCheckoutSubmit}
+              onCancel={handleCancelOrder}
+              onOpenNewCustomerModal={() => setIsCustomerModalOpen(true)}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Quick modal forms */}
       <CustomerDialog
@@ -380,6 +498,33 @@ export default function CheckOutPage() {
         onOpenChange={setIsReceiptOpen}
         order={receiptOrder}
       />
+
+      {qrOrderData && (
+        <OrderQrDialog
+          open={isQrDialogOpen}
+          onOpenChange={setIsQrDialogOpen}
+          orderId={qrOrderData.orderId}
+          qrUrl={qrOrderData.qrUrl}
+          paymentReference={qrOrderData.paymentReference}
+          grandTotal={qrOrderData.grandTotal}
+          onPaymentConfirmed={() => {
+            setReceiptOrder(qrOrderData.receiptSnapshot);
+            setIsReceiptOpen(true);
+            setQrOrderData(null);
+          }}
+          onPaidOffline={({ customerPay, change }) => {
+            // Đơn đã chuyển sang tiền mặt — hóa đơn phải phản ánh đúng phương thức
+            setReceiptOrder({
+              ...qrOrderData.receiptSnapshot,
+              paymentMethod: "CASH",
+              customerPay,
+              change,
+            });
+            setIsReceiptOpen(true);
+            setQrOrderData(null);
+          }}
+        />
+      )}
 
       {/* Interactive brand logo back button in bottom left corner */}
       <Link

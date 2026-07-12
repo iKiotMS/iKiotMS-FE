@@ -37,7 +37,7 @@ import {
   canDeleteStaff,
   canManageStaffAccount,
   canUpdateStaff,
-} from "@/app/(protected)/staffs/shared/staff-permissions";
+} from "@/components/sidebar/constants/role-permissions";
 import {
   canDeactivateStaffRow,
   canDeleteStaffRow,

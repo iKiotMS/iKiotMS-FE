@@ -1,22 +1,22 @@
 export type ProductStatus = "ACTIVE" | "INACTIVE" | "DISCONTINUED";
+export type LocationType = "branch" | "warehouse";
 
 export interface ProductImage {
+  _id?: string;
   url: string;
   isThumbnail: boolean;
 }
 
-export interface Product {
-  id: string;
-  tenantId: string;
-  brandId?: string;
-  categoryId?: string;
-  supplierId?: string;
+export interface ProductDetail {
+  _id?: string;
   name: string;
-  status: ProductStatus;
-  categoryName?: string;
-  images?: ProductImage[];
-  createdAt?: string;
-  updatedAt?: string;
+  value: string;
+}
+
+export interface StockDetail {
+  locationId: string;
+  locationType: LocationType;
+  stock: number;
 }
 
 export interface ProductItem {
@@ -33,6 +33,27 @@ export interface ProductItem {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
+  productDetails?: ProductDetail[];
+  stock?: number;
+  stockDetails?: StockDetail[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Product {
+  id: string;
+  tenantId: string;
+  brandId?: string;
+  categoryId?: string;
+  supplierId?: string;
+  name: string;
+  status: ProductStatus;
+  categoryName?: string;
+  images?: ProductImage[];
+  items?: ProductItem[];
+  totalStock?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProductDetailResponse extends Product {
@@ -43,6 +64,8 @@ export interface ProductQueryParams {
   search?: string;
   status?: ProductStatus;
   categoryId?: string;
+  locationId?: string;
+  locationType?: LocationType;
   page?: number;
   limit?: number;
 }
@@ -59,6 +82,12 @@ export interface ProductListResponse {
   pagination: PaginationResponse;
 }
 
+export interface InitialStock {
+  locationId: string;
+  locationType: LocationType;
+  stock?: number;
+}
+
 export interface ProductItemCreatePayload {
   productCode: string;
   sku: string;
@@ -69,7 +98,8 @@ export interface ProductItemCreatePayload {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
-  productDetails?: Record<string, unknown>[];
+  productDetails?: ProductDetail[];
+  initialStock?: InitialStock[];
 }
 
 export interface ProductItemUpdatePayload {
@@ -82,15 +112,13 @@ export interface ProductItemUpdatePayload {
   VAT?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
-  productDetails?: Record<string, unknown>[];
+  productDetails?: ProductDetail[];
 }
 
 export interface ProductCreatePayload {
   name: string;
-  brandId?: string;
-  categoryId?: string;
-  categoryName?: string;
-  supplierId?: string;
+  brandId?: string | null;
+  categoryId?: string | null;
   status: ProductStatus;
   images?: ProductImage[];
   items: ProductItemCreatePayload[];
@@ -98,10 +126,8 @@ export interface ProductCreatePayload {
 
 export interface ProductUpdatePayload {
   name?: string;
-  brandId?: string;
-  categoryId?: string;
-  categoryName?: string;
-  supplierId?: string;
+  brandId?: string | null;
+  categoryId?: string | null;
   status?: ProductStatus;
   images?: ProductImage[];
 }

@@ -1,0 +1,139 @@
+export type TransferUiLabels = {
+  moduleTitle: string
+  moduleSubtitle: string
+  createButton: string
+  createDialogTitle: string
+  createDialogDescription: string
+  fromLabel: string
+  toLabel: string
+  fromPlaceholder: string
+  toPlaceholder: string
+  orderNotePlaceholder: string
+  selectFromHint: string
+  noStockAtSource: string
+  submitButton: string
+  successToast: string
+  searchPlaceholder: string
+  fromColumnHeader: string
+  toColumnHeader: string
+  emptyState: string
+  fromRequired: string
+  toRequired: string
+  sameLocationError: string
+  loadLocationsError: string
+  loadProductsError: string
+  receiveTitle: string
+  listLoadError: string
+  receiveSuccess: string
+  receiveError: string
+  cancelSuccess: string
+  cancelError: string
+  sidebarTitle: string
+}
+
+const BRANCH_LABELS: TransferUiLabels = {
+  moduleTitle: 'Chuyển hàng',
+  moduleSubtitle: 'Quản lý yêu cầu chuyển hàng giữa các chi nhánh / trả kho',
+  createButton: 'Tạo yêu cầu chuyển hàng',
+  createDialogTitle: 'Tạo yêu cầu chuyển hàng',
+  createDialogDescription:
+    'Chọn nơi nhận và danh sách hàng hóa cần chuyển hoặc trả kho.',
+  fromLabel: 'Chi nhánh gửi',
+  toLabel: 'Nơi nhận',
+  fromPlaceholder: 'Chọn chi nhánh gửi',
+  toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
+  orderNotePlaceholder: 'Ghi chú cho cả phiếu chuyển hàng (tùy chọn)',
+  selectFromHint: 'Chọn chi nhánh gửi để xem hàng có tồn.',
+  noStockAtSource: 'Không có hàng tồn tại chi nhánh nguồn.',
+  submitButton: 'Tạo yêu cầu chuyển hàng',
+  successToast: 'Tạo yêu cầu chuyển hàng thành công',
+  searchPlaceholder: 'Tìm theo chi nhánh, kho, mã yêu cầu...',
+  fromColumnHeader: 'Chi nhánh gửi',
+  toColumnHeader: 'Nơi nhận',
+  emptyState: 'Không có yêu cầu chuyển hàng',
+  fromRequired: 'Vui lòng chọn chi nhánh gửi',
+  toRequired: 'Vui lòng chọn nơi nhận',
+  sameLocationError: 'Nơi gửi và nơi nhận không được trùng nhau',
+  loadLocationsError: 'Không thể tải danh sách chi nhánh/kho',
+  loadProductsError: 'Không thể tải hàng tại chi nhánh nguồn',
+  receiveTitle: 'Xác nhận nhận hàng chuyển / trả kho',
+  listLoadError: 'Không thể tải danh sách chuyển hàng',
+  receiveSuccess: 'Đã nhận hàng chuyển',
+  receiveError: 'Không thể nhận hàng chuyển',
+  cancelSuccess: 'Đã huỷ yêu cầu chuyển hàng',
+  cancelError: 'Không thể huỷ yêu cầu chuyển hàng',
+  sidebarTitle: 'Chuyển hàng',
+}
+
+const WAREHOUSE_LABELS: TransferUiLabels = {
+  moduleTitle: 'Chuyển kho',
+  moduleSubtitle: 'Quản lý yêu cầu chuyển hàng từ kho sang chi nhánh',
+  createButton: 'Tạo yêu cầu chuyển kho',
+  createDialogTitle: 'Tạo yêu cầu chuyển kho',
+  createDialogDescription:
+    'Kho chỉ được xuất từ kho của mình sang chi nhánh khác.',
+  fromLabel: 'Kho gửi',
+  toLabel: 'Chi nhánh nhận',
+  fromPlaceholder: 'Chọn kho gửi',
+  toPlaceholder: 'Chọn chi nhánh nhận',
+  orderNotePlaceholder: 'Ghi chú cho cả phiếu chuyển kho (tùy chọn)',
+  selectFromHint: 'Chọn kho gửi để xem hàng có tồn.',
+  noStockAtSource: 'Không có hàng tồn tại kho nguồn.',
+  submitButton: 'Tạo yêu cầu chuyển kho',
+  successToast: 'Tạo yêu cầu chuyển kho thành công',
+  searchPlaceholder: 'Tìm theo kho, chi nhánh, mã yêu cầu...',
+  fromColumnHeader: 'Kho gửi',
+  toColumnHeader: 'Chi nhánh nhận',
+  emptyState: 'Không có yêu cầu chuyển kho',
+  fromRequired: 'Vui lòng chọn kho gửi',
+  toRequired: 'Vui lòng chọn chi nhánh nhận',
+  sameLocationError: 'Kho gửi và nơi nhận không được trùng nhau',
+  loadLocationsError: 'Không thể tải danh sách kho/chi nhánh',
+  loadProductsError: 'Không thể tải hàng tại kho nguồn',
+  receiveTitle: 'Xác nhận nhận hàng chuyển kho',
+  listLoadError: 'Không thể tải danh sách chuyển kho',
+  receiveSuccess: 'Đã nhận hàng chuyển kho',
+  receiveError: 'Không thể nhận hàng chuyển kho',
+  cancelSuccess: 'Đã huỷ yêu cầu chuyển kho',
+  cancelError: 'Không thể huỷ yêu cầu chuyển kho',
+  sidebarTitle: 'Chuyển kho',
+}
+
+const DEFAULT_LABELS: TransferUiLabels = {
+  moduleTitle: 'Chuyển kho',
+  moduleSubtitle: 'Quản lý yêu cầu chuyển hàng hóa giữa các kho và chi nhánh',
+  createButton: 'Tạo yêu cầu chuyển kho',
+  createDialogTitle: 'Tạo yêu cầu chuyển kho',
+  createDialogDescription: 'Chọn kho gửi, kho nhận và danh sách hàng hóa cần chuyển.',
+  fromLabel: 'Kho / Chi nhánh gửi',
+  toLabel: 'Kho / Chi nhánh nhận',
+  fromPlaceholder: 'Chọn nơi gửi',
+  toPlaceholder: 'Chọn nơi nhận',
+  orderNotePlaceholder: 'Ghi chú cho cả phiếu chuyển (tùy chọn)',
+  selectFromHint: 'Chọn nơi gửi để xem hàng có tồn.',
+  noStockAtSource: 'Không có hàng tồn tại nguồn.',
+  submitButton: 'Tạo yêu cầu chuyển kho',
+  successToast: 'Tạo yêu cầu chuyển kho thành công',
+  searchPlaceholder: 'Tìm theo kho, chi nhánh, mã yêu cầu...',
+  fromColumnHeader: 'Nơi gửi',
+  toColumnHeader: 'Nơi nhận',
+  emptyState: 'Không có yêu cầu chuyển kho',
+  fromRequired: 'Vui lòng chọn nơi gửi',
+  toRequired: 'Vui lòng chọn nơi nhận',
+  sameLocationError: 'Nơi gửi và nơi nhận không được trùng nhau',
+  loadLocationsError: 'Không thể tải danh sách kho/chi nhánh',
+  loadProductsError: 'Không thể tải hàng tại nguồn',
+  receiveTitle: 'Xác nhận nhận hàng chuyển kho',
+  listLoadError: 'Không thể tải danh sách chuyển kho',
+  receiveSuccess: 'Đã nhận hàng chuyển kho',
+  receiveError: 'Không thể nhận hàng chuyển kho',
+  cancelSuccess: 'Đã huỷ yêu cầu chuyển kho',
+  cancelError: 'Không thể huỷ yêu cầu chuyển kho',
+  sidebarTitle: 'Chuyển kho',
+}
+
+export function getTransferUiLabels(role?: string | null): TransferUiLabels {
+  if (role === 'BRANCH_MANAGER') return BRANCH_LABELS
+  if (role === 'WAREHOUSE_MANAGER') return WAREHOUSE_LABELS
+  return DEFAULT_LABELS
+}

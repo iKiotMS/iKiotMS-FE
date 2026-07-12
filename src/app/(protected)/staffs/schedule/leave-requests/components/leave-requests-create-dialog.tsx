@@ -30,36 +30,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  BRANCH_OPTIONS,
-  STAFF_OPTIONS,
-  useLeaveRequests,
-} from "./leave-requests-provider";
+import { useLeaveRequests } from "./leave-requests-provider";
 
 const leaveRequestFormSchema = z
   .object({
     userId: z.string().min(1, "Vui lòng chọn nhân viên"),
-    branchId: z.string().min(1, "Vui lòng chọn chi nhánh"),
-    type: z.enum(["SICK", "PERSONAL", "ANNUAL", "OTHER"]),
+    leaveType: z.enum(["SICK", "UNPAID", "ANNUAL", "OTHER"]),
     reason: z.string().min(3, "Lý do nghỉ tối thiểu 3 ký tự"),
-    fromDate: z.string().min(1, "Vui lòng chọn ngày bắt đầu"),
-    toDate: z.string().min(1, "Vui lòng chọn ngày kết thúc"),
+    startDate: z.string().min(1, "Vui lòng chọn ngày bắt đầu"),
+    endDate: z.string().min(1, "Vui lòng chọn ngày kết thúc"),
   })
-  .refine((values) => new Date(values.fromDate) <= new Date(values.toDate), {
+  .refine((values) => new Date(values.startDate) <= new Date(values.endDate), {
     message: "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc",
-    path: ["toDate"],
+    path: ["endDate"],
   });
 
 type LeaveRequestFormValues = z.infer<typeof leaveRequestFormSchema>;
 
-const EMPTY_VALUES: LeaveRequestFormValues = {
-  userId: "staff-001",
-  branchId: "branch-1",
-  type: "PERSONAL",
-  reason: "",
-  fromDate: new Date().toISOString().split("T")[0],
-  toDate: new Date().toISOString().split("T")[0],
-};
+function buildEmptyValues(
+  staffOptions: { value: string; label: string }[],
+): LeaveRequestFormValues {
+  const today = new Date().toISOString().split("T")[0];
+  return {
+    userId: staffOptions[0]?.value ?? "",
+    leaveType: "UNPAID",
+    reason: "",
+    startDate: today,
+    endDate: today,
+  };
+}
 
 export function LeaveRequestsCreateDialog({
   open,
@@ -68,85 +67,69 @@ export function LeaveRequestsCreateDialog({
   open: boolean;
   onOpenChange: (value: boolean) => void;
 }) {
-  const { handleCreate } = useLeaveRequests();
+  const { handleCreate, staffOptions } = useLeaveRequests();
   const form = useForm<LeaveRequestFormValues>({
     resolver: zodResolver(leaveRequestFormSchema),
-    defaultValues: EMPTY_VALUES,
+    defaultValues: buildEmptyValues(staffOptions),
   });
 
   useEffect(() => {
-    if (open) form.reset(EMPTY_VALUES);
-  }, [open, form]);
+    if (open) form.reset(buildEmptyValues(staffOptions));
+  }, [open, form, staffOptions]);
 
   async function onSubmit(values: LeaveRequestFormValues) {
-    await handleCreate(values);
-    onOpenChange(false);
+    try {
+      await handleCreate(values);
+      onOpenChange(false);
+    } catch {
+      // toast handled in provider
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Tạo đơn nghỉ phép</DialogTitle>
+          <DialogTitle>Tạo đơn nghỉ phép khẩn</DialogTitle>
           <DialogDescription>
-            Gửi yêu cầu nghỉ phép để quản lý duyệt hoặc từ chối.
+            Quản lý tạo đơn nghỉ phép thay cho nhân viên khi cần xử lý khẩn cấp.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="userId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nhân viên</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Chọn nhân viên" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {STAFF_OPTIONS.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="branchId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Chi nhánh</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Chọn chi nhánh" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {BRANCH_OPTIONS.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
             <FormField
               control={form.control}
-              name="type"
+              name="userId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nhân viên</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cursor-pointer">
+                        <SelectValue placeholder="Chọn nhân viên" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {staffOptions.length === 0 ? (
+                        <SelectItem value="__empty" disabled>
+                          Không có nhân viên
+                        </SelectItem>
+                      ) : (
+                        staffOptions.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="leaveType"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loại nghỉ</FormLabel>
@@ -158,7 +141,7 @@ export function LeaveRequestsCreateDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="SICK">Ốm đau</SelectItem>
-                      <SelectItem value="PERSONAL">Việc cá nhân</SelectItem>
+                      <SelectItem value="UNPAID">Nghỉ không lương</SelectItem>
                       <SelectItem value="ANNUAL">Nghỉ phép năm</SelectItem>
                       <SelectItem value="OTHER">Khác</SelectItem>
                     </SelectContent>
@@ -170,7 +153,7 @@ export function LeaveRequestsCreateDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="fromDate"
+                name="startDate"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Từ ngày</FormLabel>
@@ -183,7 +166,7 @@ export function LeaveRequestsCreateDialog({
               />
               <FormField
                 control={form.control}
-                name="toDate"
+                name="endDate"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Đến ngày</FormLabel>
@@ -217,7 +200,11 @@ export function LeaveRequestsCreateDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" className="cursor-pointer">
+              <Button
+                type="submit"
+                className="cursor-pointer"
+                disabled={staffOptions.length === 0}
+              >
                 <Plus className="mr-2 size-4" />
                 Tạo đơn
               </Button>

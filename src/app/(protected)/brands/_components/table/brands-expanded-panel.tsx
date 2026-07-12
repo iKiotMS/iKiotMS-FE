@@ -3,14 +3,13 @@
 
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import type { Brand } from '@/types/brand'
-import { STATUS_MAP } from '../../_constants/brand.constants'
 import { useBrands } from '../../_context/brands-provider'
+import { getCachedUser } from '@/lib/auth'
+import { canUpdateBrand, canDeleteBrand } from '@/components/sidebar/constants/role-permissions'
 
 type BrandsExpandedPanelProps = {
   brand: Brand
@@ -19,6 +18,9 @@ type BrandsExpandedPanelProps = {
 
 export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelProps) {
   const { setOpen, setCurrentRow } = useBrands()
+  const role = getCachedUser()?.role
+  const canEdit = canUpdateBrand(role)
+  const canDelete = canDeleteBrand(role)
   const [loading, setLoading] = useState(false)
   const wasExpandedRef = useRef(false)
 
@@ -38,7 +40,7 @@ export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelPr
     return (
       <div className="bg-background border-b px-6 py-4 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-4 w-24" />
@@ -58,31 +60,8 @@ export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelPr
     <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Mã thương hiệu</span>
-          <span className="font-mono font-medium">{brand.brandCode}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Tên thương hiệu</span>
           <span className="font-medium">{brand.name}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Xuất xứ</span>
-          <span>{brand.country || '—'}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Trạng thái</span>
-          <Badge
-            variant="secondary"
-            className={cn('w-fit text-xs', STATUS_MAP[brand.status].className)}
-          >
-            {STATUS_MAP[brand.status].label}
-          </Badge>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Số hàng hóa</span>
-          <span className="tabular-nums font-medium">
-            {brand.productCount.toLocaleString('vi-VN')}
-          </span>
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Ngày tạo</span>
@@ -97,31 +76,35 @@ export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelPr
       </div>
       <Separator className="mt-4" />
       <div className="flex items-center justify-between mt-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation()
-            setCurrentRow(brand)
-            setOpen('delete')
-          }}
-        >
-          <Trash2 className="mr-2 size-4" />
-          Xóa
-        </Button>
-        <Button
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation()
-            setCurrentRow(brand)
-            setOpen('edit')
-          }}
-        >
-          <Pencil className="mr-2 size-4" />
-          Chỉnh sửa
-        </Button>
+        {canDelete ? (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation()
+              setCurrentRow(brand)
+              setOpen('delete')
+            }}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa
+          </Button>
+        ) : <span />}
+        {canEdit && (
+          <Button
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation()
+              setCurrentRow(brand)
+              setOpen('edit')
+            }}
+          >
+            <Pencil className="mr-2 size-4" />
+            Chỉnh sửa
+          </Button>
+        )}
       </div>
     </div>
   )

@@ -1,29 +1,41 @@
 // [Mutations – Category]
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Category } from '@/types/category'
 import type { CategoryFormValues } from '../_types/category.types'
-import initialData from '../data/categories.json'
+import { categoryApi } from '@/lib/api/category'
 
 export function useCategoriesMutations() {
-  const [categories, setCategories] = useState<Category[]>(initialData as Category[])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  const fetchCategories = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await categoryApi.getList({ limit: 100 })
+      setCategories(res.data)
+    } catch {
+      toast.error('Tải danh sách danh mục thất bại')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCategories()
+  }, [fetchCategories])
 
   async function handleAdd(data: CategoryFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        categoryCode: data.categoryCode,
+      const category = await categoryApi.create({
         name: data.name,
-        description: data.description ?? '',
-        productCount: 0,
-        status: data.status,
-        createdAt: new Date().toISOString().split('T')[0],
-      }
-      setCategories((prev) => [newCategory, ...prev])
+        description: data.description || undefined,
+        parentId: data.parentId || null,
+      })
+      setCategories((prev) => [category, ...prev])
       toast.success('Thêm danh mục thành công')
       return true
     } catch {
@@ -37,19 +49,12 @@ export function useCategoriesMutations() {
   async function handleEdit(id: string, data: CategoryFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                categoryCode: data.categoryCode,
-                name: data.name,
-                description: data.description ?? c.description,
-                status: data.status,
-              }
-            : c,
-        ),
-      )
+      const updated = await categoryApi.update(id, {
+        name: data.name,
+        description: data.description || undefined,
+        parentId: data.parentId || null,
+      })
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)))
       toast.success('Cập nhật danh mục thành công')
       return true
     } catch {
@@ -63,6 +68,7 @@ export function useCategoriesMutations() {
   async function handleDelete(id: string): Promise<boolean> {
     setIsLoading(true)
     try {
+      await categoryApi.remove(id)
       setCategories((prev) => prev.filter((c) => c.id !== id))
       toast.success('Xóa danh mục thành công')
       return true
@@ -77,6 +83,7 @@ export function useCategoriesMutations() {
   async function handleDeleteMany(ids: string[]): Promise<boolean> {
     setIsLoading(true)
     try {
+      await Promise.all(ids.map((id) => categoryApi.remove(id)))
       setCategories((prev) => prev.filter((c) => !ids.includes(c.id)))
       toast.success(`Xóa ${ids.length} danh mục thành công`)
       return true

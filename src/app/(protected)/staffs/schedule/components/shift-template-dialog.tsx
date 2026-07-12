@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clock, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Clock, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -23,8 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import type { ShiftTemplate } from "@/types/working-schedule";
+import { cn } from "@/lib/utils";
 import { useSchedule } from "./schedule-provider";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -47,6 +46,9 @@ const EMPTY_FORM: ShiftTemplateFormValues = {
   endTime: "17:00",
 };
 
+const FORM_ID = "shift-template-form";
+const LIST_PAGE_SIZE = 8;
+
 export function ShiftTemplateDialog({
   open,
   onOpenChange,
@@ -60,30 +62,82 @@ export function ShiftTemplateDialog({
     handleUpdateShiftTemplate,
     handleDeleteShiftTemplate,
   } = useSchedule();
+
+  const [selectedTemplate, setSelectedTemplate] = useState<ShiftTemplate | null>(
+    null,
+  );
   const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(
     null,
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [listPage, setListPage] = useState(0);
 
   const form = useForm<ShiftTemplateFormValues>({
     resolver: zodResolver(shiftTemplateSchema),
     defaultValues: EMPTY_FORM,
   });
 
+  const filteredTemplates = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return shiftTemplates;
+    return shiftTemplates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(keyword) ||
+        t.startTime.includes(keyword) ||
+        t.endTime.includes(keyword),
+    );
+  }, [shiftTemplates, search]);
+
+  const totalListPages = Math.max(
+    1,
+    Math.ceil(filteredTemplates.length / LIST_PAGE_SIZE),
+  );
+  const activePage = Math.min(listPage, totalListPages - 1);
+
+  const pagedTemplates = useMemo(() => {
+    const start = activePage * LIST_PAGE_SIZE;
+    return filteredTemplates.slice(start, start + LIST_PAGE_SIZE);
+  }, [filteredTemplates, activePage]);
+
+  const isSubmitting = form.formState.isSubmitting;
+  const isEditing = editingTemplate !== null;
+  const targetTemplate = editingTemplate ?? selectedTemplate;
+
   useEffect(() => {
     if (!open) {
+      setSelectedTemplate(null);
       setEditingTemplate(null);
+      setSearch("");
+      setListPage(0);
       form.reset(EMPTY_FORM);
     }
   }, [open, form]);
 
-  function startEdit(template: ShiftTemplate) {
+  useEffect(() => {
+    setListPage(0);
+  }, [search]);
+
+  function enterEditMode(template: ShiftTemplate) {
+    setSelectedTemplate(template);
     setEditingTemplate(template);
     form.reset({
       name: template.name,
       startTime: template.startTime,
       endTime: template.endTime,
     });
+  }
+
+  function selectTemplate(template: ShiftTemplate) {
+    if (isEditing) return;
+    setSelectedTemplate((prev) =>
+      prev?._id === template._id ? null : template,
+    );
+  }
+
+  function beginEdit() {
+    if (!selectedTemplate) return;
+    enterEditMode(selectedTemplate);
   }
 
   function cancelEdit() {
@@ -95,17 +149,19 @@ export function ShiftTemplateDialog({
     if (editingTemplate) {
       await handleUpdateShiftTemplate(editingTemplate._id, values);
       cancelEdit();
+      setSelectedTemplate(null);
     } else {
       await handleCreateShiftTemplate(values);
       form.reset(EMPTY_FORM);
     }
   }
 
-  async function onDelete(id: string) {
-    setDeletingId(id);
+  async function onDelete(template: ShiftTemplate) {
+    setDeletingId(template._id);
     try {
-      await handleDeleteShiftTemplate(id);
-      if (editingTemplate?._id === id) cancelEdit();
+      await handleDeleteShiftTemplate(template._id);
+      if (selectedTemplate?._id === template._id) setSelectedTemplate(null);
+      if (editingTemplate?._id === template._id) cancelEdit();
     } finally {
       setDeletingId(null);
     }
@@ -113,82 +169,182 @@ export function ShiftTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle>Quản lý ca mẫu</DialogTitle>
-          <DialogDescription>
-            Tạo và chỉnh sửa ca mẫu trước khi phân lịch làm việc.
-          </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {editingTemplate && (
-              <p className="text-sm text-muted-foreground rounded-md bg-muted px-3 py-2">
-                Đang sửa: <strong>{editingTemplate.name}</strong>
-              </p>
-            )}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tên ca</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ca hành chính" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
+        <div className="shrink-0 border-b bg-muted/20 px-6 py-4">
+          <Form {...form}>
+            <form
+              id={FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-3"
+            >
               <FormField
                 control={form.control}
-                name="startTime"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Giờ bắt đầu</FormLabel>
+                    <FormLabel>Tên ca</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input placeholder="Ca hành chính" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Giờ kết thúc</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Giờ bắt đầu</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Giờ kết thúc</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </form>
+          </Form>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-2 px-6 py-4">
+          <p className="text-sm font-medium">
+            Ca mẫu hiện có ({shiftTemplates.length})
+          </p>
+
+          {shiftTemplates.length > 4 && (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo tên hoặc giờ..."
+                className="h-9 pl-8"
               />
             </div>
-            <div className="flex gap-2">
+          )}
+
+          {shiftTemplates.length === 0 ? (
+            <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+              Chưa có ca mẫu nào.
+            </p>
+          ) : filteredTemplates.length === 0 ? (
+            <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+              Không tìm thấy ca phù hợp.
+            </p>
+          ) : (
+            <>
+              <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
+                {pagedTemplates.map((template) => {
+                  const isHighlighted =
+                    selectedTemplate?._id === template._id ||
+                    editingTemplate?._id === template._id;
+                  return (
+                    <li key={template._id}>
+                      <button
+                        type="button"
+                        onClick={() => selectTemplate(template)}
+                        onDoubleClick={() => enterEditMode(template)}
+                        disabled={isEditing}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md border px-3 py-2.5 text-left text-sm transition-colors",
+                          isEditing
+                            ? "cursor-not-allowed opacity-60"
+                            : "cursor-pointer hover:bg-muted/50",
+                          isHighlighted &&
+                            "border-primary bg-primary/5 ring-1 ring-primary/20",
+                        )}
+                      >
+                        <Clock className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {template.name}
+                        </span>
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                          {template.startTime} - {template.endTime}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {filteredTemplates.length > LIST_PAGE_SIZE && (
+                <div className="flex shrink-0 items-center justify-between pt-1 text-xs text-muted-foreground">
+                  <span>
+                    Trang {activePage + 1}/{totalListPages}
+                  </span>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 cursor-pointer px-2"
+                      disabled={activePage === 0}
+                      onClick={() => setListPage((p) => Math.max(0, p - 1))}
+                    >
+                      Trước
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 cursor-pointer px-2"
+                      disabled={activePage >= totalListPages - 1}
+                      onClick={() =>
+                        setListPage((p) =>
+                          Math.min(totalListPages - 1, p + 1),
+                        )
+                      }
+                    >
+                      Sau
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <DialogFooter className="shrink-0 gap-2 border-t bg-muted/20 px-6 py-4 sm:justify-between">
+          {isEditing ? (
+            <>
               <Button
-                type="submit"
+                type="button"
+                variant="destructive"
                 size="sm"
                 className="cursor-pointer"
-                disabled={form.formState.isSubmitting}
+                disabled={
+                  !targetTemplate ||
+                  deletingId === targetTemplate._id ||
+                  isSubmitting
+                }
+                onClick={() =>
+                  targetTemplate && void onDelete(targetTemplate)
+                }
               >
-                {editingTemplate ? (
-                  <>
-                    <Pencil className="mr-2 size-4" />
-                    Lưu thay đổi
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 size-4" />
-                    Thêm ca mẫu
-                  </>
-                )}
+                <Trash2 className="mr-2 size-4" />
+                Xóa ca mẫu
               </Button>
-              {editingTemplate && (
+              <div className="flex flex-1 justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -196,72 +352,61 @@ export function ShiftTemplateDialog({
                   className="cursor-pointer"
                   onClick={cancelEdit}
                 >
-                  <X className="mr-2 size-4" />
                   Hủy sửa
                 </Button>
-              )}
-            </div>
-          </form>
-        </Form>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Ca mẫu hiện có</p>
-          {shiftTemplates.length === 0 ? (
-            <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center">
-              Chưa có ca mẫu nào.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {shiftTemplates.map((template) => (
-                <li
-                  key={template._id}
-                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  className="cursor-pointer"
+                  disabled={isSubmitting}
                 >
-                  <div className="flex items-center gap-2 text-sm min-w-0">
-                    <Clock className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="font-medium truncate">{template.name}</span>
-                    <span className="text-muted-foreground font-mono text-xs shrink-0">
-                      {template.startTime} - {template.endTime}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 cursor-pointer"
-                      onClick={() => startEdit(template)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 cursor-pointer text-destructive hover:text-destructive"
-                      disabled={deletingId === template._id}
-                      onClick={() => onDelete(template._id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  <Pencil className="mr-2 size-4" />
+                  Lưu thay đổi
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex w-full items-center gap-2">
+              {selectedTemplate && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="cursor-pointer"
+                  disabled={deletingId === selectedTemplate._id || isSubmitting}
+                  onClick={() => void onDelete(selectedTemplate)}
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Xóa
+                </Button>
+              )}
+              <div className="ml-auto flex gap-2">
+                {selectedTemplate && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer"
+                    onClick={beginEdit}
+                  >
+                    <Pencil className="mr-2 size-4" />
+                    Chỉnh sửa
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  className="cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Thêm ca mẫu
+                </Button>
+              </div>
+            </div>
           )}
-        </div>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="cursor-pointer"
-            onClick={() => onOpenChange(false)}
-          >
-            Đóng
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

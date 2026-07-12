@@ -1,36 +1,46 @@
 // [Domain – Types]
-export type CategoryStatus = 'ACTIVE' | 'INACTIVE'
+export interface CategoryBreadcrumb {
+  _id: string
+  name: string
+}
 
 export interface Category {
   id: string
-  categoryCode: string
+  _id?: string
   name: string
-  description: string
-  productCount: number
-  status: CategoryStatus
-  createdAt: string
+  parentId?: string | { _id: string; name: string } | null
+  description?: string
+  imageUrl?: string
+  breadcrumbs?: CategoryBreadcrumb[]
+  children?: Category[]
+  createdAt?: string
+  updatedAt?: string
 }
 
-export interface CategoryQueryParams {
-  keyword?: string
-  status?: CategoryStatus
-  page?: number
-  limit?: number
-}
-
-export interface CategoryListResponse {
-  data: Category[]
+export interface CategoryPagination {
   total: number
   page: number
   limit: number
   totalPages: number
 }
 
+export interface CategoryQueryParams {
+  search?: string
+  parentId?: string
+  page?: number
+  limit?: number
+}
+
+export interface CategoryListResponse {
+  data: Category[]
+  pagination: CategoryPagination
+}
+
 export interface CategoryCreatePayload {
-  categoryCode: string
   name: string
+  parentId?: string | null
   description?: string
-  status: CategoryStatus
+  imageUrl?: string
 }
 
 export type CategoryUpdatePayload = Partial<CategoryCreatePayload>

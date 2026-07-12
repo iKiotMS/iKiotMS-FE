@@ -19,6 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Bell, Mail, MessageSquare } from "lucide-react"
+import { toast } from "sonner"
+import { enablePushNotifications } from "@/lib/fcm"
 
 const notificationsFormSchema = z.object({
   emailSecurity: z.boolean(),
@@ -83,6 +85,21 @@ export default function NotificationSettings() {
       notificationTiming: "online",
     },
   })
+
+  const handleEnablePush = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    try {
+      const token = await enablePushNotifications()
+      if (token) {
+        toast.success("Đã bật thông báo đẩy thành công!")
+      } else {
+        toast.error("Không thể bật thông báo. Vui lòng kiểm tra quyền trình duyệt.")
+      }
+    } catch (err) {
+      console.error("Failed to enable push notifications:", err)
+      toast.error("Đã xảy ra lỗi khi bật thông báo.")
+    }
+  }
 
   function onSubmit(data: NotificationsFormValues) {
     console.log("Notifications settings submitted:", data)
@@ -329,11 +346,16 @@ export default function NotificationSettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
+                <CardTitle>Cài đặt quyền thông báo</CardTitle>
                 <CardDescription>
-                  We need permission from your browser to show notifications.{" "}
-                  <Button variant="link" className="p-0 h-auto text-primary">
-                    Request Permission
+                  Chúng tôi cần quyền từ trình duyệt của bạn để hiển thị thông báo đẩy.{" "}
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="p-0 h-auto text-primary cursor-pointer"
+                    onClick={handleEnablePush}
+                  >
+                    Bật thông báo đẩy
                   </Button>
                 </CardDescription>
               </CardHeader>

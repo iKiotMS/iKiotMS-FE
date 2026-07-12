@@ -3,12 +3,34 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { canViewLeaveRequests } from "@/components/sidebar/constants/role-permissions";
+import { getCachedUser } from "@/lib/auth";
+import { useAuth } from "@/hooks/use-auth";
 import { LeaveRequestsButtonGroup } from "./components/leave-requests-button-group";
 import { LeaveRequestsDialogs } from "./components/leave-requests-dialogs";
 import { LeaveRequestsProvider } from "./components/leave-requests-provider";
 import { LeaveRequestsTable } from "./components/leave-requests-table";
 
 export default function LeaveRequestsPage() {
+  const { user } = useAuth();
+  const role = user?.role ?? getCachedUser()?.role;
+
+  if (!canViewLeaveRequests(role)) {
+    return (
+      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+        <Button asChild variant="ghost" size="sm" className="w-fit px-2">
+          <Link href="/staffs/schedule">
+            <ArrowLeft className="mr-2 size-4" />
+            Quay lại lịch làm
+          </Link>
+        </Button>
+        <p className="text-muted-foreground text-sm">
+          Bạn không có quyền truy cập trang đơn nghỉ phép.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <LeaveRequestsProvider>
       <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
@@ -22,7 +44,9 @@ export default function LeaveRequestsPage() {
             </Button>
             <div className="flex items-center gap-2">
               <CalendarClock className="size-6 text-primary" />
-              <h1 className="text-2xl font-bold tracking-tight">Đơn nghỉ phép</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Đơn nghỉ phép
+              </h1>
             </div>
             <p className="text-muted-foreground text-sm">
               Tạo, theo dõi và duyệt/từ chối yêu cầu nghỉ phép của nhân viên

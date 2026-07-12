@@ -12,6 +12,8 @@ export const LEAVE_STATUS_MAP: Record<
   APPROVED: { label: "Đã duyệt", variant: "success" },
   REJECTED: { label: "Từ chối", variant: "error" },
   CANCELLED: { label: "Đã hủy", variant: "secondary" },
+  EXPIRED: { label: "Hết hạn", variant: "secondary" },
+  DELETED: { label: "Đã xóa", variant: "secondary" },
 };
 
 export const LEAVE_TYPE_MAP: Record<
@@ -19,7 +21,7 @@ export const LEAVE_TYPE_MAP: Record<
   { label: string; variant: BadgeVariant }
 > = {
   SICK: { label: "Ốm đau", variant: "error" },
-  PERSONAL: { label: "Việc cá nhân", variant: "info" },
+  UNPAID: { label: "Nghỉ không lương", variant: "info" },
   ANNUAL: { label: "Nghỉ phép năm", variant: "success" },
   OTHER: { label: "Khác", variant: "secondary" },
 };

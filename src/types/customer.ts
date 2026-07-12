@@ -39,6 +39,8 @@ export interface CustomerQueryParams {
   dateTo?: string
   page?: number
   limit?: number
+  search?: string
+  branchId?: string
 }
 
 export interface CustomerListResponse {
@@ -50,7 +52,7 @@ export interface CustomerListResponse {
 }
 
 export interface CustomerCreatePayload {
-  customerCode: string
+  customerCode?: string
   name: string
   phone?: string
   gender: CustomerGender

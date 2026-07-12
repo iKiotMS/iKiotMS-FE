@@ -6,39 +6,54 @@ import { toast } from 'sonner'
 import type { Product } from '@/types/product'
 import type { ProductFormValues } from '../_types/product.types'
 import { productApi } from '@/lib/api/product'
+import { parsePriceAmount } from '../_constants/product.constants'
+import { useAuthStore } from '@/store/auth-store'
 
 export function useProductsMutations() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const locationKey = useAuthStore((state) => state.locationKey)
 
   useEffect(() => {
     productApi
       .getList()
       .then((res) => setProducts(res.data))
       .catch(() => toast.error('Tải danh sách hàng hóa thất bại'))
-  }, [])
+  }, [locationKey])
 
   async function handleAdd(data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
+      const validInitialStock = (data.initialStock ?? [])
+        .filter((s) => s.locationId)
+        .map((s) => ({
+          locationId: s.locationId,
+          locationType: s.locationType,
+          ...(s.stock && Number(s.stock) > 0 ? { stock: Number(s.stock) } : {}),
+        }))
       const product = await productApi.create({
         name: data.name,
-        categoryName: data.categoryName,
+        brandId: data.brandId ?? undefined,
+        categoryId: data.categoryId ?? undefined,
         status: data.status,
+        images: data.images,
         items: [
           {
-            productCode: data.productCode ?? '',
-            sku: data.sku ?? '',
+            productCode: data.productCode!,
+            sku: data.sku!,
             barcode: data.barcode,
-            retailPrice: data.retailPrice ?? 0,
-            costPrice: data.costPrice ?? 0,
-            VAT: data.VAT,
+            retailPrice: parsePriceAmount(data.retailPrice),
+            costPrice: parsePriceAmount(data.costPrice),
+            VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
             warrantyPeriod: data.warrantyPeriod,
             description: data.description,
+            images: data.itemImages?.length ? data.itemImages : data.images,
+            productDetails: data.productDetails?.filter((d) => d.name.trim() && d.value.trim()),
+            initialStock: validInitialStock,
           },
         ],
       })
-      setProducts((prev) => [product, ...prev])
+      setProducts((prev) => [{ ...product, totalStock: 0 }, ...prev])
       toast.success('Thêm hàng hóa thành công')
       return true
     } catch {
@@ -54,10 +69,12 @@ export function useProductsMutations() {
     try {
       const product = await productApi.update(id, {
         name: data.name,
-        categoryName: data.categoryName,
+        brandId: data.brandId ?? undefined,
+        categoryId: data.categoryId ?? undefined,
         status: data.status,
+        images: data.images,
       })
-      setProducts((prev) => prev.map((p) => (p.id === id ? product : p)))
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...product } : p)))
       toast.success('Cập nhật hàng hóa thành công')
       return true
     } catch {

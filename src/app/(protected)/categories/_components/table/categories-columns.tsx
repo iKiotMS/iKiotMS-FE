@@ -1,11 +1,9 @@
 // [Table – Columns Category]
 import { type ColumnDef } from '@tanstack/react-table'
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/types/category'
-import { STATUS_MAP } from '../../_constants/category.constants'
 
 function SortableHeader({
   label,
@@ -64,13 +62,6 @@ export const categoriesColumns: ColumnDef<Category>[] = [
     size: 50,
   },
   {
-    accessorKey: 'categoryCode',
-    header: ({ column }) => <SortableHeader label="Mã danh mục" column={column} />,
-    cell: ({ row }) => (
-      <span className="font-mono text-sm font-medium">{row.getValue('categoryCode')}</span>
-    ),
-  },
-  {
     accessorKey: 'name',
     header: ({ column }) => <SortableHeader label="Tên danh mục" column={column} />,
     cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
@@ -83,29 +74,6 @@ export const categoriesColumns: ColumnDef<Category>[] = [
         {row.getValue('description') || '—'}
       </span>
     ),
-  },
-  {
-    accessorKey: 'productCount',
-    header: ({ column }) => <SortableHeader label="Số hàng hóa" column={column} />,
-    cell: ({ row }) => (
-      <span className="tabular-nums">
-        {(row.getValue('productCount') as number).toLocaleString('vi-VN')}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Trạng thái',
-    cell: ({ row }) => {
-      const status = row.getValue('status') as Category['status']
-      const { label, className } = STATUS_MAP[status]
-      return (
-        <Badge variant="secondary" className={className}>
-          {label}
-        </Badge>
-      )
-    },
-    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: 'expand',
