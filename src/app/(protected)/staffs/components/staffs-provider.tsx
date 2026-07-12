@@ -5,10 +5,12 @@ import { toast } from "sonner";
 import { staffApi } from "@/lib/api/staff";
 import { branchApi } from "@/lib/api/branch";
 import { warehouseApi } from "@/lib/api/warehouse";
+import { getSessionRole } from "@/lib/auth";
 import {
   getApiErrorMessage,
   getStaffRoleLabel,
 } from "@/lib/api/staff-mapper";
+import { canViewStaff } from "@/components/sidebar/constants/role-permissions";
 import type {
   CreateStaffAccountPayload,
   CreateStaffPayload,
@@ -26,7 +28,8 @@ type StaffsDialogType =
   | "delete"
   | "deactivate"
   | "activate"
-  | "password";
+  | "password"
+  | "leaveBalance";
 
 const DEFAULT_LIST_QUERY: StaffListQuery = {
   page: 1,
@@ -51,6 +54,7 @@ type StaffsContextType = {
   roleOptions: StaffRoleOption[];
   branchOptions: { value: string; label: string }[];
   warehouseOptions: { value: string; label: string }[];
+  warehouseOptionsFailed: boolean;
   open: StaffsDialogType | null;
   setOpen: (value: StaffsDialogType | null) => void;
   currentRow: Staff | null;
@@ -58,8 +62,14 @@ type StaffsContextType = {
   fetchStaffs: () => Promise<void>;
   handleAdd: (payload: CreateStaffPayload) => Promise<void>;
   handleEdit: (id: string, payload: UpdateStaffPayload) => Promise<void>;
-  handleDelete: (id: string) => Promise<void>;
-  handleDeactivate: (id: string) => Promise<void>;
+  handleDelete: (
+    id: string,
+    replacementManagerId?: string,
+  ) => Promise<void>;
+  handleDeactivate: (
+    id: string,
+    replacementManagerId?: string,
+  ) => Promise<void>;
   handleActivate: (id: string, payload: CreateStaffAccountPayload) => Promise<void>;
   handleUpdatePassword: (
     id: string,
@@ -71,6 +81,19 @@ type StaffsContextType = {
   updateWarehouseFilter: (warehouseId: string) => void;
   updatePage: (page: number) => void;
   updatePageSize: (recordPerPage: number) => void;
+  assignManagerOpen: boolean;
+  assignManagerBranchId?: string;
+  assignManagerBranchName?: string;
+  openAssignBranchManager: (branchId?: string, branchName?: string) => void;
+  closeAssignBranchManager: () => void;
+  assignWarehouseManagerOpen: boolean;
+  assignManagerWarehouseId?: string;
+  assignManagerWarehouseName?: string;
+  openAssignWarehouseManager: (
+    warehouseId?: string,
+    warehouseName?: string,
+  ) => void;
+  closeAssignWarehouseManager: () => void;
 };
 
 const StaffsContext = React.createContext<StaffsContextType | null>(null);
@@ -81,9 +104,19 @@ const DEFAULT_ROLE_OPTIONS: StaffRoleOption[] = [
   { value: "BRANCH_MANAGER", label: "Quản lý chi nhánh" },
 ];
 
-export function StaffsProvider({ children }: { children: React.ReactNode }) {
+type StaffsProviderProps = {
+  children: React.ReactNode;
+  enabled?: boolean;
+};
+
+export function StaffsProvider({
+  children,
+  enabled = true,
+}: StaffsProviderProps) {
+  const canFetch = enabled && canViewStaff(getSessionRole());
+
   const [staffs, setStaffs] = useState<Staff[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(canFetch);
   const [isFetching, setIsFetching] = useState(false);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -98,10 +131,31 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
   const [warehouseOptions, setWarehouseOptions] = useState<
     { value: string; label: string }[]
   >([]);
+  const [warehouseOptionsFailed, setWarehouseOptionsFailed] = useState(false);
   const [open, setOpen] = useState<StaffsDialogType | null>(null);
   const [currentRow, setCurrentRow] = useState<Staff | null>(null);
+  const [assignManagerOpen, setAssignManagerOpen] = useState(false);
+  const [assignManagerBranchId, setAssignManagerBranchId] = useState<
+    string | undefined
+  >();
+  const [assignManagerBranchName, setAssignManagerBranchName] = useState<
+    string | undefined
+  >();
+  const [assignWarehouseManagerOpen, setAssignWarehouseManagerOpen] =
+    useState(false);
+  const [assignManagerWarehouseId, setAssignManagerWarehouseId] = useState<
+    string | undefined
+  >();
+  const [assignManagerWarehouseName, setAssignManagerWarehouseName] = useState<
+    string | undefined
+  >();
 
   useEffect(() => {
+    if (!canFetch) {
+      setIsInitialLoading(false);
+      return;
+    }
+
     const timer = setTimeout(() => {
       setListQuery((prev) => {
         if (prev.keyword === keywordInput) return prev;
@@ -110,9 +164,11 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [keywordInput]);
+  }, [keywordInput, canFetch]);
 
   useEffect(() => {
+    if (!canFetch) return;
+
     async function loadFilterOptions() {
       try {
         const response = await branchApi.getList({ limit: 100 });
@@ -125,6 +181,7 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setBranchOptions([]);
       }
+
       try {
         const response = await warehouseApi.getList({ limit: 100 });
         setWarehouseOptions(
@@ -133,15 +190,19 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
             label: warehouse.name,
           })),
         );
+        setWarehouseOptionsFailed(false);
       } catch {
         setWarehouseOptions([]);
+        setWarehouseOptionsFailed(true);
       }
     }
 
     loadFilterOptions();
-  }, []);
+  }, [canFetch]);
 
   const fetchStaffs = useCallback(async () => {
+    if (!canFetch) return;
+
     setIsFetching(true);
     try {
       const response = await staffApi.getList({
@@ -166,9 +227,11 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
       setIsFetching(false);
       setIsInitialLoading(false);
     }
-  }, [listQuery]);
+  }, [listQuery, canFetch]);
 
   const fetchRoles = useCallback(async () => {
+    if (!canFetch) return;
+
     try {
       const roles = await staffApi.getRoles();
       if (roles.length > 0) {
@@ -182,7 +245,7 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setRoleOptions(DEFAULT_ROLE_OPTIONS);
     }
-  }, []);
+  }, [canFetch]);
 
   useEffect(() => {
     fetchStaffs();
@@ -254,9 +317,9 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, replacementManagerId?: string) {
     try {
-      await staffApi.remove(id);
+      await staffApi.remove(id, { replacementManagerId });
       setStaffs((prev) => prev.filter((staff) => staff._id !== id));
       setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa nhân viên");
@@ -267,9 +330,9 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function handleDeactivate(id: string) {
+  async function handleDeactivate(id: string, replacementManagerId?: string) {
     try {
-      await staffApi.deactivateAccount(id);
+      await staffApi.deactivateAccount(id, { replacementManagerId });
       toast.success("Đã khóa tài khoản nhân viên");
       await fetchStaffs();
     } catch (error) {
@@ -306,6 +369,33 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  function openAssignBranchManager(branchId?: string, branchName?: string) {
+    setAssignManagerBranchId(branchId);
+    setAssignManagerBranchName(branchName);
+    setAssignManagerOpen(true);
+  }
+
+  function closeAssignBranchManager() {
+    setAssignManagerOpen(false);
+    setAssignManagerBranchId(undefined);
+    setAssignManagerBranchName(undefined);
+  }
+
+  function openAssignWarehouseManager(
+    warehouseId?: string,
+    warehouseName?: string,
+  ) {
+    setAssignManagerWarehouseId(warehouseId);
+    setAssignManagerWarehouseName(warehouseName);
+    setAssignWarehouseManagerOpen(true);
+  }
+
+  function closeAssignWarehouseManager() {
+    setAssignWarehouseManagerOpen(false);
+    setAssignManagerWarehouseId(undefined);
+    setAssignManagerWarehouseName(undefined);
+  }
+
   return (
     <StaffsContext.Provider
       value={{
@@ -321,6 +411,7 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
         roleOptions,
         branchOptions,
         warehouseOptions,
+        warehouseOptionsFailed,
         open,
         setOpen,
         currentRow,
@@ -338,6 +429,16 @@ export function StaffsProvider({ children }: { children: React.ReactNode }) {
         updateWarehouseFilter,
         updatePage,
         updatePageSize,
+        assignManagerOpen,
+        assignManagerBranchId,
+        assignManagerBranchName,
+        openAssignBranchManager,
+        closeAssignBranchManager,
+        assignWarehouseManagerOpen,
+        assignManagerWarehouseId,
+        assignManagerWarehouseName,
+        openAssignWarehouseManager,
+        closeAssignWarehouseManager,
       }}
     >
       {children}

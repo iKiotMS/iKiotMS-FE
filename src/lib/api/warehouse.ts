@@ -28,4 +28,12 @@ export const warehouseApi = {
   remove: async (id: string): Promise<void> => {
     await client.delete(`/warehouses/${id}/delete`);
   },
+
+  /** PATCH /warehouses/:id/manager — TENANT_OWNER thăng STAFF → WAREHOUSE_MANAGER. */
+  assignManager: async (
+    warehouseId: string,
+    staffId: string,
+  ): Promise<void> => {
+    await client.patch(`/warehouses/${warehouseId}/manager`, { staffId });
+  },
 };

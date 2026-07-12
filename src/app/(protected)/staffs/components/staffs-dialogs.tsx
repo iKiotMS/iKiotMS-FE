@@ -1,13 +1,30 @@
 "use client";
 
 import { StaffsAccountDialog } from "./staffs-account-dialog";
+import { AssignBranchManagerDialog } from "./assign-branch-manager-dialog";
+import { AssignWarehouseManagerDialog } from "./assign-warehouse-manager-dialog";
 import { StaffsDeactivateDialog } from "./staffs-deactivate-dialog";
 import { StaffsDeleteDialog } from "./staffs-delete-dialog";
+import { StaffsLeaveBalanceDialog } from "./staffs-leave-balance-dialog";
 import { StaffsMutateDialog } from "./staffs-mutate-dialog";
 import { useStaffs } from "./staffs-provider";
 
 export function StaffsDialogs() {
-  const { open, setOpen, currentRow, setCurrentRow } = useStaffs();
+  const {
+    open,
+    setOpen,
+    currentRow,
+    setCurrentRow,
+    assignManagerOpen,
+    assignManagerBranchId,
+    assignManagerBranchName,
+    closeAssignBranchManager,
+    assignWarehouseManagerOpen,
+    assignManagerWarehouseId,
+    assignManagerWarehouseName,
+    closeAssignWarehouseManager,
+    fetchStaffs,
+  } = useStaffs();
 
   function closeDialog() {
     setOpen(null);
@@ -25,7 +42,7 @@ export function StaffsDialogs() {
       />
       {currentRow && (
         <StaffsMutateDialog
-          key="staff-edit"
+          key={`staff-edit-${currentRow._id}`}
           open={open === "edit"}
           onOpenChange={(value) => {
             if (!value) closeDialog();
@@ -62,6 +79,31 @@ export function StaffsDialogs() {
         }}
         currentRow={currentRow}
         mode="password"
+      />
+      <StaffsLeaveBalanceDialog
+        open={open === "leaveBalance"}
+        onOpenChange={(value) => {
+          if (!value) closeDialog();
+        }}
+        currentRow={currentRow}
+      />
+      <AssignBranchManagerDialog
+        open={assignManagerOpen}
+        onOpenChange={(value) => {
+          if (!value) closeAssignBranchManager();
+        }}
+        initialBranchId={assignManagerBranchId}
+        initialBranchName={assignManagerBranchName}
+        onSuccess={() => void fetchStaffs()}
+      />
+      <AssignWarehouseManagerDialog
+        open={assignWarehouseManagerOpen}
+        onOpenChange={(value) => {
+          if (!value) closeAssignWarehouseManager();
+        }}
+        initialWarehouseId={assignManagerWarehouseId}
+        initialWarehouseName={assignManagerWarehouseName}
+        onSuccess={() => void fetchStaffs()}
       />
     </>
   );
