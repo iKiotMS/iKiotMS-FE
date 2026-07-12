@@ -19,6 +19,19 @@ export const rolePermissions = {
     review: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
     emergencyCreate: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
   },
+  billing: {
+    manage: new Set(["TENANT_OWNER"]),
+  },
+  aiChat: {
+    access: new Set(["TENANT_OWNER"]),
+  },
+  account: {
+    editProfile: new Set(["TENANT_OWNER"]),
+  },
+  exchange: {
+    // Blocklist (not allowlist): imports page redirects BRANCH_MANAGER to /exchange/exports.
+    importsBlocked: new Set(["BRANCH_MANAGER"]),
+  },
 };
 
 // Products
@@ -101,5 +114,28 @@ export function canReviewLeaveRequest(role?: string | null): boolean {
 export function canCreateEmergencyLeave(role?: string | null): boolean {
   if (!role) return false;
   return rolePermissions.leaveRequests.emergencyCreate.has(role);
+}
+
+// Billing
+export function canManageBilling(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.billing.manage.has(role);
+}
+
+// AI Chat
+export function canUseAIChat(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.aiChat.access.has(role);
+}
+
+// Account settings
+export function canEditAccountProfile(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.account.editProfile.has(role);
+}
+
+// Exchange (stock movement)
+export function canAccessImports(role?: string | null): boolean {
+  return !rolePermissions.exchange.importsBlocked.has(role ?? "");
 }
 

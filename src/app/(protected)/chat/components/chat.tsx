@@ -5,6 +5,7 @@ import { Sparkles, ShieldAlert, X, ChevronLeft, ChevronRight } from "lucide-reac
 
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAuthStore } from "@/store/auth-store"
+import { canUseAIChat } from "@/components/sidebar/constants/role-permissions"
 import { ChatSidebar } from "./chat-sidebar"
 import { ChatHeader } from "./chat-header"
 import { MessageList } from "./message-list"
@@ -32,7 +33,7 @@ export function Chat() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // 1. Role verification check
-  const isTenantOwner = user?.role === "TENANT_OWNER"
+  const isTenantOwner = canUseAIChat(user?.role)
 
   if (!isTenantOwner) {
     return (
