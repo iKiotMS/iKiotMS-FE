@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Plus, Trash2, Save, HelpCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -141,14 +141,14 @@ export function PaysheetDetail() {
         overtimeWeekend: sheet.overtime?.weekend ?? 2.0,
         overtimePublicHoliday: sheet.overtime?.publicHoliday ?? 3.0,
         allowancesEnable: Array.isArray(sheet.allowances) && sheet.allowances.length > 0,
-        allowances: (sheet.allowances || []).map((a: any) => ({
+        allowances: (sheet.allowances || []).map((a) => ({
           name: a.name || '',
           enable: a.enable ?? true,
           amountType: a.amountType || 'FIXED_AMOUNT',
           amountValue: a.amountValue || 0,
         })),
         deductionsEnable: Array.isArray(sheet.deductions) && sheet.deductions.length > 0,
-        deductions: (sheet.deductions || []).map((d: any) => ({
+        deductions: (sheet.deductions || []).map((d) => ({
           name: d.name || '',
           enable: d.enable ?? true,
           deductionType: d.deductionType || 'LATE',
@@ -166,7 +166,12 @@ export function PaysheetDetail() {
     const numericAmount = parsePriceAmount(data.amount)
 
     // Prepare basicPay
-    const basicPay: any = { payType: data.payType }
+    const basicPay: {
+      payType: 'PAY_BY_SHIFT' | 'STANDARD_WORKING_DAY' | 'FIXED'
+      salaryPerPeriod?: number
+      amountPerShift?: number
+      standardWorkingDaySalary?: number
+    } = { payType: data.payType }
     if (data.payType === 'FIXED') {
       basicPay.salaryPerPeriod = numericAmount
     } else if (data.payType === 'PAY_BY_SHIFT') {

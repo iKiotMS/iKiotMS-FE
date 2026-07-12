@@ -9,12 +9,12 @@ import type {
   PayrollPeriod,
   PaySheet,
   PayrollSettings,
-  Payslip,
+  PaySheetCreatePayload,
+  PaySheetUpdatePayload,
 } from '@/types/payroll'
 import type { Staff } from '@/types/staff'
 import type {
   PayrollSettingsFormValues,
-  PaysheetFormValues,
   PeriodCreateFormValues,
   PayslipAdjustFormValues,
 } from '../_types/payroll.types'
@@ -104,7 +104,7 @@ export function usePayrollMutations() {
   }
 
   // --- Mutations ---
-  async function handleAddPaysheet(payload: any): Promise<boolean> {
+  async function handleAddPaysheet(payload: PaySheetCreatePayload): Promise<boolean> {
     setIsLoading(true)
     try {
       await payrollApi.createPaysheet(payload)
@@ -119,7 +119,7 @@ export function usePayrollMutations() {
     }
   }
 
-  async function handleEditPaysheet(id: string, payload: any): Promise<boolean> {
+  async function handleEditPaysheet(id: string, payload: PaySheetUpdatePayload): Promise<boolean> {
     setIsLoading(true)
     try {
       await payrollApi.updatePaysheet(id, payload)
@@ -174,8 +174,9 @@ export function usePayrollMutations() {
       setPeriods((prev) => [newPeriod, ...prev])
       toast.success('Tạo kỳ lương mới thành công')
       return true
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Tạo kỳ lương mới thất bại'
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      const msg = axiosError.response?.data?.message || 'Tạo kỳ lương mới thất bại'
       toast.error(msg)
       return false
     } finally {

@@ -7,6 +7,7 @@ import type {
   PayrollPeriod,
   PeriodCreatePayload,
   PreviewPayload,
+  PreviewResult,
   PayrollPeriodQueryParams,
   Payslip,
   ManualAdjustment,
@@ -18,9 +19,10 @@ export const payrollApi = {
     try {
       const res = await client.get<PayrollSettings>('/payroll/settings')
       return res.data
-    } catch (err: any) {
+    } catch (err) {
       // 404 means settings haven't been created yet
-      if (err.response?.status === 404) {
+      const axiosError = err as { response?: { status?: number } }
+      if (axiosError.response?.status === 404) {
         return null
       }
       throw err
@@ -67,18 +69,8 @@ export const payrollApi = {
     return res.data.data
   },
 
-  // --- Preview / Calculator ---
-  preview: async (payload: PreviewPayload): Promise<{
-    summary: { totalCost: number; totalEmployees: number }
-    payslips: Payslip[]
-  }> => {
-    const res = await client.post<{
-      success: boolean
-      data: {
-        summary: { totalCost: number; totalEmployees: number }
-        payslips: Payslip[]
-      }
-    }>('/payroll/preview', payload)
+  preview: async (payload: PreviewPayload): Promise<PreviewResult> => {
+    const res = await client.post<{ success: boolean; data: PreviewResult }>('/payroll/preview', payload)
     return res.data.data
   },
 
@@ -106,8 +98,14 @@ export const payrollApi = {
     }
   },
   getPeriodById: async (id: string): Promise<PayrollPeriod> => {
-    const res = await client.get<{ success: boolean; data: PayrollPeriod }>(`/payroll/periods/${id}`)
-    return res.data.data
+    const res = await client.get<{
+      success: boolean
+      data: { payrollPeriod: PayrollPeriod; payslips: Payslip[] }
+    }>(`/payroll/periods/${id}`)
+    return {
+      ...res.data.data.payrollPeriod,
+      payslips: res.data.data.payslips,
+    }
   },
 
   // --- Payslips inside a Period ---

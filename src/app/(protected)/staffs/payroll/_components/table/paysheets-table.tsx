@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Pencil, Settings2 } from 'lucide-react'
 import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND } from '../../_constants/payroll.constants'
+import type { PaySheet } from '@/types/payroll'
 
 export function PaysheetsTable() {
   const { paysheets, setActivePaysheetId } = usePayroll()
@@ -21,7 +22,7 @@ export function PaysheetsTable() {
     )
   }
 
-  function handleEdit(paysheet: any) {
+  function handleEdit(paysheet: PaySheet) {
     setActivePaysheetId(paysheet._id)
   }
 
@@ -57,13 +58,13 @@ export function PaysheetsTable() {
             }
 
             const allowancesLabel = (sheet.allowances || [])
-              .filter((a: any) => a.enable)
-              .map((a: any) => a.name)
+              .filter((a) => a.enable)
+              .map((a) => a.name)
               .join(', ') || 'Không có'
 
             const deductionsLabel = (sheet.deductions || [])
-              .filter((d: any) => d.enable)
-              .map((d: any) => d.name)
+              .filter((d) => d.enable)
+              .map((d) => d.name)
               .join(', ') || 'Không có'
 
             return (

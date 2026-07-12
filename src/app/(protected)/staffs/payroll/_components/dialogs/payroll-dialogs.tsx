@@ -6,6 +6,7 @@ import { PayrollPeriodDialog } from './payroll-period-dialog'
 import { PayrollAdjustDialog } from './payroll-adjust-dialog'
 import { PayrollMarkPaidDialog } from './payroll-mark-paid-dialog'
 import { PayrollReturnDraftDialog } from './payroll-return-draft-dialog'
+import { PayrollPayslipDetailDialog } from './payroll-payslip-detail-dialog'
 
 export function PayrollDialogs() {
   const { open, setOpen, currentRow, setCurrentRow, currentPayslip, setCurrentPayslip } = usePayroll()
@@ -37,6 +38,24 @@ export function PayrollDialogs() {
           }}
           currentRow={currentRow}
           currentPayslip={currentPayslip}
+        />
+      )}
+
+      {currentPayslip && open === 'viewPayslipDetail' && (
+        <PayrollPayslipDetailDialog
+          open={open === 'viewPayslipDetail'}
+          onOpenChange={(v) => {
+            if (!v) {
+              setOpen(null)
+              setCurrentPayslip(null)
+            }
+          }}
+          currentPayslip={currentPayslip}
+          periodStatus={currentRow?.status}
+          periodId={currentRow?._id}
+          onSaved={(updated) => {
+            setCurrentPayslip(updated)
+          }}
         />
       )}
 

@@ -12,7 +12,15 @@ import {
 import { MoreHorizontal, Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar } from 'lucide-react'
 import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
-import type { PayrollPeriod } from '@/types/payroll'
+
+const formatDMY = (dateStr: string) => {
+  if (!dateStr) return '—'
+  try {
+    return new Intl.DateTimeFormat('vi-VN').format(new Date(dateStr))
+  } catch {
+    return dateStr
+  }
+}
 
 export function PeriodsTable() {
   const {
@@ -60,7 +68,7 @@ export function PeriodsTable() {
             return (
               <TableRow key={p._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                 <TableCell className="font-semibold text-slate-700 dark:text-slate-200">
-                  {p.periodStart} ➔ {p.periodEnd}
+                  {formatDMY(p.periodStart)} ➔ {formatDMY(p.periodEnd)}
                 </TableCell>
                 <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                   {formatVND(p.totalCost || 0)}
@@ -96,26 +104,27 @@ export function PeriodsTable() {
                         </DropdownMenuItem>
                       )}
 
-                      {p.status === 'UNDER_REVIEW' && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => handleApprovePeriod(p._id)}
-                            className="cursor-pointer font-medium"
-                          >
-                            <CheckCircle2 className="mr-2 size-4 text-green-500" />
-                            Phê duyệt lương
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentRow(p)
-                              setOpen('returnDraft')
-                            }}
-                            className="cursor-pointer text-orange-600 focus:text-orange-600 focus:bg-orange-50/50"
-                          >
-                            <Ban className="mr-2 size-4 text-orange-500" />
-                            Trả về nháp
-                          </DropdownMenuItem>
-                        </>
+                      {p.status === 'REVIEW' && (
+                        <DropdownMenuItem
+                          onClick={() => handleApprovePeriod(p._id)}
+                          className="cursor-pointer font-medium"
+                        >
+                          <CheckCircle2 className="mr-2 size-4 text-green-500" />
+                          Phê duyệt lương
+                        </DropdownMenuItem>
+                      )}
+
+                      {p.status === 'REVIEW' && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setCurrentRow(p)
+                            setOpen('returnDraft')
+                          }}
+                          className="cursor-pointer text-orange-600 focus:text-orange-600 focus:bg-orange-50/50"
+                        >
+                          <Ban className="mr-2 size-4 text-orange-500" />
+                          Trả về nháp
+                        </DropdownMenuItem>
                       )}
 
                       {p.status === 'APPROVED' && (

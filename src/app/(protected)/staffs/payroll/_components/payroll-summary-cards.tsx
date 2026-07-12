@@ -1,6 +1,6 @@
 'use client'
 
-import { CreditCard, Landmark, Receipt, Sparkles } from 'lucide-react'
+import { CreditCard, Landmark, Receipt } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePayroll } from '../_context/payroll-provider'
 import { formatVND } from '../_constants/payroll.constants'
@@ -14,7 +14,7 @@ export function PayrollSummaryCards() {
     .reduce((sum, p) => sum + (p.totalCost || 0), 0)
 
   const totalPendingApprove = periods
-    .filter((p) => p.status === 'UNDER_REVIEW')
+    .filter((p) => p.status === 'REVIEW')
     .reduce((sum, p) => sum + (p.totalCost || 0), 0)
 
   const draftPeriodsCount = periods.filter((p) => p.status === 'DRAFT').length
@@ -29,7 +29,7 @@ export function PayrollSummaryCards() {
         </div>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Đã thanh toán (Lũy kế)
+            Đã thanh toán
           </CardTitle>
           <Landmark className="size-4 text-green-500" />
         </CardHeader>

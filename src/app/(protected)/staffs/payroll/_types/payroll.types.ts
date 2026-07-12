@@ -9,6 +9,7 @@ export type PayrollDialogType =
   | 'adjustPayslip'
   | 'returnDraft'
   | 'markPaid'
+  | 'viewPayslipDetail'
 
 export const payrollSettingsSchema = z.object({
   cycle: z.string().min(1, 'Chu kỳ lương là bắt buộc'),

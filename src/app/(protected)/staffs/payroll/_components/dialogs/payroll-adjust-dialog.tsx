@@ -33,12 +33,12 @@ import { Separator } from '@/components/ui/separator'
 import { usePayroll } from '../../_context/payroll-provider'
 import { payslipAdjustSchema, type PayslipAdjustFormValues } from '../../_types/payroll.types'
 import { formatPriceAmount } from '../../_constants/payroll.constants'
-import type { Payslip } from '@/types/payroll'
+import type { Payslip, PayrollPeriod } from '@/types/payroll'
 
 type PayrollAdjustDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentRow?: any // PayrollPeriod
+  currentRow?: PayrollPeriod | null
   currentPayslip?: Payslip | null
 }
 

@@ -4,7 +4,7 @@ import { getCachedUser } from '@/lib/auth'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Settings2, Sparkles, Receipt } from 'lucide-react'
+import { Plus, Settings2 } from 'lucide-react'
 import { usePayroll } from './_context/payroll-provider'
 import { PeriodsTable } from './_components/table/periods-table'
 import { PaysheetsTable } from './_components/table/paysheets-table'
@@ -14,7 +14,7 @@ import { PaysheetDetail } from './_components/paysheet-detail'
 
 export default function PayrollPage() {
   const userRole = getCachedUser()?.role
-  const canView = userRole === 'TENANT_OWNER' || userRole === 'SUPER_ADMIN' || userRole === 'BRANCH_MANAGER'
+  const canView = userRole === 'TENANT_OWNER' || userRole === 'SUPER_ADMIN'
 
   const {
     activeTab,

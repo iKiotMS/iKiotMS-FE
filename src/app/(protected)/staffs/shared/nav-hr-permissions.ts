@@ -10,7 +10,7 @@ const HR_NAV_ROLES = {
     "STAFF",
   ],
   holidays: ["TENANT_OWNER"],
-  payroll: [] as string[], // hidden until page exists
+  payroll: ["TENANT_OWNER"],
 } as const;
 
 export type HrNavItemKey = keyof typeof HR_NAV_ROLES;

@@ -25,7 +25,7 @@ export const STATUS_MAP: Record<
     label: 'Bản nháp',
     className: 'text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-900/20 dark:border-gray-800',
   },
-  UNDER_REVIEW: {
+  REVIEW: {
     label: 'Chờ duyệt',
     className: 'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-900/20 dark:border-orange-800',
   },

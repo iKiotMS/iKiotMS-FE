@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,11 +14,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { usePayroll } from '../../_context/payroll-provider'
+import type { PayrollPeriod } from '@/types/payroll'
 
 type PayrollMarkPaidDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentRow?: any // PayrollPeriod
+  currentRow?: PayrollPeriod | null
 }
 
 export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: PayrollMarkPaidDialogProps) {
@@ -27,12 +28,14 @@ export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: Payrol
   const [paymentNote, setPaymentNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
-    setPaymentReference('')
-    setPaymentNote('')
-    setSubmitting(false)
-  }, [open])
+  function handleOpenChange(val: boolean) {
+    if (!val) {
+      setPaymentReference('')
+      setPaymentNote('')
+      setSubmitting(false)
+    }
+    onOpenChange(val)
+  }
 
   async function handleConfirm() {
     if (!currentRow) return
@@ -43,18 +46,25 @@ export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: Payrol
     })
     setSubmitting(false)
     if (success) {
-      onOpenChange(false)
+      handleOpenChange(false)
     }
   }
 
+  const periodStart = currentRow?.periodStart
+    ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodStart))
+    : '—'
+  const periodEnd = currentRow?.periodEnd
+    ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodEnd))
+    : '—'
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Xác nhận thanh toán lương</DialogTitle>
           <DialogDescription>
-            Đánh dấu kỳ lương từ ngày <strong>{currentRow?.periodStart}</strong> đến{' '}
-            <strong>{currentRow?.periodEnd}</strong> là <strong>Đã thanh toán</strong>. Hành động này chỉ nên thực hiện sau khi chuyển khoản thành công.
+            Đánh dấu kỳ lương từ ngày <strong>{periodStart}</strong> đến{' '}
+            <strong>{periodEnd}</strong> là <strong>Đã thanh toán</strong>. Hành động này chỉ nên thực hiện sau khi chuyển khoản thành công.
           </DialogDescription>
         </DialogHeader>
 
@@ -84,7 +94,7 @@ export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: Payrol
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             className="cursor-pointer"
             disabled={submitting}
           >
@@ -104,3 +114,4 @@ export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: Payrol
     </Dialog>
   )
 }
+
