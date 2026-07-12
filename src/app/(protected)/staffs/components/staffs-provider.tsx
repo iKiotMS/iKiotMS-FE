@@ -6,6 +6,7 @@ import { staffApi } from "@/lib/api/staff";
 import { branchApi } from "@/lib/api/branch";
 import { warehouseApi } from "@/lib/api/warehouse";
 import { getSessionRole } from "@/lib/auth";
+import { useAuthStore } from "@/store/auth-store";
 import {
   getApiErrorMessage,
   getStaffRoleLabel,
@@ -55,6 +56,8 @@ type StaffsContextType = {
   branchOptions: { value: string; label: string }[];
   warehouseOptions: { value: string; label: string }[];
   warehouseOptionsFailed: boolean;
+  /** The global branch/warehouse switcher's current key ("all" | "branch-<id>" | "warehouse-<id>") — takes precedence over the manual filters below. */
+  locationKey: string;
   open: StaffsDialogType | null;
   setOpen: (value: StaffsDialogType | null) => void;
   currentRow: Staff | null;
@@ -149,12 +152,13 @@ export function StaffsProvider({
   const [assignManagerWarehouseName, setAssignManagerWarehouseName] = useState<
     string | undefined
   >();
+  const locationKey = useAuthStore((state) => state.locationKey);
 
   useEffect(() => {
-    if (!canFetch) {
-      setIsInitialLoading(false);
-      return;
-    }
+    // if (!canFetch) {
+    //   setIsInitialLoading(false);
+    //   return;
+    // }
 
     const timer = setTimeout(() => {
       setListQuery((prev) => {
@@ -205,15 +209,31 @@ export function StaffsProvider({
 
     setIsFetching(true);
     try {
+      // The global branch/warehouse switcher takes precedence over the page's own
+      // filter dropdowns — same reactive scoping products/checkout apply via
+      // locationKey — so switching branch immediately scopes the staff list.
+      const [locationType, locationId] = locationKey.split("-");
+      const branchId =
+        locationKey !== "all" && locationType === "branch"
+          ? locationId
+          : listQuery.branchId === "all"
+            ? undefined
+            : listQuery.branchId;
+      const warehouseId =
+        locationKey !== "all" && locationType === "warehouse"
+          ? locationId
+          : listQuery.warehouseId === "all"
+            ? undefined
+            : listQuery.warehouseId;
+
       const response = await staffApi.getList({
         page: listQuery.page,
         recordPerPage: listQuery.recordPerPage,
         keyword: listQuery.keyword || undefined,
         role: listQuery.role === "all" ? undefined : listQuery.role,
         status: listQuery.status === "all" ? undefined : listQuery.status,
-        branchId: listQuery.branchId === "all" ? undefined : listQuery.branchId,
-        warehouseId:
-          listQuery.warehouseId === "all" ? undefined : listQuery.warehouseId,
+        branchId,
+        warehouseId,
       });
       setStaffs(response.data);
       setTotal(response.total);
@@ -227,7 +247,7 @@ export function StaffsProvider({
       setIsFetching(false);
       setIsInitialLoading(false);
     }
-  }, [listQuery, canFetch]);
+  }, [listQuery, canFetch, locationKey]);
 
   const fetchRoles = useCallback(async () => {
     if (!canFetch) return;
@@ -247,13 +267,25 @@ export function StaffsProvider({
     }
   }, [canFetch]);
 
-  useEffect(() => {
-    fetchStaffs();
-  }, [fetchStaffs]);
+useEffect(() => {
+  const loadData = async () => {
+    setIsFetching(true);
 
-  useEffect(() => {
-    fetchRoles();
-  }, [fetchRoles]);
+    try {
+      await Promise.all([
+        fetchStaffs(),
+        fetchRoles(),
+      ]);
+    } catch (error) {
+      console.error(error);
+      toast.error("Không thể tải dữ liệu");
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  loadData();
+}, [fetchStaffs, fetchRoles]);
 
   function updateRoleFilter(role: StaffRole | "all") {
     setListQuery((prev) => ({ ...prev, role, page: 1 }));
@@ -412,6 +444,7 @@ export function StaffsProvider({
         branchOptions,
         warehouseOptions,
         warehouseOptionsFailed,
+        locationKey,
         open,
         setOpen,
         currentRow,

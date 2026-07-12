@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui/button";
 import { CheckoutTabs } from "./components/checkout-tabs";
 import { ProductSearch } from "./components/product-search";
 import { CartItems } from "./components/cart-items";
@@ -14,6 +14,8 @@ import { ReceiptDialog } from "./components/receipt-dialog";
 import { OrderQrDialog } from "./components/order-qr-dialog";
 import { orderApi } from "@/lib/api/order";
 import { branchApi } from "@/lib/api/branch";
+import { promotionApi } from "@/lib/api/promotion";
+import type { PromotionCalculateResponse } from "@/types/promotion";
 import { getCachedUser } from "@/lib/auth";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
@@ -95,6 +97,29 @@ export default function CheckOutPage() {
     fetchBranches();
   }, []);
 
+  // Resolve the active branch the same way for the promotion preview and the final order payload
+  const resolveBranchId = (): string => {
+    if (typeof window !== "undefined") {
+      const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
+      const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
+      if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+        return activeSwitcherItemId;
+      }
+    }
+    const cachedUser = getCachedUser() as any;
+    if (cachedUser?.branchId) return cachedUser.branchId;
+    if (branches.length > 0) return branches[0]._id;
+    return "";
+  };
+
+  // Promotion preview state (auto-applied promotions for the active invoice's cart).
+  // Tagged with the cart signature it was computed for, so a stale result (still
+  // in flight while the cart or tab changes) is simply ignored at render time
+  // instead of being cleared with a synchronous setState inside the effect.
+  const [promotionResult, setPromotionResult] = useState<
+    (PromotionCalculateResponse & { signature: string }) | null
+  >(null);
+
   // Modals state
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -112,6 +137,48 @@ export default function CheckOutPage() {
   const activeInvoice = useMemo(() => {
     return invoices.find((inv) => inv.id === activeTabId) || invoices[0];
   }, [invoices, activeTabId]);
+
+  // Signature identifying which cart (items + customer) a promotion result belongs to —
+  // lets stale/in-flight results be ignored at render time instead of reset via setState.
+  const cartSignature = useMemo(() => {
+    if (activeInvoice.items.length === 0) return null;
+    const itemsKey = activeInvoice.items
+      .map((item) => `${item.productItemId}:${item.quantity}:${item.unitPrice}`)
+      .join(",");
+    return `${itemsKey}|${activeInvoice.selectedCustomer?.id ?? ""}`;
+  }, [activeInvoice.items, activeInvoice.selectedCustomer]);
+
+  // Preview auto-applied promotions for the active invoice's cart (debounced)
+  useEffect(() => {
+    if (!cartSignature) return;
+
+    const branchId = resolveBranchId();
+    if (!branchId) return;
+
+    const handler = setTimeout(() => {
+      promotionApi
+        .calculate({
+          branchId,
+          customerId: activeInvoice.selectedCustomer?.id,
+          items: activeInvoice.items.map((item) => ({
+            productItemId: item.productItemId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+        })
+        .then((result) => setPromotionResult({ ...result, signature: cartSignature }))
+        .catch((error) => {
+          console.error("Lỗi khi tính khuyến mãi:", error);
+        });
+    }, 300);
+
+    return () => clearTimeout(handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature, branches]);
+
+  // Ignore a promotion result computed for a different cart (stale tab switch / in-flight edit)
+  const activePromotionResult = promotionResult?.signature === cartSignature ? promotionResult : null;
+  const promotionDiscount = activePromotionResult?.totalDiscount ?? 0;
 
   // Update helper for active invoice state
   const updateActiveInvoice = (updates: Partial<InvoiceState>) => {
@@ -230,9 +297,14 @@ export default function CheckOutPage() {
     );
   }, [activeInvoice.items]);
 
+  // Auto-applied promotions and the manual order-level discount are mutually exclusive:
+  // when a promotion is eligible for this cart, it wins and the manual discount is ignored.
+  const hasAutoPromotion = promotionDiscount > 0;
+
   const grandTotal = useMemo(() => {
-    const calculatedDiscount =
-      activeInvoice.discountType === "cash"
+    const calculatedDiscount = hasAutoPromotion
+      ? promotionDiscount
+      : activeInvoice.discountType === "cash"
         ? activeInvoice.discount
         : (subtotal * activeInvoice.discount) / 100;
     const total = Math.max(0, subtotal - calculatedDiscount);
@@ -243,6 +315,8 @@ export default function CheckOutPage() {
     activeInvoice.discount,
     activeInvoice.discountType,
     activeInvoice.vatPercent,
+    hasAutoPromotion,
+    promotionDiscount,
   ]);
 
   // Keep paid amount updated when grand total drops
@@ -267,31 +341,26 @@ export default function CheckOutPage() {
       return;
     }
 
-    // Resolve branchId
-    let resolvedBranchId = "";
-    if (typeof window !== "undefined") {
-      const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
-      const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
-      if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
-        resolvedBranchId = activeSwitcherItemId;
-      }
-    }
-    
-    if (!resolvedBranchId) {
-      const cachedUser = getCachedUser() as any;
-      if (cachedUser?.branchId) {
-        resolvedBranchId = cachedUser.branchId;
-      }
-    }
-    
-    if (!resolvedBranchId && branches.length > 0) {
-      resolvedBranchId = branches[0]._id;
-    }
-
+    const resolvedBranchId = resolveBranchId();
     if (!resolvedBranchId) {
       toast.error("Không xác định được chi nhánh hoạt động. Vui lòng chọn chi nhánh!");
       return;
     }
+
+    // Snapshot of the cart the promotion preview was calculated for — captured now
+    // because the invoice resets as soon as order creation succeeds below.
+    const promotionToApply =
+      hasAutoPromotion && activePromotionResult
+        ? {
+            branchId: resolvedBranchId,
+            customerId: activeInvoice.selectedCustomer?.id,
+            items: activeInvoice.items.map((item) => ({
+              productItemId: item.productItemId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+          }
+        : null;
 
     const payload = {
       customerId: activeInvoice.selectedCustomer?.id,
@@ -339,6 +408,15 @@ export default function CheckOutPage() {
         const createdOrder = response.data.order;
         const orderId = createdOrder.id || (createdOrder as any)._id || "";
         const receipt = buildReceipt(createdOrder, orderId);
+
+        // Commit promotion usage/log now that the order exists — best-effort: the order
+        // is already paid, so a logging failure here shouldn't block the checkout flow.
+        if (promotionToApply && orderId) {
+          promotionApi.apply({ ...promotionToApply, orderId }).catch((error) => {
+            console.error("Lỗi khi ghi nhận khuyến mãi cho đơn hàng:", error);
+            toast.warning("Đơn hàng đã tạo nhưng ghi nhận khuyến mãi thất bại.");
+          });
+        }
 
         if (activeInvoice.paymentMethod === "SEPAY" && response.data.qrUrl) {
           // SEPAY: hiện QR dialog, chờ xác nhận payment
@@ -405,6 +483,9 @@ export default function CheckOutPage() {
     return () => window.removeEventListener("keydown", handleShortcuts);
   }, [activeInvoice, grandTotal]);
 
+  // Staff quay lại danh sách sản phẩm, các role khác quay lại trang chủ
+  const backHref = getCachedUser()?.role === "STAFF" ? "/products" : "/dashboard";
+
   return (
     <div className="h-screen w-full flex flex-col gap-4 p-4 overflow-hidden bg-background">
       {/* Main Resizable Layout: Left Column Cart + Search | Right Column Billing Sidebar */}
@@ -452,12 +533,14 @@ export default function CheckOutPage() {
                 (acc, item) => acc + item.quantity,
                 0,
               )}
-              subtotal={activeInvoice.items.reduce(
-                (acc, item) => acc + item.quantity * item.unitPrice,
-                0,
-              )}
+              subtotal={subtotal}
+              grandTotal={grandTotal}
               discount={activeInvoice.discount}
               discountType={activeInvoice.discountType}
+              promotionDiscount={promotionDiscount}
+              promotionNames={(activePromotionResult?.appliedPromotions ?? []).map(
+                (p) => p.promoName,
+              )}
               paymentMethod={activeInvoice.paymentMethod}
               customerPay={activeInvoice.customerPay}
               note={activeInvoice.note}
@@ -526,26 +609,18 @@ export default function CheckOutPage() {
         />
       )}
 
-      {/* Interactive brand logo back button in bottom left corner */}
-      <Link
-        href="/dashboard"
-        className="fixed bottom-6 left-6 z-30 flex items-center justify-start opacity-20 hover:opacity-100 transition-all duration-300 group cursor-pointer h-10 select-none"
-        title="Quay lại Trang chủ"
+      {/* Back button */}
+      <Button
+        asChild
+        variant="outline"
+        size="sm"
+        className="fixed bottom-6 left-6 z-30 shadow-md"
       >
-        <div className="relative flex items-center">
-          {/* Normal State: Logo + iKiot */}
-          <div className="flex items-center gap-2.5 transition-all duration-300 group-hover:scale-90 group-hover:opacity-0 group-hover:pointer-events-none">
-            <Logo size={32} className="text-primary" />
-            <span className="font-extrabold text-2xl tracking-widest font-sans text-foreground">iKiot</span>
-          </div>
-
-          {/* Hover State: ArrowLeft Icon + "Quay lại" */}
-          <div className="scale-75 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:opacity-100 absolute left-0 flex items-center gap-2 h-9 px-3 bg-primary/10 rounded-full border border-primary/20 pointer-events-none">
-            <ArrowLeft className="size-5 text-primary" />
-            <span className="text-sm font-semibold text-primary whitespace-nowrap">Quay lại</span>
-          </div>
-        </div>
-      </Link>
+        <Link href={backHref}>
+          <ArrowLeft className="size-4" />
+          Quay lại
+        </Link>
+      </Button>
     </div>
   );
 }
