@@ -1,7 +1,7 @@
 'use client'
 
 import { getCachedUser } from '@/lib/auth'
-import { canViewProducts } from './shared/product-permissions'
+import { canViewProducts } from '@/components/sidebar/constants/role-permissions'
 import { PageHeader } from '@/components/page-header'
 import { ProductsButtonGroup } from './_components/products-button-group'
 import { ProductsTable } from './_components/table/products-table'

@@ -35,7 +35,7 @@ import { getCachedUser } from "@/lib/auth";
 import {
   canUpdateProduct,
   canDeleteProduct,
-} from "../../shared/product-permissions";
+} from "@/components/sidebar/constants/role-permissions";
 
 const formatDate = (iso?: string) => {
   if (!iso) return "—";

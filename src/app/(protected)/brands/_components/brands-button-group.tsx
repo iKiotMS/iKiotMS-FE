@@ -5,7 +5,7 @@ import { Download, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBrands } from '../_context/brands-provider'
 import { getCachedUser } from '@/lib/auth'
-import { canCreateBrand, canDeleteBrand } from '../shared/brand-permissions'
+import { canCreateBrand, canDeleteBrand } from '@/components/sidebar/constants/role-permissions'
 
 export function BrandsButtonGroup() {
   const { setOpen, selectedIds } = useBrands()

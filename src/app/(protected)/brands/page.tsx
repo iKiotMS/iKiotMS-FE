@@ -1,7 +1,7 @@
 'use client'
 
 import { getCachedUser } from '@/lib/auth'
-import { canViewBrands } from './shared/brand-permissions'
+import { canViewBrands } from '@/components/sidebar/constants/role-permissions'
 import { PageHeader } from '@/components/page-header'
 import { BrandsButtonGroup } from './_components/brands-button-group'
 import { BrandsTable } from './_components/table/brands-table'

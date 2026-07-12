@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import type { Category } from '@/types/category'
 import { useCategories } from '../../_context/categories-provider'
 import { getCachedUser } from '@/lib/auth'
-import { canUpdateCategory, canDeleteCategory, canCreateCategory } from '../../shared/category-permissions'
+import { canUpdateCategory, canDeleteCategory, canCreateCategory } from '@/components/sidebar/constants/role-permissions'
 import { CategoriesMutateDialog } from '../dialogs/categories-mutate-dialog'
 
 function resolveParentId(category: Category): string | null {
