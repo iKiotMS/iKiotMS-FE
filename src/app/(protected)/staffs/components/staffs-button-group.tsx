@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCachedUser } from "@/lib/auth";
-import { canCreateStaff } from "@/app/(protected)/staffs/shared/staff-permissions";
+import { canCreateStaff } from "@/components/sidebar/constants/role-permissions";
 import { useStaffs } from "./staffs-provider";
 
 export function StaffsButtonGroup() {

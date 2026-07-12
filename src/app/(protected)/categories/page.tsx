@@ -1,7 +1,7 @@
 'use client'
 
 import { getCachedUser } from '@/lib/auth'
-import { canViewCategories } from './shared/category-permissions'
+import { canViewCategories } from '@/components/sidebar/constants/role-permissions'
 import { PageHeader } from '@/components/page-header'
 import { CategoriesButtonGroup } from './_components/categories-button-group'
 import { CategoriesTable } from './_components/table/categories-table'

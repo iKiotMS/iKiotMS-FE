@@ -19,7 +19,7 @@ import {
   LEAVE_STATUS_MAP,
   LEAVE_TYPE_MAP,
 } from "@/app/(protected)/staffs/shared/leave-request-status";
-import { canReviewLeaveRequest } from "@/app/(protected)/staffs/shared/leave-permissions";
+import { canReviewLeaveRequest } from "@/components/sidebar/constants/role-permissions";
 import { formatLeaveDate } from "@/lib/api/leave-request-mapper";
 import { useAuth } from "@/hooks/use-auth";
 import type { LeaveRequest } from "@/types/leave-request";
