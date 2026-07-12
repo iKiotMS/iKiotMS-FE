@@ -11,13 +11,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
-import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
+import { sumAdjustQtyChange, formatQtyChange } from "@/app/(protected)/exchange/shared/qty";
+import { getMovementStatusConfig } from "@/app/(protected)/exchange/shared/movement-labels";
 import {
   getMovementNotePreview,
   hasAnyMovementNote,
 } from "@/app/(protected)/exchange/shared/qty";
-import { formatMoneyVnd } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -27,10 +26,7 @@ function SortableHeader({
   column,
 }: {
   label: string;
-  column: {
-    getIsSorted: () => false | "asc" | "desc";
-    toggleSorting: (desc?: boolean) => void;
-  };
+  column: { getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void };
 }) {
   const sorted = column.getIsSorted();
   return (
@@ -50,7 +46,7 @@ function SortableHeader({
   );
 }
 
-export const importsColumns: ColumnDef<StockMovement>[] = [
+export const adjustmentsColumns: ColumnDef<StockMovement>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -80,7 +76,7 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
   },
   {
     accessorKey: "_id",
-    header: "Mã đơn",
+    header: "Mã phiếu",
     cell: ({ row }) => (
       <span className="font-mono text-xs text-muted-foreground">
         #{String(row.getValue("_id")).slice(-6).toUpperCase()}
@@ -88,42 +84,15 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     ),
   },
   {
-    id: "movementType",
-    header: "Loại",
+    accessorKey: "fromLocationName",
+    header: "Kho / Chi nhánh",
     cell: ({ row }) => {
-      const cfg = MOVEMENT_TYPE_MAP[row.original.movementType];
-      return (
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cfg?.className ?? ""}`}>
-          {cfg?.label ?? row.original.movementType}
-        </span>
-      );
-    },
-    enableSorting: false,
-    size: 90,
-  },
-  {
-    accessorKey: "supplierName",
-    header: ({ column }) => (
-      <SortableHeader label="Nguồn hàng" column={column} />
-    ),
-    cell: ({ row }) => (
-      <span className="font-medium">
-        {row.original.supplierName ||
-          row.original.fromLocationName ||
-          (row.original.fromLocationId ? "Kho nguồn" : "—")}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "toLocationName",
-    header: "Kho nhận",
-    cell: ({ row }) => {
-      const record = row.original;
+      const r = row.original;
       return (
         <div className="flex flex-col">
-          <span className="text-sm font-medium">{record.toLocationName}</span>
-          <span className="text-xs text-muted-foreground capitalize">
-            {record.toLocationType === "warehouse" ? "Kho" : "Chi nhánh"}
+          <span className="text-sm font-medium">{r.fromLocationName ?? "—"}</span>
+          <span className="text-xs text-muted-foreground">
+            {r.fromLocationType === "warehouse" ? "Kho" : "Chi nhánh"}
           </span>
         </div>
       );
@@ -133,22 +102,18 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     id: "totalItems",
     header: "Số mặt hàng",
     cell: ({ row }) => (
-      <span className="tabular-nums">
-        {row.original.details.length} mặt hàng
-      </span>
+      <span className="tabular-nums">{row.original.details.length} mặt hàng</span>
     ),
   },
   {
-    id: "totalValue",
-    header: ({ column }) => <SortableHeader label="Giá trị" column={column} />,
-    accessorFn: (row) =>
-      row.details.reduce((sum, item) => sum + item.quantity * item.importPrice, 0),
+    id: "totalQtyChange",
+    header: ({ column }) => <SortableHeader label="Tổng thay đổi SL" column={column} />,
+    accessorFn: (row) => sumAdjustQtyChange(row.details),
     cell: ({ getValue }) => {
-      const value = getValue() as number;
-      const text = formatMoneyVnd(value);
+      const v = getValue() as number;
       return (
-        <span className="block max-w-[9rem] truncate tabular-nums font-medium" title={text}>
-          {text}
+        <span className={cn("tabular-nums font-medium", v > 0 ? "text-green-600 dark:text-green-400" : v < 0 ? "text-red-600 dark:text-red-400" : "")}>
+          {formatQtyChange(v)}
         </span>
       );
     },
@@ -156,20 +121,14 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
   {
     accessorKey: "requestedByName",
     header: "Người tạo",
-    cell: ({ row }) => (
-      <span className="text-sm">{row.getValue("requestedByName")}</span>
-    ),
+    cell: ({ row }) => <span className="text-sm">{row.getValue("requestedByName")}</span>,
   },
   {
     accessorKey: "createdAt",
-    header: ({ column }) => (
-      <SortableHeader label="Ngày tạo" column={column} />
-    ),
+    header: ({ column }) => <SortableHeader label="Ngày tạo" column={column} />,
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground">
-        {format(new Date(row.getValue("createdAt")), "dd/MM/yyyy", {
-          locale: vi,
-        })}
+        {format(new Date(row.getValue("createdAt")), "dd/MM/yyyy", { locale: vi })}
       </span>
     ),
   },
@@ -178,18 +137,14 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.getValue("status") as MovementStatus;
-      const config = MOVEMENT_STATUS_MAP[status];
+      const config = getMovementStatusConfig(status, row.original.movementType);
       const hasNote = hasAnyMovementNote(row.original);
       const preview = getMovementNotePreview(row.original);
       return (
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={config.variant}>{config.label}</Badge>
           {hasNote && (
-            <Badge
-              variant="outline"
-              className="gap-1 font-normal text-muted-foreground"
-              title={preview}
-            >
+            <Badge variant="outline" className="gap-1 font-normal text-muted-foreground" title={preview}>
               <MessageSquareText className="size-3" />
               Ghi chú
             </Badge>
@@ -197,19 +152,16 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
         </div>
       );
     },
-    filterFn: (row, columnId, value: string) =>
-      row.getValue(columnId) === value,
+    filterFn: (row, columnId, value: string) => row.getValue(columnId) === value,
   },
   {
     id: "expand",
     header: "",
     cell: ({ row }) => (
       <div className="flex items-center justify-end gap-2">
-        {row.getIsExpanded() ? (
-          <span className="text-[11px] font-medium text-muted-foreground">
-            Đang xem
-          </span>
-        ) : null}
+        {row.getIsExpanded() && (
+          <span className="text-[11px] font-medium text-muted-foreground">Đang xem</span>
+        )}
         <ChevronRight
           className={cn(
             "size-4 text-muted-foreground transition-transform duration-200",
@@ -223,5 +175,3 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     enableHiding: false,
   },
 ];
-
-export { MOVEMENT_STATUS_MAP as STATUS_MAP };

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Funnel, PackageOpen, Search } from "lucide-react";
+import { Funnel, PackageSearch, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,52 +41,32 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
-import { useTransfers } from "./transfers-provider";
-import { createTransfersColumns } from "./transfers-columns";
+import { useAdjustments } from "./adjustments-provider";
+import { adjustmentsColumns as columns } from "./adjustments-columns";
+import { AdjustmentsExpandedPanel } from "./adjustments-expanded-panel";
 
-export function TransfersTable() {
-  const {
-    transfers,
-    isLoading,
-    statusFilter,
-    setStatusFilter,
-    labels,
-    handleOpen,
-    handleSubmitFromOpening,
-    handleShipFromOpening,
-    handleShip,
-    handleReceive,
-    handleCancel,
-  } = useTransfers();
+const COLUMN_LABELS: Record<string, string> = {
+  _id: "Mã phiếu",
+  fromLocationName: "Kho / Chi nhánh",
+  totalItems: "Số mặt hàng",
+  totalQtyChange: "Tổng thay đổi SL",
+  requestedByName: "Người tạo",
+  createdAt: "Ngày tạo",
+  status: "Trạng thái",
+};
 
-  const columns = useMemo(
-    () => createTransfersColumns(labels),
-    [labels],
-  );
-
-  const columnLabels: Record<string, string> = {
-    _id: "Mã yêu cầu",
-    fromLocationName: labels.fromColumnHeader,
-    toLocationName: labels.toColumnHeader,
-    totalItems: "Số mặt hàng",
-    totalQty: "Tổng SL",
-    requestedByName: "Người yêu cầu",
-    createdAt: "Ngày tạo",
-    status: "Trạng thái",
-  };
+export function AdjustmentsTable() {
+  const { adjustments, isLoading, statusFilter, setStatusFilter } = useAdjustments();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    requestedByName: false,
-  });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ requestedByName: false });
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useReactTable({
-    data: transfers,
+    data: adjustments,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -103,26 +83,13 @@ export function TransfersTable() {
         const prev = typeof old === "boolean" ? {} : old;
         const next = typeof updater === "function" ? updater(old) : updater;
         if (next === true) return next;
-        const newlyOpened = Object.keys(next).filter(
-          (key) => next[key] && !prev[key],
-        );
-        if (newlyOpened.length > 0) {
-          return { [newlyOpened[0]]: true };
-        }
+        const newlyOpened = Object.keys(next).filter((key) => next[key] && !prev[key]);
+        if (newlyOpened.length > 0) return { [newlyOpened[0]]: true };
         return next;
       });
     },
-    initialState: {
-      pagination: { pageSize: 10 },
-    },
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-      globalFilter,
-      expanded,
-    },
+    initialState: { pagination: { pageSize: 10 } },
+    state: { sorting, columnFilters, columnVisibility, rowSelection, globalFilter, expanded },
   });
 
   return (
@@ -132,7 +99,7 @@ export function TransfersTable() {
           <div className="relative min-w-52 max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={labels.searchPlaceholder}
+              placeholder="Tìm theo kho, mã phiếu..."
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
               className="h-9 pl-9"
@@ -140,19 +107,14 @@ export function TransfersTable() {
           </div>
           <Select
             value={statusFilter}
-            onValueChange={(value) =>
-              setStatusFilter(value as typeof statusFilter)
-            }
+            onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}
           >
             <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="DRAFT">Nháp / cần xử lý</SelectItem>
-              <SelectItem value="OPENING">Đang soạn</SelectItem>
-              <SelectItem value="CLOSED">Đã chốt — chờ xuất</SelectItem>
-              <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
-              <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
+              <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+              <SelectItem value="COMPLETED">Đã hoàn tất</SelectItem>
               <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
               <SelectItem value="ALL">Tất cả</SelectItem>
             </SelectContent>
@@ -176,7 +138,7 @@ export function TransfersTable() {
                   checked={col.getIsVisible()}
                   onCheckedChange={(value) => col.toggleVisibility(!!value)}
                 >
-                  {columnLabels[col.id] ?? col.id}
+                  {COLUMN_LABELS[col.id] ?? col.id}
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuContent>
@@ -186,16 +148,13 @@ export function TransfersTable() {
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id}>
+                {hg.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -215,9 +174,7 @@ export function TransfersTable() {
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const isExpanded = row.getIsExpanded();
-                const hasExpandedRow = table
-                  .getRowModel()
-                  .rows.some((item) => item.getIsExpanded());
+                const hasExpandedRow = table.getRowModel().rows.some((r) => r.getIsExpanded());
                 return (
                   <Fragment key={row.id}>
                     <TableRow
@@ -235,40 +192,20 @@ export function TransfersTable() {
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
-                          onClick={
-                            cell.column.id === "select"
-                              ? (e) => e.stopPropagation()
-                              : undefined
-                          }
+                          onClick={cell.column.id === "select" ? (e) => e.stopPropagation() : undefined}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
                     </TableRow>
                     {isExpanded ? (
                       <TableRow className="border-transparent bg-muted/40 hover:bg-muted/40">
-                        <TableCell
-                          colSpan={row.getVisibleCells().length}
-                          className="p-0"
-                        >
+                        <TableCell colSpan={row.getVisibleCells().length} className="p-0">
                           <div className="px-3 pb-3 pt-1">
-                            <MovementExpandedPanel
-                              mode="transfer"
+                            <AdjustmentsExpandedPanel
                               request={row.original}
                               isExpanded
                               onClose={() => row.toggleExpanded(false)}
-                              transferActions={{
-                                handleOpen,
-                                handleSubmitFromOpening,
-                                handleShipFromOpening,
-                                handleShip,
-                                handleReceive,
-                                handleCancel,
-                                labels,
-                              }}
                             />
                           </div>
                         </TableCell>
@@ -281,13 +218,9 @@ export function TransfersTable() {
               <TableRow>
                 <TableCell colSpan={columns.length}>
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <PackageOpen className="mb-4 size-12 text-muted-foreground" />
-                    <h3 className="mb-1 text-base font-semibold">
-                      {labels.emptyState}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Chưa có yêu cầu nào phù hợp bộ lọc hiện tại.
-                    </p>
+                    <PackageSearch className="mb-4 size-12 text-muted-foreground" />
+                    <h3 className="mb-1 text-base font-semibold">Không có phiếu điều chỉnh</h3>
+                    <p className="text-sm text-muted-foreground">Chưa có phiếu nào phù hợp bộ lọc hiện tại.</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -308,41 +241,22 @@ export function TransfersTable() {
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
-                </SelectItem>
+                <SelectItem key={pageSize} value={`${pageSize}`}>{pageSize}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="hidden text-sm text-muted-foreground sm:block">
-          Đã chọn {table.getFilteredSelectedRowModel().rows.length} /{" "}
-          {table.getFilteredRowModel().rows.length} yêu cầu
+          Đã chọn {table.getFilteredSelectedRowModel().rows.length} / {table.getFilteredRowModel().rows.length} phiếu
         </div>
         <div className="flex items-center space-x-2">
           <span className="hidden text-sm font-medium sm:block">
-            Trang{" "}
-            <strong>
-              {table.getState().pagination.pageIndex + 1} /{" "}
-              {table.getPageCount() || 1}
-            </strong>
+            Trang <strong>{table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}</strong>
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="cursor-pointer"
-          >
+          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="cursor-pointer">
             Trước
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="cursor-pointer"
-          >
+          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="cursor-pointer">
             Tiếp
           </Button>
         </div>

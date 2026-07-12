@@ -43,7 +43,11 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       label: "Quản lý",
       items: [sidebarItems.tongQuan, sidebarItems.nhanVien],
     },
-    quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich, sidebarItems.donHang]),
+    quanLyBanHangGroup([
+      sidebarItems.hangHoa,
+      sidebarItems.giaoDichBranch,
+      sidebarItems.donHang,
+    ]),
     crmGroup,
   ],
 

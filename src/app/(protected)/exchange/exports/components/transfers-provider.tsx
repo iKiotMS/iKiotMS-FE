@@ -3,6 +3,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
+import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
+import { getTransferUiLabels } from '@/app/(protected)/exchange/shared/transfer-ui-labels'
 import type { StockMovement, MovementStatus } from '@/types/stock-movement'
 
 export type TransfersDialogType = 'create'
@@ -13,70 +16,188 @@ interface TransfersContextType {
   isLoading: boolean
   open: TransfersDialogType | null
   setOpen: (v: TransfersDialogType | null) => void
-  currentRow: StockMovement | null
-  setCurrentRow: React.Dispatch<React.SetStateAction<StockMovement | null>>
   statusFilter: MovementStatus | 'ALL'
   setStatusFilter: (v: MovementStatus | 'ALL') => void
   fetchTransfers: () => Promise<void>
-  handleApprove: (id: string, note?: string) => Promise<void>
-  handleReject: (id: string, note: string) => Promise<void>
+  handleOpen: (id: string) => Promise<void>
+  handleUpdateDetails: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleSubmitFromOpening: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleShipFromOpening: (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => Promise<void>
+  handleClose: (id: string) => Promise<void>
+  handleShip: (id: string) => Promise<void>
+  handleReceive: (id: string, receivedDetails: { productItemId: string; receivedQuantity: number }[]) => Promise<void>
+  handleCancel: (id: string) => Promise<void>
+  labels: ReturnType<typeof getTransferUiLabels>
 }
 
 const TransfersContext = createContext<TransfersContextType | null>(null)
 
 export function TransfersProvider({ children }: { children: React.ReactNode }) {
+  const authScope = getAuthScope()
+  const labels = React.useMemo(
+    () => getTransferUiLabels(authScope.role),
+    [authScope.role],
+  )
   const [transfers, setTransfers] = useState<StockMovement[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState<TransfersDialogType | null>(null)
-  const [currentRow, setCurrentRow] = useState<StockMovement | null>(null)
   const [statusFilter, setStatusFilter] = useState<MovementStatus | 'ALL'>('ALL')
 
   const fetchTransfers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const params = {
-        movementType: 'TRANSFER' as const,
+      const base = {
+        limit: 50,
         ...(statusFilter !== 'ALL' && { status: statusFilter }),
       }
-      const res = await stockMovementApi.getList(params)
-      setTransfers(Array.isArray(res.data) ? res.data : (res as unknown as StockMovement[]))
-      setTotal(res.total ?? (res as unknown as StockMovement[]).length ?? 0)
-    } catch {
-      setTransfers(MOCK_TRANSFERS)
-      setTotal(MOCK_TRANSFERS.length)
+      const [exportRes, returnRes] = await Promise.all([
+        stockMovementApi.getList({ ...base, movementType: 'EXPORT' }),
+        stockMovementApi.getList({ ...base, movementType: 'RETURN' }),
+      ])
+      const data = [...exportRes.data, ...returnRes.data].sort((a, b) =>
+        String(b.createdAt).localeCompare(String(a.createdAt)),
+      )
+      setTransfers(data)
+      setTotal(data.length)
+    } catch (error) {
+      console.error(error)
+      setTransfers([])
+      setTotal(0)
+      toast.error(getStockMovementErrorMessage(error, labels.listLoadError))
     } finally {
       setIsLoading(false)
     }
-  }, [statusFilter])
+  }, [statusFilter, labels.listLoadError])
 
   useEffect(() => { fetchTransfers() }, [fetchTransfers])
 
-  const handleApprove = async (id: string, note?: string) => {
+  const handleOpen = async (id: string) => {
     try {
-      await stockMovementApi.updateStatus(id, { status: 'APPROVED', note })
-      toast.success('Đã duyệt yêu cầu chuyển kho')
-      setOpen(null)
+      await stockMovementApi.open(id)
+      toast.success('Đã mở phiếu — có thể chốt danh sách hàng')
       await fetchTransfers()
-    } catch {
-      toast.error('Không thể duyệt yêu cầu, vui lòng thử lại')
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể mở phiếu'))
     }
   }
 
-  const handleReject = async (id: string, note: string) => {
+  const handleUpdateDetails = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
     try {
-      await stockMovementApi.updateStatus(id, { status: 'REJECTED', note })
-      toast.success('Đã từ chối yêu cầu chuyển kho')
-      setOpen(null)
+      await stockMovementApi.updateDetails(id, { details })
+      toast.success('Đã cập nhật danh sách hàng cho phiếu')
       await fetchTransfers()
-    } catch {
-      toast.error('Không thể từ chối yêu cầu, vui lòng thử lại')
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể cập nhật danh sách hàng'))
+      throw error
+    }
+  }
+
+  const handleClose = async (id: string) => {
+    try {
+      await stockMovementApi.close(id)
+      toast.success('Đã chốt phiếu — sẵn sàng xuất hàng')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể chốt phiếu'))
+    }
+  }
+
+  const handleSubmitFromOpening = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
+    try {
+      await stockMovementApi.updateDetails(id, { details })
+      toast.success('Đã lưu danh sách hàng')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể lưu danh sách hàng'))
+      throw error
+    }
+  }
+
+  const handleShipFromOpening = async (
+    id: string,
+    details: { productItemId: string; quantity: number; importPrice?: number; note?: string }[],
+  ) => {
+    try {
+      await stockMovementApi.updateDetails(id, { details })
+      await stockMovementApi.close(id)
+      toast.success('Đã chốt phiếu — sẵn sàng xuất hàng')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể chốt phiếu'))
+      throw error
+    }
+  }
+
+  const handleShip = async (id: string) => {
+    try {
+      await stockMovementApi.ship(id)
+      toast.success('Đã xuất hàng — phiếu đang vận chuyển')
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể xuất hàng'))
+    }
+  }
+
+  const handleReceive = async (
+    id: string,
+    receivedDetails: { productItemId: string; receivedQuantity: number }[],
+  ) => {
+    try {
+      await stockMovementApi.receive(id, { details: receivedDetails })
+      toast.success(labels.receiveSuccess)
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, labels.receiveError))
+    }
+  }
+
+  const handleCancel = async (id: string) => {
+    try {
+      await stockMovementApi.cancel(id)
+      toast.success(labels.cancelSuccess)
+      await fetchTransfers()
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, labels.cancelError))
     }
   }
 
   return (
     <TransfersContext.Provider
-      value={{ transfers, total, isLoading, open, setOpen, currentRow, setCurrentRow, statusFilter, setStatusFilter, fetchTransfers, handleApprove, handleReject }}
+      value={{
+        transfers,
+        total,
+        isLoading,
+        open,
+        setOpen,
+        statusFilter,
+        setStatusFilter,
+        fetchTransfers,
+        handleOpen,
+        handleUpdateDetails,
+        handleSubmitFromOpening,
+        handleShipFromOpening,
+        handleClose,
+        handleShip,
+        handleReceive,
+        handleCancel,
+        labels,
+      }}
     >
       {children}
     </TransfersContext.Provider>
@@ -88,49 +209,3 @@ export function useTransfers() {
   if (!ctx) throw new Error('useTransfers must be used within <TransfersProvider>')
   return ctx
 }
-
-const MOCK_TRANSFERS: StockMovement[] = [
-  {
-    _id: 'trf-001',
-    tenantId: 'tenant-1',
-    movementType: 'TRANSFER',
-    status: 'PENDING',
-    fromLocationId: 'wh-1',
-    fromLocationName: 'Kho Trung Tâm',
-    fromLocationType: 'warehouse',
-    toLocationId: 'br-1',
-    toLocationName: 'Chi nhánh Q.1',
-    toLocationType: 'branch',
-    requestedBy: 'user-2',
-    requestedByName: 'Trần Thị B',
-    note: 'Bổ sung hàng cho chi nhánh',
-    details: [
-      { productItemId: 'pi-1', productName: 'Nước suối Lavie 500ml', sku: 'LAV-500', quantity: 50, importPrice: 0, receivedQuantity: 0 },
-      { productItemId: 'pi-2', productName: 'Coca-Cola 330ml', sku: 'COKE-330', quantity: 30, importPrice: 0, receivedQuantity: 0 },
-    ],
-    createdAt: '2026-06-12T09:00:00Z',
-    updatedAt: '2026-06-12T09:00:00Z',
-  },
-  {
-    _id: 'trf-002',
-    tenantId: 'tenant-1',
-    movementType: 'TRANSFER',
-    status: 'APPROVED',
-    fromLocationId: 'wh-1',
-    fromLocationName: 'Kho Trung Tâm',
-    fromLocationType: 'warehouse',
-    toLocationId: 'br-2',
-    toLocationName: 'Chi nhánh Q.3',
-    toLocationType: 'branch',
-    requestedBy: 'user-3',
-    requestedByName: 'Lê Quản Lý',
-    approvedBy: 'user-1',
-    approvedByName: 'Nguyễn Văn A',
-    note: '',
-    details: [
-      { productItemId: 'pi-3', productName: 'Bánh mì que', sku: 'BMQ-001', quantity: 20, importPrice: 0, receivedQuantity: 20 },
-    ],
-    createdAt: '2026-06-11T14:00:00Z',
-    updatedAt: '2026-06-11T16:00:00Z',
-  },
-]

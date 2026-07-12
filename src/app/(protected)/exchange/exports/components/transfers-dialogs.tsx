@@ -9,7 +9,7 @@ export function TransfersDialogs() {
   return (
     <TransfersCreateDialog
       open={open === "create"}
-      onOpenChange={(value) => !value && setOpen(null)}
+      onOpenChange={(value) => setOpen(value ? "create" : null)}
     />
   );
 }
