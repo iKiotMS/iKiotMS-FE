@@ -40,6 +40,7 @@ export function NavMain({
 }) {
   const pathname = usePathname();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const openTicketsCount = useNotificationStore((state) => state.openTicketsCount);
 
   // Check if any subitem is active to determine if parent should be open
   const shouldBeOpen = (item: typeof items[0]) => {
@@ -92,6 +93,9 @@ export function NavMain({
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                     {item.url === "/admin/system-notifications" && unreadCount > 0 && (
+                      <span className="ml-auto h-2 w-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                    )}
+                    {item.url === "/admin/tickets" && openTicketsCount > 0 && (
                       <span className="ml-auto h-2 w-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
                     )}
                   </Link>

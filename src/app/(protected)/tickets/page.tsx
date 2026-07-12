@@ -168,6 +168,22 @@ export default function TenantTicketsPage() {
     fetchTickets();
   }, []);
 
+  // ── Auto-open ticket from URL query parameter (ticketId or id)
+  useEffect(() => {
+    if (tickets.length > 0) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const ticketId = searchParams.get("ticketId") || searchParams.get("id");
+      if (ticketId) {
+        const found = tickets.find(
+          (t) => t._id === ticketId || t.ticketId === ticketId,
+        );
+        if (found) {
+          setSelectedTicket(found);
+        }
+      }
+    }
+  }, [tickets]);
+
   // ── Real-time ticket updates
   useEffect(() => {
     try {

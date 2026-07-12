@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { listSystemNotifications } from "@/lib/api/notification";
+import { listAllTickets } from "@/lib/api/ticket";
 
 interface NotificationState {
   unreadCount: number;
@@ -7,6 +8,10 @@ interface NotificationState {
   decrementUnreadCount: () => void;
   incrementUnreadCount: () => void;
   fetchUnreadCount: () => Promise<void>;
+
+  openTicketsCount: number;
+  setOpenTicketsCount: (count: number) => void;
+  fetchOpenTicketsCount: () => Promise<void>;
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
@@ -21,6 +26,18 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       set({ unreadCount: unread });
     } catch (err) {
       console.error("Failed to fetch unread notification count:", err);
+    }
+  },
+
+  openTicketsCount: 0,
+  setOpenTicketsCount: (count) => set({ openTicketsCount: count }),
+  fetchOpenTicketsCount: async () => {
+    try {
+      const tickets = await listAllTickets();
+      const openCount = tickets.filter((t) => t.status === "OPEN").length;
+      set({ openTicketsCount: openCount });
+    } catch (err) {
+      console.error("Failed to fetch open tickets count:", err);
     }
   },
 }));

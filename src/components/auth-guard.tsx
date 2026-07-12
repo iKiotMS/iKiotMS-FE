@@ -47,9 +47,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         if (user.role === "SUPER_ADMIN") {
           joinRoom("admin");
           
-          // Fetch initial unread count
+          // Fetch initial unread count & open tickets count
           const { useNotificationStore } = require("@/store/notification-store");
           useNotificationStore.getState().fetchUnreadCount();
+          useNotificationStore.getState().fetchOpenTicketsCount();
 
           // Listen for new system notifications to increment count
           const handleNewNotification = () => {
@@ -57,8 +58,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           };
           socket.on("system-notification", handleNewNotification);
 
+          // Listen for ticket updates to refresh open tickets count
+          const handleTicketUpdate = () => {
+            useNotificationStore.getState().fetchOpenTicketsCount();
+          };
+          socket.on("ticket-update", handleTicketUpdate);
+
           return () => {
             socket.off("system-notification", handleNewNotification);
+            socket.off("ticket-update", handleTicketUpdate);
           };
         }
       } catch (err) {

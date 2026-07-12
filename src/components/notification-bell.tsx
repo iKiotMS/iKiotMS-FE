@@ -32,9 +32,15 @@ export function NotificationBell({
     fetchInbox();
   }, [fetchInbox]);
 
-  const handleClick = async (id: string, link?: string) => {
+  const handleClick = async (id: string, link?: string, referenceId?: string) => {
     await markAsRead(id);
-    if (link) router.push(link);
+    if (link) {
+      if (link === "/tickets" && referenceId) {
+        router.push(`${link}?id=${referenceId}`);
+      } else {
+        router.push(link);
+      }
+    }
   };
 
   return (
@@ -82,7 +88,7 @@ export function NotificationBell({
             items.map((item) => (
               <button
                 key={item._id}
-                onClick={() => handleClick(item._id, item.link)}
+                onClick={() => handleClick(item._id, item.link, item.referenceId)}
                 className={cn(
                   "flex w-full flex-col gap-1 border-b px-4 py-3 text-left transition-colors hover:bg-muted/50 cursor-pointer",
                   !item.isRead && "bg-muted/30",
