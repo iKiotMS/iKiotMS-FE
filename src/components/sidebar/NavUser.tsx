@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { logout } from "@/lib/api/auth";
+import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -44,9 +44,11 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const router = useRouter();
 
+  const { logout: storeLogout } = useAuth();
+
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
-    await logout();
+    await storeLogout();
     router.replace("/sign-in");
   };
 

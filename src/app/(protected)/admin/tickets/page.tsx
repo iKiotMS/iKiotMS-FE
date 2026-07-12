@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSocket } from "@/lib/socket";
 import { toast } from "sonner";
 import {
@@ -48,6 +49,18 @@ export default function AdminTicketsPage() {
   const [closingTicket, setClosingTicket] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setReplyMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(scrollHeight, 120)}px`;
+      setIsOverflowing(scrollHeight > 120);
+    }
+  };
 
   // Load all support tickets initially
   const fetchTickets = () => {
@@ -64,6 +77,22 @@ export default function AdminTicketsPage() {
   useEffect(() => {
     fetchTickets();
   }, []);
+
+  // Auto-open ticket from URL query parameter (ticketId or id)
+  useEffect(() => {
+    if (tickets.length > 0) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const ticketId = searchParams.get("ticketId") || searchParams.get("id");
+      if (ticketId) {
+        const found = tickets.find(
+          (t) => t._id === ticketId || t.ticketId === ticketId,
+        );
+        if (found) {
+          setSelectedTicket(found);
+        }
+      }
+    }
+  }, [tickets]);
 
   // Listen to ticket-update real-time events
   useEffect(() => {
@@ -107,8 +136,13 @@ export default function AdminTicketsPage() {
 
   // Scroll to bottom of chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selectedTicket?.messages]);
+    if (selectedTicket) {
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedTicket, selectedTicket?.messages]);
 
   // Reply submit action
   const handleSendReply = async (e: React.FormEvent) => {
@@ -120,8 +154,11 @@ export default function AdminTicketsPage() {
       const res = await replyTicket(selectedTicket._id, replyMessage);
       if (res.success) {
         setReplyMessage("");
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+        }
+        setIsOverflowing(false);
         setSelectedTicket(res.data);
-        toast.success("Gửi phản hồi thành công!");
       }
     } catch (err) {
       console.error(err);
@@ -316,12 +353,12 @@ export default function AdminTicketsPage() {
         open={!!selectedTicket}
         onOpenChange={() => setSelectedTicket(null)}
       >
-        <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden border">
+        <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden border">
           {selectedTicket && (
             <>
-              {/* Header */}
-              <DialogHeader className="p-6 pb-4 border-b flex flex-row items-start justify-between space-y-0 shrink-0">
-                <div className="space-y-1 pr-6">
+               {/* Header */}
+              <DialogHeader className="p-6 pb-4 border-b flex flex-row items-center justify-between space-y-0 shrink-0">
+                <div className="space-y-1 pr-6 flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-semibold bg-muted px-2 py-0.5 rounded text-muted-foreground">
                       {selectedTicket.ticketId}
@@ -347,76 +384,84 @@ export default function AdminTicketsPage() {
                     &bull; Gửi lúc: {formatDate(selectedTicket.createdAt)}
                   </DialogDescription>
                 </div>
+                {selectedTicket.status !== "CLOSED" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={closingTicket}
+                    onClick={handleCloseTicket}
+                    className="h-9 text-xs cursor-pointer px-3 border shrink-0 mr-8"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-500" />
+                    Đóng Ticket
+                  </Button>
+                )}
               </DialogHeader>
 
               {/* Chat Thread */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/20">
-                {selectedTicket.messages.map((msg, index) => {
-                  const isAdmin = msg.senderRole === "SUPER_ADMIN";
-                  return (
-                    <div
-                      key={index}
-                      className={`flex flex-col ${isAdmin ? "items-end" : "items-start"}`}
-                    >
-                      <div className="text-[10px] text-muted-foreground mb-1 px-1">
-                        {msg.senderName} (
-                        {msg.senderRole === "SUPER_ADMIN" ? "Admin" : "Store"})
-                      </div>
+              <ScrollArea className="flex-1 min-h-0 bg-background">
+                <div className="p-6 pr-10 space-y-4">
+                  {selectedTicket.messages.map((msg, index) => {
+                    const isAdmin = msg.senderRole === "SUPER_ADMIN";
+                    return (
                       <div
-                        className={`p-3 rounded-lg text-sm max-w-[85%] break-words shadow-2xs ${
-                          isAdmin
-                            ? "bg-primary text-primary-foreground rounded-tr-none"
-                            : "bg-card border rounded-tl-none"
-                        }`}
+                        key={index}
+                        className={`flex flex-col ${isAdmin ? "items-end" : "items-start"}`}
                       >
-                        {msg.message}
+                        <div className="text-[10px] text-muted-foreground mb-1 px-1">
+                          {msg.senderName} (
+                          {msg.senderRole === "SUPER_ADMIN" ? "Admin" : "Store"}
+                          )
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg text-sm max-w-[85%] break-words shadow-2xs ${
+                            isAdmin
+                              ? "bg-primary text-primary-foreground rounded-tr-none"
+                              : "bg-card border rounded-tl-none"
+                          }`}
+                        >
+                          {msg.message}
+                        </div>
+                        <span className="text-[9px] text-muted-foreground mt-1 px-1">
+                          {new Date(msg.createdAt).toLocaleTimeString("vi-VN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
-                      <span className="text-[9px] text-muted-foreground mt-1 px-1">
-                        {new Date(msg.createdAt).toLocaleTimeString("vi-VN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
 
               {/* Footer controls / Input */}
-              <div className="p-4 border-t bg-card flex flex-col gap-3 shrink-0">
+              <div className="pb-6 pt-1 relative px-6 bg-background flex flex-col gap-3 shrink-0 z-20">
+                {/* Top fade gradient overlay */}
+                <div className="absolute top-0 left-0 right-0 h-10 -translate-y-full bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
                 {selectedTicket.status !== "CLOSED" ? (
                   <form
                     onSubmit={handleSendReply}
                     className="flex gap-2 items-end"
                   >
                     <Textarea
+                      ref={textareaRef}
                       placeholder="Nhập nội dung phản hồi kỹ thuật..."
-                      rows={2}
+                      rows={1}
                       value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      className="resize-none min-h-[50px] flex-1 text-sm h-11"
+                      onChange={handleTextareaChange}
+                      className={`resize-none min-h-[44px] max-h-[120px] flex-1 text-sm ${
+                        isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
+                      }`}
                     />
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={closingTicket}
-                        onClick={handleCloseTicket}
-                        className="h-8 text-xs cursor-pointer px-3 border"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-500" />
-                        Đóng Ticket
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={sendingReply || !replyMessage.trim()}
-                        className="h-8 text-xs cursor-pointer px-3"
-                      >
-                        <Send className="h-3.5 w-3.5 mr-1" />
-                        Gửi
-                      </Button>
-                    </div>
+                    <Button
+                      type="submit"
+                      disabled={sendingReply || !replyMessage.trim()}
+                      className="h-11 px-4 cursor-pointer text-sm shrink-0"
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1.5" />
+                      Phản hồi
+                    </Button>
                   </form>
                 ) : (
                   <div className="flex items-center justify-center p-4 bg-muted/30 border border-dashed rounded-lg text-muted-foreground text-xs gap-1.5">

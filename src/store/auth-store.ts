@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { type User, getCachedUser, setCachedUser } from "@/lib/auth";
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
+import { disablePushNotifications } from "@/lib/fcm";
+import { useNotificationInboxStore } from "@/store/notification-inbox-store";
+
 
 function getInitialLocationKey(user: User | null): string {
   if (!user) return "all";
@@ -80,6 +83,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
+      try {
+        await disablePushNotifications();
+      } catch (fcmErr) {
+        console.error("Failed to disable push notifications on logout:", fcmErr);
+      }
+      try {
+        useNotificationInboxStore.getState().reset();
+      } catch (storeErr) {
+        console.error("Failed to reset notification inbox store:", storeErr);
+      }
+
       await apiLogout();
       set({ user: null, isLoading: false, locationKey: "all" });
       if (typeof window !== "undefined") {

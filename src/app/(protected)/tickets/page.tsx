@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Form,
   FormControl,
@@ -133,6 +134,18 @@ export default function TenantTicketsPage() {
   const [sendingReply, setSendingReply] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setReplyMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(scrollHeight, 120)}px`;
+      setIsOverflowing(scrollHeight > 120);
+    }
+  };
 
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(ticketSchema),
@@ -169,9 +182,7 @@ export default function TenantTicketsPage() {
           }
           return [updated, ...prev];
         });
-        setSelectedTicket((cur) =>
-          cur?._id === updated._id ? updated : cur
-        );
+        setSelectedTicket((cur) => (cur?._id === updated._id ? updated : cur));
       };
       socket.on("ticket-update", handleUpdate);
       return () => {
@@ -184,8 +195,13 @@ export default function TenantTicketsPage() {
 
   // ── Auto-scroll chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selectedTicket?.messages]);
+    if (selectedTicket) {
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedTicket, selectedTicket?.messages]);
 
   // ── Submit new ticket
   const onSubmit = async (values: TicketFormValues) => {
@@ -193,7 +209,9 @@ export default function TenantTicketsPage() {
     try {
       const res = await createTicket(values);
       if (res.success) {
-        toast.success("Gửi phản ánh thành công! Chúng tôi sẽ phản hồi sớm nhất.");
+        toast.success(
+          "Gửi phản ánh thành công! Chúng tôi sẽ phản hồi sớm nhất.",
+        );
         form.reset();
         setTickets((prev) => [res.data, ...prev]);
       }
@@ -215,9 +233,13 @@ export default function TenantTicketsPage() {
       const res = await replyMyTicket(selectedTicket._id, replyMessage);
       if (res.success) {
         setReplyMessage("");
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+        }
+        setIsOverflowing(false);
         setSelectedTicket(res.data);
         setTickets((prev) =>
-          prev.map((t) => (t._id === res.data._id ? res.data : t))
+          prev.map((t) => (t._id === res.data._id ? res.data : t)),
         );
         toast.success("Phản hồi đã được gửi!");
       }
@@ -301,10 +323,18 @@ export default function TenantTicketsPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="LOW">Thấp — Không ảnh hưởng nghiêm trọng</SelectItem>
-                          <SelectItem value="MEDIUM">Trung bình — Cần giải quyết sớm</SelectItem>
-                          <SelectItem value="HIGH">Cao — Ảnh hưởng hoạt động kinh doanh</SelectItem>
-                          <SelectItem value="URGENT">Khẩn cấp — Hệ thống ngừng hoạt động</SelectItem>
+                          <SelectItem value="LOW">
+                            Thấp — Không ảnh hưởng nghiêm trọng
+                          </SelectItem>
+                          <SelectItem value="MEDIUM">
+                            Trung bình — Cần giải quyết sớm
+                          </SelectItem>
+                          <SelectItem value="HIGH">
+                            Cao — Ảnh hưởng hoạt động kinh doanh
+                          </SelectItem>
+                          <SelectItem value="URGENT">
+                            Khẩn cấp — Hệ thống ngừng hoạt động
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage className="text-xs" />
@@ -428,8 +458,11 @@ export default function TenantTicketsPage() {
       </div>
 
       {/* ── Ticket Thread Dialog ── */}
-      <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
-        <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden border">
+      <Dialog
+        open={!!selectedTicket}
+        onOpenChange={() => setSelectedTicket(null)}
+      >
+        <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden border">
           {selectedTicket && (
             <>
               {/* Dialog Header */}
@@ -462,60 +495,75 @@ export default function TenantTicketsPage() {
               </DialogHeader>
 
               {/* Chat Thread */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/20">
-                {selectedTicket.messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-                    <AlertTriangle className="h-6 w-6 opacity-40" />
-                    <p className="text-xs">Chưa có tin nhắn nào. Đang chờ phản hồi từ admin.</p>
-                  </div>
-                ) : (
-                  selectedTicket.messages.map((msg, idx) => {
-                    const isAdmin = msg.senderRole === "SUPER_ADMIN";
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex flex-col ${isAdmin ? "items-start" : "items-end"}`}
-                      >
-                        <div className="text-[10px] text-muted-foreground mb-1 px-1">
-                          {isAdmin ? "Hỗ trợ kỹ thuật" : "Bạn"}
-                        </div>
+              <ScrollArea className="flex-1 min-h-0 bg-background">
+                <div className="p-6 pr-10 space-y-4">
+                  {selectedTicket.messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground py-10">
+                      <AlertTriangle className="h-6 w-6 opacity-40" />
+                      <p className="text-xs">
+                        Chưa có tin nhắn nào. Đang chờ phản hồi từ admin.
+                      </p>
+                    </div>
+                  ) : (
+                    selectedTicket.messages.map((msg, idx) => {
+                      const isAdmin = msg.senderRole === "SUPER_ADMIN";
+                      return (
                         <div
-                          className={`p-3 rounded-lg text-sm max-w-[85%] break-words shadow-2xs ${
-                            isAdmin
-                              ? "bg-card border rounded-tl-none"
-                              : "bg-primary text-primary-foreground rounded-tr-none"
-                          }`}
+                          key={idx}
+                          className={`flex flex-col ${isAdmin ? "items-start" : "items-end"}`}
                         >
-                          {msg.message}
+                          <div className="text-[10px] text-muted-foreground mb-1 px-1">
+                            {isAdmin ? "Hỗ trợ kỹ thuật" : "Bạn"}
+                          </div>
+                          <div
+                            className={`p-3 rounded-lg text-sm max-w-[85%] break-words shadow-2xs ${
+                              isAdmin
+                                ? "bg-card border rounded-tl-none"
+                                : "bg-primary text-primary-foreground rounded-tr-none"
+                            }`}
+                          >
+                            {msg.message}
+                          </div>
+                          <span className="text-[9px] text-muted-foreground mt-1 px-1">
+                            {new Date(msg.createdAt).toLocaleTimeString(
+                              "vi-VN",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </span>
                         </div>
-                        <span className="text-[9px] text-muted-foreground mt-1 px-1">
-                          {new Date(msg.createdAt).toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
 
               {/* Reply Input Footer */}
-              <div className="p-4 border-t bg-card shrink-0">
+              <div className="pb-6 pt-1 relative px-6 bg-background shrink-0 z-20">
+                {/* Top fade gradient overlay */}
+                <div className="absolute top-0 left-0 right-0 h-10 -translate-y-full bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
                 {selectedTicket.status === "CLOSED" ? (
                   <div className="flex items-center justify-center p-3 bg-muted/30 border border-dashed rounded-lg text-muted-foreground text-xs gap-1.5">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     Yêu cầu hỗ trợ này đã được đóng.
                   </div>
                 ) : (
-                  <form onSubmit={handleSendReply} className="flex gap-2 items-end">
+                  <form
+                    onSubmit={handleSendReply}
+                    className="flex gap-2 items-end"
+                  >
                     <Textarea
+                      ref={textareaRef}
                       placeholder="Nhập thêm thông tin hoặc câu hỏi của bạn..."
-                      rows={2}
+                      rows={1}
                       value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      className="resize-none min-h-[50px] flex-1 text-sm h-11"
+                      onChange={handleTextareaChange}
+                      className={`resize-none min-h-[44px] max-h-[120px] flex-1 text-sm ${
+                        isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
+                      }`}
                     />
                     <Button
                       type="submit"

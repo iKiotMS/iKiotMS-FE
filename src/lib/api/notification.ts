@@ -54,3 +54,66 @@ export async function markAllSystemNotificationsAsRead(): Promise<{ success: boo
   const response = await client.patch("/admin/system-notifications/mark-all-read");
   return response.data;
 }
+
+// ---- Hộp thư cấp tenant (khác hoàn toàn với /admin/* ở trên) ----
+
+export type NotificationType =
+  | "LEAVE_REQUEST_CREATED" | "LEAVE_REQUEST_APPROVED" | "LEAVE_REQUEST_REJECTED"
+  | "LEAVE_REQUEST_CANCELLED" | "LEAVE_REQUEST_EXPIRED"
+  | "STOCK_MOVEMENT_CREATED" | "STOCK_MOVEMENT_IN_TRANSIT"
+  | "STOCK_MOVEMENT_RECEIVED" | "STOCK_MOVEMENT_CANCELLED"
+  | "INVENTORY_LOW_STOCK" | "ORDER_PAID"
+  | "SUBSCRIPTION_ACTIVATED" | "SUBSCRIPTION_EXPIRING" | "SUBSCRIPTION_EXPIRED"
+  | "SCHEDULE_ASSIGNED" | "PAYSLIP_APPROVED" | "PAYSLIP_PAID"
+  | "STAFF_ACCOUNT_CREATED" | "TICKET_REPLIED";
+
+/** Payload socket event "notification" chính là document này. */
+export interface AppNotification {
+  _id: string;
+  title: string;
+  description: string;
+  type: NotificationType;
+  link?: string;
+  referenceId?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface InboxResponse {
+  data: AppNotification[];
+  unreadCount: number;
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export const notificationApi = {
+  async getInbox(params: { page?: number; limit?: number } = {}): Promise<InboxResponse> {
+    const response = await client.get("/notifications", { params });
+    return response.data;
+  },
+
+  async getUnreadCount(): Promise<number> {
+    const response = await client.get("/notifications/unread-count");
+    return response.data.data;
+  },
+
+  async markAsRead(id: string): Promise<void> {
+    await client.patch(`/notifications/${id}/read`);
+  },
+
+  async markAllAsRead(): Promise<void> {
+    await client.patch("/notifications/read-all");
+  },
+
+  async registerDevice(token: string): Promise<void> {
+    await client.post("/notifications/device-token", {
+      token,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+    });
+  },
+
+  async removeDevice(token: string): Promise<void> {
+    // Axios: DELETE có body phải truyền qua `data`
+    await client.delete("/notifications/device-token", { data: { token } });
+  },
+};
+

@@ -8,6 +8,7 @@ import { CommandSearch, SearchTrigger } from "@/components/command-search";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ShoppingCart } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function SiteHeader() {
   const { user } = useAuthStore();
@@ -43,7 +44,7 @@ export function SiteHeader() {
                 variant="default"
                 asChild
                 size="sm"
-                className="hidden sm:flex"
+                className="hidden sm:flex mr-1"
               >
                 <a
                   href="/check-out"
@@ -56,6 +57,7 @@ export function SiteHeader() {
                 </a>
               </Button>
             )}
+            {user?.role !== "SUPER_ADMIN" && <NotificationBell />}
             <ModeToggle />
           </div>
         </div>

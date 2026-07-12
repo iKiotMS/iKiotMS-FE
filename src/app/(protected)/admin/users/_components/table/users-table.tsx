@@ -46,6 +46,22 @@ export function UsersTable() {
     fetchTenants()
   }, [fetchTenants])
 
+  const hasSelectedPageRef = React.useRef(false)
+  React.useEffect(() => {
+    if (tenants.length > 0 && !hasSelectedPageRef.current) {
+      const searchParams = new URLSearchParams(window.location.search)
+      const tenantId = searchParams.get("tenantId") || searchParams.get("id")
+      if (tenantId) {
+        const index = tenants.findIndex((t) => t._id === tenantId)
+        if (index !== -1) {
+          const page = Math.floor(index / pageSize) + 1
+          setCurrentPage(page)
+          hasSelectedPageRef.current = true
+        }
+      }
+    }
+  }, [tenants, pageSize])
+
   // Reset page index when search or filter values change
   React.useEffect(() => {
     setCurrentPage(1)

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import {
   listSystemNotifications,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { Bell, CreditCard, UserPlus, LifeBuoy } from "lucide-react";
 
 export default function SystemNotificationsPage() {
+  const router = useRouter();
   const [systemNotifications, setSystemNotifications] = useState<
     SystemNotification[]
   >([]);
@@ -75,6 +77,19 @@ export default function SystemNotificationsPage() {
     } catch (err) {
       console.error(err);
       toast.error("Không thể cập nhật trạng thái!");
+    }
+  };
+
+  const handleNotificationClick = async (notif: SystemNotification) => {
+    if (!notif.isRead) {
+      await handleMarkAsRead(notif._id);
+    }
+    if (notif.type === "SYSTEM_TICKET_CREATED" && notif.referenceId) {
+      router.push(`/admin/tickets?ticketId=${notif.referenceId}`);
+    } else if (notif.type === "SYSTEM_TENANT_CREATED" && notif.referenceId) {
+      router.push(`/admin/users?tenantId=${notif.referenceId}`);
+    } else if (notif.type === "SYSTEM_TRANSACTION") {
+      router.push(`/admin/transactions`);
     }
   };
 
@@ -164,11 +179,11 @@ export default function SystemNotificationsPage() {
             {systemNotifications.map((notif) => (
               <div
                 key={notif._id}
-                onClick={() => !notif.isRead && handleMarkAsRead(notif._id)}
-                className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                onClick={() => handleNotificationClick(notif)}
+                className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/30 ${
                   notif.isRead
                     ? "bg-muted/10 opacity-75"
-                    : "bg-card border-l-4 border-l-primary shadow-xs cursor-pointer hover:bg-muted/30"
+                    : "bg-card border-l-4 border-l-primary shadow-xs"
                 }`}
               >
                 <div className="flex items-center gap-4">
