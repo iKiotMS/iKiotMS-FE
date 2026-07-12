@@ -16,6 +16,16 @@ interface UsersRowProps {
 export function UsersRow({ tenant, onRefresh }: UsersRowProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search)
+      const tenantId = searchParams.get("tenantId") || searchParams.get("id")
+      if (tenantId === tenant._id) {
+        setIsExpanded(true)
+      }
+    }
+  }, [tenant._id])
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE":

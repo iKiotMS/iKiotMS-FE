@@ -7,12 +7,14 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
+import { useNotificationSocket } from "@/hooks/use-notification-socket";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  useNotificationSocket();
   const { config } = useSidebarConfig();
   const pathname = usePathname();
 
@@ -73,7 +75,6 @@ export default function DashboardLayout({
             />
           </>
         )}
-
       </SidebarProvider>
     </AuthGuard>
   );
