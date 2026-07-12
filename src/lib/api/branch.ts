@@ -28,4 +28,11 @@ export const branchApi = {
   remove: async (id: string): Promise<void> => {
     await client.delete(`/branches/${id}/delete`);
   },
+
+  assignManager: async (
+    branchId: string,
+    staffId: string,
+  ): Promise<void> => {
+    await client.patch(`/branches/${branchId}/manager`, { staffId });
+  },
 };

@@ -30,91 +30,85 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getSessionRole } from "@/lib/auth";
+import { getVietnamDateString } from "@/app/(protected)/staffs/shared/vietnam-datetime";
 import type { WorkingSchedule } from "@/types/working-schedule";
-import { isScheduleLocked } from "@/app/(protected)/staffs/shared/schedule-utils";
+import { ScheduleStaffPicker } from "./schedule-staff-picker";
 import { useSchedule } from "./schedule-provider";
 
 const scheduleFormSchema = z.object({
-  userId: z.string().min(1, "Vui lòng chọn nhân viên"),
+  userIds: z.array(z.string()).min(1, "Vui lòng chọn ít nhất một nhân viên"),
   shiftTemplateId: z.string().min(1, "Vui lòng chọn ca làm"),
   workDate: z.string().min(1, "Vui lòng chọn ngày"),
-  status: z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]).optional(),
+  scheduleType: z.enum(["NORMAL", "OVERTIME"]),
 });
 
 type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
 
+function getEditDefaults(schedule: WorkingSchedule): ScheduleFormValues {
+  return {
+    userIds: schedule.assignees.map((assignee) => assignee.userId),
+    shiftTemplateId: schedule.shiftTemplateId,
+    workDate: schedule.workDate.slice(0, 10),
+    scheduleType: schedule.scheduleType === "OVERTIME" ? "OVERTIME" : "NORMAL",
+  };
+}
+
 export function ScheduleMutateDialog({
   open,
   onOpenChange,
+  mode = "add",
   currentRow,
 }: {
   open: boolean;
   onOpenChange: (value: boolean) => void;
-  currentRow?: WorkingSchedule;
+  mode?: "add" | "edit";
+  currentRow?: WorkingSchedule | null;
 }) {
-  const isEdit = !!currentRow;
-  const isLocked = isEdit && currentRow ? isScheduleLocked(currentRow.status) : false;
+  const isEdit = mode === "edit" && Boolean(currentRow);
   const { handleAdd, handleEdit, shiftTemplateOptions, staffOptions, setOpen } =
     useSchedule();
-
-  const staffSelectOptions =
-    isEdit && currentRow
-      ? staffOptions.some((o) => o.value === currentRow.userId)
-        ? staffOptions
-        : [
-            {
-              value: currentRow.userId,
-              label: `${currentRow.staffName} (hiện tại)`,
-            },
-            ...staffOptions,
-          ]
-      : staffOptions;
+  const isTenantOwner = getSessionRole() === "TENANT_OWNER";
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
     defaultValues: {
-      userId: "",
+      userIds: [],
       shiftTemplateId: "",
-      workDate: new Date().toISOString().split("T")[0],
-      status: "SCHEDULED",
+      workDate: getVietnamDateString(),
+      scheduleType: "NORMAL",
     },
   });
 
   useEffect(() => {
     if (!open) return;
+
     if (isEdit && currentRow) {
-      form.reset({
-        userId: currentRow.userId,
-        shiftTemplateId: currentRow.shiftTemplateId,
-        workDate: currentRow.workDate,
-        status: currentRow.status,
-      });
-    } else {
-      form.reset({
-        userId: "",
-        shiftTemplateId: "",
-        workDate: new Date().toISOString().split("T")[0],
-        status: "SCHEDULED",
-      });
+      form.reset(getEditDefaults(currentRow));
+      return;
     }
+
+    form.reset({
+      userIds: [],
+      shiftTemplateId: "",
+      workDate: getVietnamDateString(),
+      scheduleType: "NORMAL",
+    });
   }, [open, isEdit, currentRow, form]);
 
   async function onSubmit(values: ScheduleFormValues) {
-    if (isLocked) return;
+    const payload = {
+      userId: values.userIds,
+      shiftTemplateId: values.shiftTemplateId,
+      workDate: values.workDate,
+      scheduleType: values.scheduleType,
+    };
+
     try {
       if (isEdit && currentRow) {
-        await handleEdit(currentRow._id, {
-          userId: values.userId,
-          shiftTemplateId: values.shiftTemplateId,
-          workDate: values.workDate,
-          status: values.status,
-        });
+        await handleEdit(currentRow._id, payload);
       } else {
-        await handleAdd({
-          userId: values.userId,
-          shiftTemplateId: values.shiftTemplateId,
-          workDate: values.workDate,
-        });
+        await handleAdd(payload);
       }
       onOpenChange(false);
     } catch {
@@ -122,60 +116,75 @@ export function ScheduleMutateDialog({
     }
   }
 
+  const multiAssignee = (currentRow?.assignees.length ?? 0) > 1;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Chỉnh sửa lịch làm" : "Phân ca làm việc"}
+            {isEdit ? "Sửa ca làm việc" : "Phân ca làm việc"}
           </DialogTitle>
           <DialogDescription>
-            {isLocked
-              ? "Lịch đã hoàn thành — không thể chỉnh sửa theo quy tắc hệ thống."
-              : isEdit
-                ? "Cập nhật ca làm và trạng thái của nhân viên."
-                : "Tạo lịch làm mới theo ca cho nhân viên đang hoạt động."}
+            {isEdit ? (
+              <>
+                Cập nhật ca bằng cách xóa lịch cũ và tạo lại theo thông tin mới.
+                {multiAssignee && (
+                  <>
+                    {" "}
+                    Ca này đang gán cho {currentRow?.assignees.length} nhân viên.
+                  </>
+                )}
+              </>
+            ) : isTenantOwner ? (
+              "Chọn chi nhánh và nhân viên để phân ca."
+            ) : (
+              "Tạo lịch làm theo ca cho nhân viên đang hoạt động."
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        {isLocked ? (
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => onOpenChange(false)}
-            >
-              Đóng
-            </Button>
-          </DialogFooter>
-        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="userId"
+              name="userIds"
               render={({ field }) => (
-                <FormItem className="min-w-0">
+                <FormItem>
                   <FormLabel>Nhân viên</FormLabel>
-                  {staffSelectOptions.length > 0 ? (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full min-w-0 overflow-hidden">
-                          <SelectValue placeholder="Chọn nhân viên" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {staffSelectOptions.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {staffOptions.length > 0 ? (
+                    <ScheduleStaffPicker
+                      key={
+                        isEdit && currentRow
+                          ? `edit-${currentRow._id}`
+                          : open
+                            ? "add"
+                            : "closed"
+                      }
+                      options={staffOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      requireBranchFilter={isTenantOwner}
+                      initialBranchId={
+                        isEdit
+                          ? currentRow?.assignees.find((a) => a.branchId)
+                              ?.branchId
+                          : undefined
+                      }
+                    />
                   ) : (
                     <FormControl>
-                      <Input placeholder="Nhập ID nhân viên" {...field} />
+                      <Input
+                        placeholder="Nhập ID nhân viên (phân cách bằng dấu phẩy)"
+                        value={field.value.join(",")}
+                        onChange={(event) => {
+                          const ids = event.target.value
+                            .split(",")
+                            .map((id) => id.trim())
+                            .filter(Boolean);
+                          field.onChange(ids);
+                        }}
+                      />
                     </FormControl>
                   )}
                   <FormMessage />
@@ -238,33 +247,27 @@ export function ScheduleMutateDialog({
               )}
             />
 
-            {isEdit && (
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trạng thái</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? "SCHEDULED"}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn trạng thái" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="SCHEDULED">Đã phân ca</SelectItem>
-                        <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-                        <SelectItem value="CANCELLED">Đã hủy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="scheduleType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Loại ca</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cursor-pointer w-full">
+                        <SelectValue placeholder="Chọn loại ca" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="NORMAL">Ca thường</SelectItem>
+                      <SelectItem value="OVERTIME">Tăng ca</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button
@@ -280,7 +283,7 @@ export function ScheduleMutateDialog({
                 className="cursor-pointer"
                 disabled={
                   form.formState.isSubmitting ||
-                  (!isEdit && shiftTemplateOptions.length === 0)
+                  shiftTemplateOptions.length === 0
                 }
               >
                 {isEdit ? (
@@ -298,7 +301,6 @@ export function ScheduleMutateDialog({
             </DialogFooter>
           </form>
         </Form>
-        )}
       </DialogContent>
     </Dialog>
   );

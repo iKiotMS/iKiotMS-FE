@@ -25,6 +25,7 @@ export function ScheduleDeleteDialog({
 }) {
   const { handleDelete } = useSchedule();
   const isLocked = currentRow ? isScheduleLocked(currentRow.status) : false;
+  const multiAssignee = (currentRow?.assignees.length ?? 0) > 1;
 
   async function onConfirm() {
     if (!currentRow || isLocked) return;
@@ -46,11 +47,23 @@ export function ScheduleDeleteDialog({
               "Lịch đã hoàn thành — không thể xóa theo quy tắc hệ thống."
             ) : (
               <>
-                Bạn có chắc muốn xóa lịch làm của{" "}
+                Bạn có chắc muốn xóa ca làm{" "}
                 <strong className="text-foreground">
-                  {currentRow?.staffName ?? ""}
+                  {currentRow?.shiftName !== "—"
+                    ? currentRow?.shiftName
+                    : currentRow?.staffName ?? ""}
                 </strong>
-                ? Hành động này không thể hoàn tác.
+                {multiAssignee ? (
+                  <>
+                    ? Toàn bộ ca sẽ bị xóa cho{" "}
+                    <strong className="text-foreground">
+                      {currentRow?.assignees.length} nhân viên
+                    </strong>{" "}
+                    được phân cùng lịch này.
+                  </>
+                ) : (
+                  "? Hành động này không thể hoàn tác."
+                )}
               </>
             )}
           </DialogDescription>

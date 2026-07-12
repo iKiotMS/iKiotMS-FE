@@ -36,6 +36,7 @@ export const sidebarItems = {
       { title: "Danh sách", url: "/staffs" },
       { title: "Lịch làm", url: "/staffs/schedule" },
       { title: "Nghỉ phép", url: "/staffs/schedule/leave-requests" },
+      { title: "Ngày lễ", url: "/staffs/holidays" },
       { title: "Bảng lương", url: "/staffs/payroll" },
     ],
   },

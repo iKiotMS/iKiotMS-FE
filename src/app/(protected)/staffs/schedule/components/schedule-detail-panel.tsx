@@ -10,44 +10,73 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { sortSchedulesForDay } from "@/app/(protected)/staffs/shared/schedule-utils";
+import { getSessionRole, getSessionUserId } from "@/lib/auth";
+import {
+  canDeleteScheduleAssignee,
+  canUpdateScheduleAssignee,
+  isBranchManagerOwnScheduleAssignee,
+  resolveScheduleAssigneeUserId,
+} from "@/app/(protected)/staffs/shared/schedule-permissions";
+import {
+  expandSchedulesForCalendar,
+  filterScheduleToAssignee,
+  isScheduleLocked,
+  sortSchedulesForDay,
+  type CalendarScheduleEntry,
+} from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { ScheduleDayListItem } from "./schedule-day-list-item";
-import {
-  ScheduleDetailContent,
-  ScheduleDetailFooter,
-} from "./schedule-detail-content";
+import { ScheduleDetailContent } from "./schedule-detail-content";
 import { useSchedule } from "./schedule-provider";
 
 export function ScheduleDetailPanel() {
   const {
     schedules,
+    holidaysByDate,
     selectedSchedule,
     setSelectedSchedule,
+    selectedAssigneeUserId,
+    setSelectedAssigneeUserId,
     selectedDayDate,
     setSelectedDayDate,
-    fetchScheduleById,
+    fetchScheduleDetail,
     setCurrentRow,
     setOpen,
+    filters,
   } = useSchedule();
 
   const [detail, setDetail] = useState<WorkingSchedule | null>(null);
   const [loading, setLoading] = useState(false);
+  const userRole = getSessionRole();
+  const sessionUserId = getSessionUserId();
 
-  const daySchedules = useMemo(() => {
+  /** Entries cho ngày được chọn (tách từng assignee). */
+  const dayEntries = useMemo<CalendarScheduleEntry[]>(() => {
     if (!selectedDayDate) return [];
-    return sortSchedulesForDay(
+    const daySchedules = sortSchedulesForDay(
       schedules.filter((s) => s.workDate.slice(0, 10) === selectedDayDate),
     );
-  }, [schedules, selectedDayDate]);
+    return expandSchedulesForCalendar(daySchedules, filters.userId);
+  }, [schedules, selectedDayDate, filters.userId]);
 
   const showDayList = selectedDayDate !== null && selectedSchedule === null;
   const showDetail = selectedSchedule !== null;
   const isOpen = showDayList || showDetail;
+  const selectedScheduleId = selectedSchedule?._id;
 
   const dateLabel = selectedDayDate
     ? format(parseISO(selectedDayDate), "EEEE, dd/MM/yyyy", { locale: vi })
     : "";
+
+  const dayHolidayName = selectedDayDate
+    ? holidaysByDate.get(selectedDayDate) ?? null
+    : null;
+
+  /** Mỗi ca (schedule._id) cần đếm riêng để hiển thị số người. */
+  const dayScheduleCount = useMemo(
+    () => new Set(dayEntries.map((e) => e.schedule._id)).size,
+    [dayEntries],
+  );
 
   useEffect(() => {
     if (!selectedSchedule) {
@@ -57,9 +86,20 @@ export function ScheduleDetailPanel() {
 
     let cancelled = false;
     setLoading(true);
-    void fetchScheduleById(selectedSchedule._id).then((fresh) => {
+    void fetchScheduleDetail(
+      selectedSchedule._id,
+      selectedAssigneeUserId,
+    ).then((fresh) => {
       if (!cancelled) {
-        setDetail(fresh ?? selectedSchedule);
+        if (fresh) {
+          setDetail(fresh);
+        } else if (selectedAssigneeUserId) {
+          setDetail(
+            filterScheduleToAssignee(selectedSchedule, selectedAssigneeUserId),
+          );
+        } else {
+          setDetail(selectedSchedule);
+        }
         setLoading(false);
       }
     });
@@ -67,29 +107,61 @@ export function ScheduleDetailPanel() {
     return () => {
       cancelled = true;
     };
-  }, [selectedSchedule, fetchScheduleById]);
+  }, [selectedSchedule, selectedAssigneeUserId, fetchScheduleDetail]);
 
   const data = detail ?? selectedSchedule;
+  const scheduleLocked = data ? isScheduleLocked(data.status) : false;
+
+  const targetAssigneeUserId = resolveScheduleAssigneeUserId(
+    selectedAssigneeUserId,
+    data?.assignees,
+  );
+
+  const canDelete = canDeleteScheduleAssignee(
+    userRole,
+    sessionUserId,
+    targetAssigneeUserId,
+  );
+  const canEdit = canUpdateScheduleAssignee(
+    userRole,
+    sessionUserId,
+    targetAssigneeUserId,
+  );
+
+  const readOnlyHint =
+    userRole === "BRANCH_MANAGER" &&
+    !scheduleLocked &&
+    !canEdit &&
+    !canDelete &&
+    isBranchManagerOwnScheduleAssignee(
+      userRole,
+      sessionUserId,
+      targetAssigneeUserId,
+    )
+      ? "Đây là ca của bạn — quản lý chi nhánh không thể tự sửa hoặc xóa ca được gán cho mình."
+      : undefined;
 
   function clearPanel() {
     setSelectedSchedule(null);
+    setSelectedAssigneeUserId(null);
     setSelectedDayDate(null);
   }
 
   function backToDayList() {
     setSelectedSchedule(null);
-  }
-
-  function handleEdit() {
-    if (!data) return;
-    setCurrentRow(data);
-    setOpen("edit");
+    setSelectedAssigneeUserId(null);
   }
 
   function handleDelete() {
     if (!data) return;
     setCurrentRow(data);
     setOpen("delete");
+  }
+
+  function handleEdit() {
+    if (!selectedSchedule) return;
+    setCurrentRow(selectedSchedule);
+    setOpen("edit");
   }
 
   return (
@@ -107,6 +179,7 @@ export function ScheduleDetailPanel() {
           {showDetail ? "Chi tiết ca làm" : `Ca làm ngày ${dateLabel}`}
         </SheetTitle>
 
+        {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-b px-5 py-3.5">
           <div className="min-w-0 flex-1">
             {showDetail && selectedDayDate ? (
@@ -128,7 +201,14 @@ export function ScheduleDetailPanel() {
                     {dateLabel}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {daySchedules.length} ca làm việc
+                    {[
+                      dayHolidayName,
+                      dayEntries.length > 0
+                        ? `${dayEntries.length} nhân viên · ${dayScheduleCount} ca`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Không có lịch làm"}
                   </p>
                 </div>
               </div>
@@ -148,40 +228,57 @@ export function ScheduleDetailPanel() {
           </Button>
         </div>
 
-        {showDayList && (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="space-y-2 p-5">
-              {daySchedules.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Không có lịch phù hợp bộ lọc hiện tại.
-                </p>
+        {/* Body */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {showDayList && (
+            <div className="space-y-2 p-4">
+              {dayEntries.length === 0 ? (
+                <div className="space-y-3 py-6 text-center">
+                  {dayHolidayName ? (
+                    <div className="mx-auto max-w-sm rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                        Ngày lễ
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-amber-950 dark:text-amber-100">
+                        {dayHolidayName}
+                      </p>
+                    </div>
+                  ) : null}
+                  <p className="text-sm text-muted-foreground">
+                    Không có lịch làm trong ngày này.
+                  </p>
+                </div>
               ) : (
-                daySchedules.map((schedule) => (
+                dayEntries.map((entry) => (
                   <ScheduleDayListItem
-                    key={schedule._id}
-                    schedule={schedule}
-                    onSelect={() => setSelectedSchedule(schedule)}
+                    key={entry.chipKey}
+                    entry={entry}
+                    isActive={
+                      selectedScheduleId === entry.schedule._id &&
+                      selectedAssigneeUserId === (entry.assignee?.userId ?? null)
+                    }
+                    onSelect={() => {
+                      setSelectedAssigneeUserId(entry.assignee?.userId ?? null);
+                      setSelectedSchedule(entry.schedule);
+                    }}
                   />
                 ))
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {showDetail && data && (
-          <>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <ScheduleDetailContent data={data} loading={loading} />
-            </div>
-            {!loading && (
-              <ScheduleDetailFooter
-                data={data}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            )}
-          </>
-        )}
+          {showDetail && data && (
+            <ScheduleDetailContent
+              data={data}
+              loading={loading}
+              canEdit={canEdit && !scheduleLocked}
+              canDelete={canDelete && !scheduleLocked}
+              readOnlyHint={readOnlyHint}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );
