@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { canViewLeaveRequests } from "@/app/(protected)/staffs/shared/leave-permissions";
+import { canViewLeaveRequests } from "@/components/sidebar/constants/role-permissions";
 import { getCachedUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
 import { LeaveRequestsButtonGroup } from "./components/leave-requests-button-group";

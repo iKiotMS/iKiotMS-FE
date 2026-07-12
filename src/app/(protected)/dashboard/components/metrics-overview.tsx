@@ -1,65 +1,78 @@
 "use client"
 
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Users, 
-  ShoppingCart, 
-  BarChart3 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Users,
+  ShoppingCart,
+  BarChart3
 } from "lucide-react"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-
-const metrics = [
-  {
-    title: "Total Revenue",
-    value: "$54,230",
-    description: "Monthly revenue",
-    change: "+12%",
-    trend: "up",
-    icon: DollarSign,
-    footer: "Trending up this month",
-    subfooter: "Revenue for the last 6 months"
-  },
-  {
-    title: "Active Customers",
-    value: "2,350",
-    description: "Total active users",
-    change: "+5.2%", 
-    trend: "up",
-    icon: Users,
-    footer: "Strong user retention",
-    subfooter: "Engagement exceeds targets"
-  },
-  {
-    title: "Total Orders",
-    value: "1,247",
-    description: "Orders this month",
-    change: "-2.1%",
-    trend: "down", 
-    icon: ShoppingCart,
-    footer: "Down 2% this period",
-    subfooter: "Order volume needs attention"
-  },
-  {
-    title: "Conversion Rate",
-    value: "3.24%",
-    description: "Average conversion",
-    change: "+8.3%",
-    trend: "up",
-    icon: BarChart3,
-    footer: "Steady performance increase",
-    subfooter: "Meets conversion projections"
-  },
-]
+import { Skeleton } from "@/components/ui/skeleton"
+import { useDashboard } from "./dashboard-provider"
+import { formatVND, formatNumber, formatPercent } from "../shared/format"
 
 export function MetricsOverview() {
+  const { overview, isLoading } = useDashboard()
+
+  if (isLoading && !overview) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[150px] w-full" />
+        ))}
+      </div>
+    )
+  }
+
+  if (!overview) return null
+
+  const metrics = [
+    {
+      title: "Tổng doanh thu",
+      value: formatVND(overview.revenue),
+      change: formatPercent(overview.changePct.revenue),
+      trend: (overview.changePct.revenue ?? 0) >= 0 ? "up" : "down",
+      icon: DollarSign,
+      footer: "Doanh thu trong kỳ",
+      subfooter: "Chỉ tính đơn đã hoàn tất",
+    },
+    {
+      title: "Khách hàng",
+      value: formatNumber(overview.customerCount),
+      change: formatPercent(overview.changePct.customerCount),
+      trend: (overview.changePct.customerCount ?? 0) >= 0 ? "up" : "down",
+      icon: Users,
+      footer: "Khách hàng có phát sinh đơn",
+      subfooter: "Trong khoảng thời gian đã chọn",
+    },
+    {
+      title: "Tổng đơn hàng",
+      value: formatNumber(overview.orderCount),
+      change: formatPercent(overview.changePct.orderCount),
+      trend: (overview.changePct.orderCount ?? 0) >= 0 ? "up" : "down",
+      icon: ShoppingCart,
+      footer: "Đơn hàng đã hoàn tất",
+      subfooter: "So với kỳ trước liền kề",
+    },
+    {
+      title: "Giá trị đơn trung bình",
+      value: formatVND(overview.aov),
+      change: formatPercent(overview.changePct.aov),
+      trend: (overview.changePct.aov ?? 0) >= 0 ? "up" : "down",
+      icon: BarChart3,
+      footer: "Giá trị trung bình",
+      subfooter: "Doanh thu / số đơn hàng",
+    },
+  ]
+
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 @5xl:grid-cols-4">
       {metrics.map((metric) => {
         const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown
-        
+
         return (
           <Card key={metric.title} className=" cursor-pointer">
             <CardHeader>

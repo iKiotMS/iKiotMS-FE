@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type ExpandedState,
@@ -40,34 +40,111 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseLocationKey } from "@/lib/location-key";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
+import { MovementExpandedPanel } from "@/app/(protected)/exchange/shared/movement-expanded-panel";
 import { useTransfers } from "./transfers-provider";
-import { transfersColumns as columns } from "./transfers-columns";
-import { TransfersExpandedPanel } from "./transfers-expanded-panel";
-
-const COLUMN_LABELS: Record<string, string> = {
-  _id: "Mã yêu cầu",
-  fromLocationName: "Kho gửi",
-  toLocationName: "Kho nhận",
-  totalItems: "Số mặt hàng",
-  totalQty: "Tổng SL",
-  requestedByName: "Người yêu cầu",
-  createdAt: "Ngày tạo",
-  status: "Trạng thái",
-};
+import { createTransfersColumns } from "./transfers-columns";
 
 export function TransfersTable() {
-  const { transfers, isLoading, statusFilter, setStatusFilter } = useTransfers();
+  const {
+    transfers,
+    isLoading,
+    statusFilter,
+    setStatusFilter,
+    labels,
+    handleOpen,
+    handleSubmitFromOpening,
+    handleShipFromOpening,
+    handleShip,
+    handleReceive,
+    handleCancel,
+    handleReturnGoods,
+  } = useTransfers();
+
+  const columns = useMemo(
+    () => createTransfersColumns(labels),
+    [labels],
+  );
+
+  const columnLabels: Record<string, string> = {
+    _id: "Mã yêu cầu",
+    fromLocationName: labels.fromColumnHeader,
+    toLocationName: labels.toColumnHeader,
+    totalItems: "Số mặt hàng",
+    totalQty: "Tổng SL",
+    requestedByName: "Người yêu cầu",
+    createdAt: "Ngày tạo",
+    status: "Trạng thái",
+  };
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    requestedByName: false,
+  });
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [fromFilter, setFromFilter] = useState("ALL");
+  const [toFilter, setToFilter] = useState("ALL");
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const scopedLocationId = useMemo(
+    () => parseLocationKey(locationKey)?.locationId,
+    [locationKey],
+  );
+
+  // Tenant switch BR/WH → reset filter thủ công; scope áp qua scopedLocationId (from OR to).
+  useEffect(() => {
+    setFromFilter("ALL");
+    setToFilter("ALL");
+  }, [scopedLocationId]);
+
+  const fromOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of transfers) {
+      if (row.fromLocationId) {
+        map.set(
+          row.fromLocationId,
+          row.fromLocationName || row.fromLocationId,
+        );
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [transfers]);
+
+  const toOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of transfers) {
+      if (row.toLocationId) {
+        map.set(row.toLocationId, row.toLocationName || row.toLocationId);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [transfers]);
+
+  const filteredTransfers = useMemo(() => {
+    return transfers.filter((row) => {
+      // Khi đứng ở 1 BR/WH: chỉ phiếu liên quan (gửi hoặc nhận tại location đó).
+      if (scopedLocationId) {
+        const involves =
+          row.fromLocationId === scopedLocationId ||
+          row.toLocationId === scopedLocationId;
+        if (!involves) return false;
+      }
+      if (fromFilter !== "ALL" && row.fromLocationId !== fromFilter) return false;
+      if (toFilter !== "ALL" && row.toLocationId !== toFilter) return false;
+      return true;
+    });
+  }, [transfers, fromFilter, toFilter, scopedLocationId]);
 
   const table = useReactTable({
-    data: transfers,
+    data: filteredTransfers,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -79,7 +156,23 @@ export function TransfersTable() {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
-    onExpandedChange: setExpanded,
+    onExpandedChange: (updater) => {
+      setExpanded((old) => {
+        const prev = typeof old === "boolean" ? {} : old;
+        const next = typeof updater === "function" ? updater(old) : updater;
+        if (next === true) return next;
+        const newlyOpened = Object.keys(next).filter(
+          (key) => next[key] && !prev[key],
+        );
+        if (newlyOpened.length > 0) {
+          return { [newlyOpened[0]]: true };
+        }
+        return next;
+      });
+    },
+    initialState: {
+      pagination: { pageSize: 10 },
+    },
     state: {
       sorting,
       columnFilters,
@@ -97,7 +190,7 @@ export function TransfersTable() {
           <div className="relative min-w-52 max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm theo kho, mã yêu cầu..."
+              placeholder={labels.searchPlaceholder}
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
               className="h-9 pl-9"
@@ -109,15 +202,43 @@ export function TransfersTable() {
               setStatusFilter(value as typeof statusFilter)
             }
           >
-            <SelectTrigger className="h-9 w-36 cursor-pointer text-sm">
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="DRAFT">Nháp / cần xử lý</SelectItem>
+              <SelectItem value="OPENING">Đang soạn</SelectItem>
+              <SelectItem value="CLOSED">Đã chốt</SelectItem>
+              <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
+              <SelectItem value="RECEIVED">Đã nhận hàng</SelectItem>
+              <SelectItem value="CANCELLED">Đã huỷ</SelectItem>
               <SelectItem value="ALL">Tất cả</SelectItem>
-              <SelectItem value="PENDING">Chờ duyệt</SelectItem>
-              <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-              <SelectItem value="REJECTED">Từ chối</SelectItem>
-              <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={fromFilter} onValueChange={setFromFilter}>
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
+              <SelectValue placeholder="Nơi gửi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi gửi</SelectItem>
+              {fromOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={toFilter} onValueChange={setToFilter}>
+            <SelectTrigger className="h-9 w-44 cursor-pointer text-sm">
+              <SelectValue placeholder="Nơi nhận" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả nơi nhận</SelectItem>
+              {toOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -139,7 +260,7 @@ export function TransfersTable() {
                   checked={col.getIsVisible()}
                   onCheckedChange={(value) => col.toggleVisibility(!!value)}
                 >
-                  {COLUMN_LABELS[col.id] ?? col.id}
+                  {columnLabels[col.id] ?? col.id}
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuContent>
@@ -176,70 +297,78 @@ export function TransfersTable() {
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <Fragment key={row.id}>
-                  <TableRow
-                    data-state={row.getIsSelected() ? "selected" : undefined}
-                    onClick={() => row.toggleExpanded()}
-                    className={cn(
-                      "cursor-pointer",
-                      row.getIsExpanded() &&
-                        "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        onClick={
-                          cell.column.id === "select"
-                            ? (e) => e.stopPropagation()
-                            : undefined
-                        }
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                  <TableRow
-                    className={cn(
-                      "border-transparent transition-colors duration-300 hover:bg-transparent",
-                      row.getIsExpanded() &&
-                        "shadow-[inset_0_-1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
-                    )}
-                  >
-                    <TableCell
-                      colSpan={row.getVisibleCells().length}
-                      className="p-0"
+              table.getRowModel().rows.map((row) => {
+                const isExpanded = row.getIsExpanded();
+                const hasExpandedRow = table
+                  .getRowModel()
+                  .rows.some((item) => item.getIsExpanded());
+                return (
+                  <Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() ? "selected" : undefined}
+                      onClick={() => row.toggleExpanded()}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        isExpanded
+                          ? "bg-muted border-l-2 border-l-foreground/40"
+                          : hasExpandedRow
+                            ? "opacity-55 hover:opacity-100"
+                            : "hover:bg-muted/40",
+                      )}
                     >
-                      <div
-                        className={cn(
-                          "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                          row.getIsExpanded()
-                            ? "grid-rows-[1fr]"
-                            : "grid-rows-[0fr]",
-                        )}
-                      >
-                        <div className="overflow-hidden">
-                          <TransfersExpandedPanel
-                            request={row.original}
-                            isExpanded={row.getIsExpanded()}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </Fragment>
-              ))
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          onClick={
+                            cell.column.id === "select"
+                              ? (e) => e.stopPropagation()
+                              : undefined
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {isExpanded ? (
+                      <TableRow className="border-transparent bg-muted/40 hover:bg-muted/40">
+                        <TableCell
+                          colSpan={row.getVisibleCells().length}
+                          className="p-0"
+                        >
+                          <div className="px-3 pb-3 pt-1">
+                            <MovementExpandedPanel
+                              mode="transfer"
+                              request={row.original}
+                              isExpanded
+                              onClose={() => row.toggleExpanded(false)}
+                              transferActions={{
+                                handleOpen,
+                                handleSubmitFromOpening,
+                                handleShipFromOpening,
+                                handleShip,
+                                handleReceive,
+                                handleCancel,
+                                handleReturnGoods,
+                                labels,
+                              }}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </Fragment>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length}>
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <PackageOpen className="mb-4 size-12 text-muted-foreground" />
                     <h3 className="mb-1 text-base font-semibold">
-                      Không có yêu cầu chuyển kho
+                      {labels.emptyState}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       Chưa có yêu cầu nào phù hợp bộ lọc hiện tại.

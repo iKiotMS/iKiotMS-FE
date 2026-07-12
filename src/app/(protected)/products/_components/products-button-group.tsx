@@ -4,7 +4,7 @@ import { Download, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useProducts } from '../_context/products-provider'
 import { getCachedUser } from '@/lib/auth'
-import { canCreateProduct, canDeleteProduct } from '../shared/product-permissions'
+import { canCreateProduct, canDeleteProduct } from '@/components/sidebar/constants/role-permissions'
 
 export function ProductsButtonGroup() {
   const { setOpen, selectedIds } = useProducts()

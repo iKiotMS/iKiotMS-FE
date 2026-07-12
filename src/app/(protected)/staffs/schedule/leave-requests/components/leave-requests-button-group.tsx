@@ -2,7 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { canCreateEmergencyLeave } from "@/app/(protected)/staffs/shared/leave-permissions";
+import { canCreateEmergencyLeave } from "@/components/sidebar/constants/role-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { useLeaveRequests } from "./leave-requests-provider";
 

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2 } from 'lucide-react'
@@ -13,44 +13,50 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { stockMovementApi } from '@/lib/api/stock-movement'
+import {
+  filterLocationsByAuthScope,
+  getEffectiveLocationScope,
+} from '@/app/(protected)/exchange/shared/auth-scope'
+import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/stock-movement-error'
+import { useAuthStore } from '@/store/auth-store'
+import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/qty'
+import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
+import { MoneyInput, ProductSelect } from '@/app/(protected)/exchange/shared/form-fields'
+import {
+  MAX_IMPORT_PRICE,
+  formatMoneyVnd,
+  refineDuplicateProducts,
+} from '@/app/(protected)/exchange/shared/movement-detail-validation'
+import type {
+  StockMovementLocationOption,
+  StockMovementProductItemOption,
+} from '@/types/stock-movement'
 import { useTransfers } from './transfers-provider'
 
-const MOCK_LOCATIONS = [
-  { _id: 'wh-1', name: 'Kho Trung Tâm', type: 'warehouse' as const },
-  { _id: 'br-1', name: 'Chi nhánh Q.1', type: 'branch' as const },
-  { _id: 'br-2', name: 'Chi nhánh Q.3', type: 'branch' as const },
-]
-const MOCK_PRODUCTS = [
-  { _id: 'pi-1', name: 'Nước suối Lavie 500ml', sku: 'LAV-500' },
-  { _id: 'pi-2', name: 'Coca-Cola 330ml', sku: 'COKE-330' },
-  { _id: 'pi-3', name: 'Bánh mì que', sku: 'BMQ-001' },
-  { _id: 'pi-4', name: 'Mì gói Hảo Hảo', sku: 'HH-001' },
-]
+/** BR: chọn loại yêu cầu trước khi điền phiếu. */
+type BranchRequestKind = 'transfer' | 'return'
 
-const transferFormSchema = z.object({
-  fromLocationId: z.string().min(1, 'Vui lòng chọn kho gửi'),
-  toLocationId: z.string().min(1, 'Vui lòng chọn kho nhận'),
-  note: z.string().optional(),
-  details: z.array(
-    z.object({
-      productItemId: z.string().min(1, 'Vui lòng chọn hàng hóa'),
-      quantity: z.number({ error: 'Nhập số nguyên' }).int().positive('Số lượng phải > 0'),
-      note: z.string().optional(),
-    })
-  ).min(1, 'Cần ít nhất 1 mặt hàng'),
-}).refine((d) => d.fromLocationId !== d.toLocationId, {
-  message: 'Kho gửi và kho nhận không được trùng nhau',
-  path: ['toLocationId'],
-})
+type TransferFormValues = {
+  fromLocationId: string
+  toLocationId: string
+  note?: string
+  details: {
+    productItemId: string
+    quantity: number
+    importPrice: number
+    note?: string
+  }[]
+}
 
-type TransferFormValues = z.infer<typeof transferFormSchema>
+const EMPTY_DETAIL = { productItemId: '', quantity: 1, importPrice: 0, note: '' }
 
 const EMPTY_VALUES: TransferFormValues = {
   fromLocationId: '',
   toLocationId: '',
   note: '',
-  details: [{ productItemId: '', quantity: 1, note: '' }],
+  details: [{ ...EMPTY_DETAIL }],
 }
 
 interface TransfersCreateDialogProps {
@@ -59,65 +65,275 @@ interface TransfersCreateDialogProps {
 }
 
 export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDialogProps) {
-  const { fetchTransfers } = useTransfers()
+  const { fetchTransfers, labels } = useTransfers()
+  const [locations, setLocations] = useState<StockMovementLocationOption[]>([])
+  const [products, setProducts] = useState<StockMovementProductItemOption[]>([])
+  const [isOptionsLoading, setIsOptionsLoading] = useState(false)
+  const [branchRequestKind, setBranchRequestKind] =
+    useState<BranchRequestKind>('transfer')
+  const locationKey = useAuthStore((s) => s.locationKey)
+  const effectiveScope = useMemo(
+    () => getEffectiveLocationScope(locationKey),
+    [locationKey],
+  )
+  /** BM JWT hoặc tenant đang switch sang chi nhánh. */
+  const isBranchActor =
+    effectiveScope.locationType === 'branch' && !!effectiveScope.locationId
+  const isWarehouseActor =
+    effectiveScope.locationType === 'warehouse' && !!effectiveScope.locationId
+  const isFromLocationLocked = !!effectiveScope.locationId
+
+  const transferFormSchema = useMemo(
+    () =>
+      z
+        .object({
+          fromLocationId: z.string().min(1, labels.fromRequired),
+          toLocationId: z.string().min(1, labels.toRequired),
+          note: z.string().optional(),
+          details: z
+            .array(
+              z.object({
+                productItemId: z.string().min(1, 'Vui lòng chọn hàng hóa'),
+                quantity: z
+                  .number({ error: 'Nhập số nguyên' })
+                  .int()
+                  .positive('Số lượng phải > 0'),
+                importPrice: z
+                  .number({ error: 'Nhập số tiền' })
+                  .positive('Giá phải > 0')
+                  .max(MAX_IMPORT_PRICE, 'Giá tối đa 1000 tỷ'),
+                note: z.string().optional(),
+              }),
+            )
+            .min(1, 'Cần ít nhất 1 mặt hàng'),
+        })
+        .refine((d) => d.fromLocationId !== d.toLocationId, {
+          message: labels.sameLocationError,
+          path: ['toLocationId'],
+        })
+        .superRefine((data, ctx) => refineDuplicateProducts(data.details, ctx)),
+    [labels],
+  )
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferFormSchema),
     defaultValues: EMPTY_VALUES,
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   })
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'details' })
+  const fromLocationId = useWatch({ control: form.control, name: 'fromLocationId' })
+  const details = useWatch({ control: form.control, name: 'details' }) ?? []
+
+  const total = useMemo(
+    () =>
+      details.reduce(
+        (sum, d) => sum + (d.quantity || 0) * (d.importPrice || 0),
+        0,
+      ),
+    [details],
+  )
+
+  const dialogCopy = useMemo(() => {
+    if (!isBranchActor) {
+      return {
+        title: labels.createDialogTitle,
+        description: labels.createDialogDescription,
+        toLabel: labels.toLabel,
+        toPlaceholder: labels.toPlaceholder,
+        listTitle: 'Danh sách hàng hóa cần chuyển',
+        submit: labels.submitButton,
+      }
+    }
+    if (branchRequestKind === 'return') {
+      return {
+        title: 'Tạo yêu cầu trả hàng',
+        description: 'Chọn nơi nhận và danh sách hàng hóa cần trả.',
+        toLabel: 'Nơi nhận',
+        toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
+        listTitle: 'Danh sách hàng hóa cần trả / chuyển',
+        submit: 'Tạo yêu cầu trả hàng',
+      }
+    }
+    return {
+      title: 'Tạo yêu cầu chuyển hàng',
+      description: 'Chọn nơi nhận và danh sách hàng hóa cần chuyển.',
+      toLabel: 'Nơi nhận',
+      toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
+      listTitle: 'Danh sách hàng hóa cần chuyển',
+      submit: 'Tạo yêu cầu chuyển hàng',
+    }
+  }, [isBranchActor, branchRequestKind, labels])
 
   useEffect(() => {
     if (!open) return
     form.reset(EMPTY_VALUES)
+    setProducts([])
+    setBranchRequestKind('transfer')
   }, [open, form])
 
+  useEffect(() => {
+    if (!open) return
+    setIsOptionsLoading(true)
+    stockMovementApi
+      .getLocationOptions()
+      .then(setLocations)
+      .catch(() => toast.error(labels.loadLocationsError))
+      .finally(() => setIsOptionsLoading(false))
+  }, [open, labels.loadLocationsError])
+
+  const visibleFromLocations = useMemo(
+    () => filterLocationsByAuthScope(locations, effectiveScope),
+    [locations, effectiveScope],
+  )
+  const fromLocation = visibleFromLocations.find((l) => l._id === fromLocationId)
+
+  const visibleToLocations = useMemo(() => {
+    if (!fromLocationId) return []
+    if (isWarehouseActor) {
+      return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
+    }
+    // Branch actor (BM hoặc tenant switch BR): chuyển/trả tới CN khác hoặc kho
+    if (isBranchActor) {
+      return locations.filter((l) => l._id !== fromLocationId)
+    }
+    return locations.filter((l) => l._id !== fromLocationId)
+  }, [locations, fromLocationId, isWarehouseActor, isBranchActor])
+
+  useEffect(() => {
+    if (!open || !fromLocationId || !fromLocation) {
+      setProducts([])
+      return
+    }
+    stockMovementApi
+      .getProductItemsAtSource(fromLocationId, fromLocation.type)
+      .then(setProducts)
+      .catch(() => toast.error(labels.loadProductsError))
+  }, [open, fromLocationId, fromLocation, labels.loadProductsError])
+
+  useEffect(() => {
+    if (!open) return
+    const currentTo = form.getValues('toLocationId')
+    if (currentTo && !visibleToLocations.some((l) => l._id === currentTo)) {
+      form.setValue('toLocationId', '')
+    }
+  }, [open, visibleToLocations, form])
+
+  useEffect(() => {
+    if (!open) return
+    if (effectiveScope.locationId) {
+      form.setValue('fromLocationId', effectiveScope.locationId)
+      form.setValue('toLocationId', '')
+    }
+  }, [open, effectiveScope.locationId, form])
+
+  const onBranchRequestKindChange = (value: string) => {
+    if (value !== 'transfer' && value !== 'return') return
+    setBranchRequestKind(value)
+    form.setValue('toLocationId', '')
+  }
+
   async function onSubmit(data: TransferFormValues) {
-    const fromLoc = MOCK_LOCATIONS.find((l) => l._id === data.fromLocationId)
-    const toLoc = MOCK_LOCATIONS.find((l) => l._id === data.toLocationId)
+    const fromLoc = locations.find((l) => l._id === data.fromLocationId)
+    const toLoc = locations.find((l) => l._id === data.toLocationId)
+    if (
+      effectiveScope.locationId &&
+      data.fromLocationId !== effectiveScope.locationId
+    ) {
+      toast.error(
+        isWarehouseActor
+          ? 'Kho chỉ được xuất từ kho của bạn'
+          : 'Chi nhánh chỉ được xuất từ chi nhánh của bạn',
+      )
+      return
+    }
+
+    // BR→WH phải RETURN; còn lại EXPORT (kể cả BR→BR)
+    const movementType =
+      fromLoc?.type === 'branch' && toLoc?.type === 'warehouse'
+        ? ('RETURN' as const)
+        : ('EXPORT' as const)
+
     try {
-      await stockMovementApi.createTransfer({
-        movementType: 'TRANSFER',
+      await stockMovementApi.createExport({
+        movementType,
         fromLocationId: data.fromLocationId,
         fromLocationType: fromLoc?.type ?? 'warehouse',
         toLocationId: data.toLocationId,
         toLocationType: toLoc?.type ?? 'branch',
-        note: data.note,
+        note: normalizeOptionalNote(data.note),
         details: data.details.map((d) => ({
           productItemId: d.productItemId,
           quantity: d.quantity,
-          note: d.note,
+          importPrice: d.importPrice,
+          note: normalizeOptionalNote(d.note),
         })),
       })
-      toast.success('Tạo yêu cầu chuyển kho thành công')
+      toast.success(
+        movementType === 'RETURN'
+          ? 'Tạo yêu cầu trả hàng về kho thành công'
+          : labels.successToast,
+      )
       onOpenChange(false)
       await fetchTransfers()
-    } catch {
-      toast.error('Không thể tạo yêu cầu, vui lòng thử lại')
+    } catch (error) {
+      toast.error(getStockMovementErrorMessage(error, 'Không thể tạo yêu cầu, vui lòng thử lại'))
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Tạo yêu cầu chuyển kho</DialogTitle>
-          <DialogDescription>Chọn kho gửi, kho nhận và danh sách hàng hóa cần chuyển.</DialogDescription>
+          <DialogTitle>{dialogCopy.title}</DialogTitle>
+          <DialogDescription>{dialogCopy.description}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            {isBranchActor && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  Loại yêu cầu <span className="text-destructive">*</span>
+                </p>
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  value={branchRequestKind}
+                  onValueChange={onBranchRequestKindChange}
+                  className="grid w-full grid-cols-2 gap-2"
+                >
+                  <ToggleGroupItem
+                    value="transfer"
+                    className="h-10 cursor-pointer data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                  >
+                    Yêu cầu chuyển hàng
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="return"
+                    className="h-10 cursor-pointer data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                  >
+                    Yêu cầu trả hàng
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="fromLocationId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kho / Chi nhánh gửi <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>{labels.fromLabel} <span className="text-destructive">*</span></FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isFromLocationLocked}
+                  >
                     <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder="Chọn kho gửi" /></SelectTrigger>
+                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder={labels.fromPlaceholder} /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_LOCATIONS.map((l) => (
+                      {visibleFromLocations.map((l) => (
                         <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
@@ -128,28 +344,36 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
               <FormField control={form.control} name="toLocationId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kho / Chi nhánh nhận <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>{dialogCopy.toLabel} <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder="Chọn kho nhận" /></SelectTrigger>
+                      <SelectTrigger className="cursor-pointer w-full">
+                        <SelectValue placeholder={dialogCopy.toPlaceholder} />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_LOCATIONS.map((l) => (
+                      {visibleToLocations.map((l) => (
                         <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
+                  {visibleToLocations.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      {isWarehouseActor
+                        ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
+                        : 'Không có nơi nhận phù hợp.'}
+                    </p>
+                  )}                  <FormMessage />
                 </FormItem>
               )} />
             </div>
 
             <FormField control={form.control} name="note" render={({ field }) => (
               <FormItem>
-                <FormLabel>Ghi chú</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Lý do chuyển kho (tùy chọn)" rows={2} className="resize-none" {...field} />
-                </FormControl>
+                  <FormLabel>Ghi chú đơn</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder={labels.orderNotePlaceholder} rows={2} className="resize-none" {...field} />
+                  </FormControl>
               </FormItem>
             )} />
 
@@ -157,70 +381,171 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Danh sách hàng hóa cần chuyển</h3>
-                <Button type="button" variant="outline" size="sm" className="cursor-pointer" onClick={() => append({ productItemId: '', quantity: 1, note: '' })}>
+                <h3 className="text-sm font-semibold">{dialogCopy.listTitle}</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={() => append({ ...EMPTY_DETAIL })}
+                >
                   <Plus className="mr-1 size-4" />Thêm dòng
                 </Button>
               </div>
 
+              {!fromLocationId && (
+                <p className="text-xs text-muted-foreground">{labels.selectFromHint}</p>
+              )}
+              {fromLocationId && products.length === 0 && (
+                <p className="text-xs text-amber-600">{labels.noStockAtSource}</p>
+              )}
+
               {fields.map((f, idx) => (
-                <div key={f.id} className="grid grid-cols-12 gap-2 items-end p-3 rounded-lg border bg-muted/30">
-                  <div className="col-span-5">
-                    <FormField control={form.control} name={`details.${idx}.productItemId`} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Hàng hóa <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="cursor-pointer h-8 text-sm"><SelectValue placeholder="Chọn hàng hóa" /></SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {MOCK_PRODUCTS.map((p) => (
-                              <SelectItem key={p._id} value={p._id}>{p.name} <span className="text-xs text-muted-foreground">({p.sku})</span></SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
+                  <div key={f.id} className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <FormField
+                          control={form.control}
+                          name={`details.${idx}.productItemId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Hàng hóa <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <ProductSelect
+                                products={products}
+                                value={field.value}
+                                metaMode="stock"
+                                onValueChange={(v) => {
+                                  field.onChange(v)
+                                  const p = products.find((x) => x._id === v)
+                                  if (p?.costPrice) {
+                                    form.setValue(
+                                      `details.${idx}.importPrice`,
+                                      Math.min(p.costPrice, MAX_IMPORT_PRICE),
+                                      { shouldDirty: true, shouldValidate: true },
+                                    )
+                                  }
+                                  if (typeof p?.stock === 'number' && p.stock > 0) {
+                                    const currentQty = form.getValues(`details.${idx}.quantity`)
+                                    form.setValue(
+                                      `details.${idx}.quantity`,
+                                      Math.min(Math.max(1, currentQty || 1), p.stock),
+                                      { shouldDirty: true, shouldValidate: true },
+                                    )
+                                  }
+                                  void form.trigger('details')
+                                }}
+                              />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-                  <div className="col-span-2">
-                    <FormField control={form.control} name={`details.${idx}.quantity`} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Số lượng <span className="text-destructive">*</span></FormLabel>
-                        <FormControl>
-                          <Input type="number" min={1} placeholder="0" className="h-8 text-sm" value={field.value} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-6 h-8 w-8 shrink-0 text-destructive cursor-pointer"
+                        onClick={() => remove(idx)}
+                        disabled={fields.length === 1}
+                        aria-label="Xóa dòng"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
 
-                  <div className="col-span-4">
-                    <FormField control={form.control} name={`details.${idx}.note`} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Ghi chú dòng</FormLabel>
-                        <FormControl>
-                          <Input placeholder="..." className="h-8 text-sm" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name={`details.${idx}.quantity`}
+                        render={({ field }) => {
+                          const selected = products.find(
+                            (p) => p._id === details[idx]?.productItemId,
+                          )
+                          const stockMax =
+                            typeof selected?.stock === 'number'
+                              ? selected.stock
+                              : undefined
+                          return (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              Số lượng <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <QuantityStepper
+                                min={1}
+                                max={stockMax}
+                                value={Number.isFinite(field.value) ? field.value : 1}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            {typeof stockMax === 'number' && (
+                              <p className="text-[11px] text-muted-foreground">
+                                Tồn: {stockMax.toLocaleString('vi-VN')}
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                          )
+                        }}
+                      />
 
-                  <div className="col-span-1 flex justify-end">
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive cursor-pointer" onClick={() => remove(idx)} disabled={fields.length === 1}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                      <FormField
+                        control={form.control}
+                        name={`details.${idx}.importPrice`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              Giá (đ) <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <MoneyInput value={field.value} onChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`details.${idx}.note`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Ghi chú dòng</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ghi chú mặt hàng (tùy chọn)" className="h-9 text-sm" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <p className="text-right text-xs text-muted-foreground">
+                      Thành tiền:{' '}
+                      <span className="font-medium text-foreground tabular-nums">
+                        {formatMoneyVnd(
+                          (details[idx]?.quantity || 0) * (details[idx]?.importPrice || 0),
+                        )}
+                      </span>
+                    </p>
                   </div>
-                </div>
               ))}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-3">
+              <span className="text-sm text-muted-foreground">Tổng giá trị đơn hàng</span>
+              <span className="text-lg font-bold tabular-nums" title={formatMoneyVnd(total)}>
+                {formatMoneyVnd(total)}
+              </span>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">Hủy</Button>
-              <Button type="submit" disabled={form.formState.isSubmitting} className="cursor-pointer">
+              <Button type="submit" disabled={form.formState.isSubmitting || isOptionsLoading} className="cursor-pointer">
                 <Plus className="mr-2 size-4" />
-                {form.formState.isSubmitting ? 'Đang tạo...' : 'Tạo yêu cầu chuyển kho'}
+                {form.formState.isSubmitting ? 'Đang tạo...' : dialogCopy.submit}
               </Button>
             </DialogFooter>
           </form>

@@ -29,7 +29,7 @@ import {
   canUpdateProduct,
   canDeleteProduct,
   canCreateProduct,
-} from "../../shared/product-permissions";
+} from "@/components/sidebar/constants/role-permissions";
 
 type ProductsExpandedPanelProps = {
   product: Product;

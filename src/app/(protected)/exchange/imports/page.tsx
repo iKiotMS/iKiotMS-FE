@@ -1,11 +1,28 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { getAuthScope } from '@/app/(protected)/exchange/shared/auth-scope'
 import { ImportsProvider } from './components/imports-provider'
 import { ImportsButtonGroup } from './components/imports-button-group'
 import { ImportsTable } from './components/imports-table'
 import { ImportsDialogs } from './components/imports-dialogs'
 
 export default function ImportsPage() {
+  const router = useRouter()
+  const role = getAuthScope().role
+  const isBranchManager = role === 'BRANCH_MANAGER'
+
+  useEffect(() => {
+    if (isBranchManager) {
+      router.replace('/exchange/exports')
+    }
+  }, [isBranchManager, router])
+
+  if (isBranchManager) {
+    return null
+  }
+
   return (
     <ImportsProvider>
       <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">

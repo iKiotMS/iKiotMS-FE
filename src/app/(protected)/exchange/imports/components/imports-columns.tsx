@@ -6,20 +6,21 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronsUpDown,
+  MessageSquareText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-status";
+import { MOVEMENT_STATUS_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
+import { MOVEMENT_TYPE_MAP } from "@/app/(protected)/exchange/shared/movement-labels";
+import {
+  getMovementNotePreview,
+  hasAnyMovementNote,
+} from "@/app/(protected)/exchange/shared/qty";
+import { formatMoneyVnd } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import type { StockMovement, MovementStatus } from "@/types/stock-movement";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-
-const formatVND = (value: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(value);
 
 function SortableHeader({
   label,
@@ -87,12 +88,30 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     ),
   },
   {
+    id: "movementType",
+    header: "Loại",
+    cell: ({ row }) => {
+      const cfg = MOVEMENT_TYPE_MAP[row.original.movementType];
+      return (
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cfg?.className ?? ""}`}>
+          {cfg?.label ?? row.original.movementType}
+        </span>
+      );
+    },
+    enableSorting: false,
+    size: 90,
+  },
+  {
     accessorKey: "supplierName",
     header: ({ column }) => (
-      <SortableHeader label="Nhà cung cấp" column={column} />
+      <SortableHeader label="Nguồn hàng" column={column} />
     ),
     cell: ({ row }) => (
-      <span className="font-medium">{row.getValue("supplierName") || "—"}</span>
+      <span className="font-medium">
+        {row.original.supplierName ||
+          row.original.fromLocationName ||
+          (row.original.fromLocationId ? "Kho nguồn" : "—")}
+      </span>
     ),
   },
   {
@@ -124,11 +143,15 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     header: ({ column }) => <SortableHeader label="Giá trị" column={column} />,
     accessorFn: (row) =>
       row.details.reduce((sum, item) => sum + item.quantity * item.importPrice, 0),
-    cell: ({ getValue }) => (
-      <span className="tabular-nums font-medium">
-        {formatVND(getValue() as number)}
-      </span>
-    ),
+    cell: ({ getValue }) => {
+      const value = getValue() as number;
+      const text = formatMoneyVnd(value);
+      return (
+        <span className="block max-w-[9rem] truncate tabular-nums font-medium" title={text}>
+          {text}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "requestedByName",
@@ -156,7 +179,23 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as MovementStatus;
       const config = MOVEMENT_STATUS_MAP[status];
-      return <Badge variant={config.variant}>{config.label}</Badge>;
+      const hasNote = hasAnyMovementNote(row.original);
+      const preview = getMovementNotePreview(row.original);
+      return (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={config.variant}>{config.label}</Badge>
+          {hasNote && (
+            <Badge
+              variant="outline"
+              className="gap-1 font-normal text-muted-foreground"
+              title={preview}
+            >
+              <MessageSquareText className="size-3" />
+              Ghi chú
+            </Badge>
+          )}
+        </div>
+      );
     },
     filterFn: (row, columnId, value: string) =>
       row.getValue(columnId) === value,
@@ -165,14 +204,21 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     id: "expand",
     header: "",
     cell: ({ row }) => (
-      <ChevronRight
-        className={cn(
-          "size-4 text-muted-foreground transition-transform duration-200",
-          row.getIsExpanded() && "rotate-90",
-        )}
-      />
+      <div className="flex items-center justify-end gap-2">
+        {row.getIsExpanded() ? (
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Đang xem
+          </span>
+        ) : null}
+        <ChevronRight
+          className={cn(
+            "size-4 text-muted-foreground transition-transform duration-200",
+            row.getIsExpanded() && "rotate-90",
+          )}
+        />
+      </div>
     ),
-    size: 40,
+    size: 88,
     enableSorting: false,
     enableHiding: false,
   },

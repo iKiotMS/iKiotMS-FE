@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Brand } from '@/types/brand'
 import { useBrands } from '../../_context/brands-provider'
 import { getCachedUser } from '@/lib/auth'
-import { canUpdateBrand, canDeleteBrand } from '../../shared/brand-permissions'
+import { canUpdateBrand, canDeleteBrand } from '@/components/sidebar/constants/role-permissions'
 
 type BrandsExpandedPanelProps = {
   brand: Brand

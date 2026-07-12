@@ -58,7 +58,19 @@ export const sidebarItems = {
     items: [
       { title: "Nhà cung cấp", url: "/exchange/suppliers" },
       { title: "Nhập hàng", url: "/exchange/imports" },
-      { title: "Xuất hàng", url: "/exchange/exports" },
+      { title: "Chuyển kho", url: "/exchange/exports" },
+      { title: "Điều chỉnh tồn kho", url: "/exchange/adjustments" },
+    ],
+  },
+  /** BM: không nhập hàng; chuyển kho đổi label thành Chuyển hàng. */
+  giaoDichBranch: {
+    title: "Giao dịch",
+    url: "/#",
+    icon: Shuffle,
+    items: [
+      { title: "Nhà cung cấp", url: "/exchange/suppliers" },
+      { title: "Chuyển hàng", url: "/exchange/exports" },
+      { title: "Điều chỉnh tồn kho", url: "/exchange/adjustments" },
     ],
   },
   donHang: {
