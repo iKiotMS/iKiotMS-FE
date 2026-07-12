@@ -160,7 +160,14 @@ type SupplierLookup = Map<string, StockMovementSupplierOption>;
 let productLookupCache: { at: number; value: ProductLookup } | null = null;
 let locationLookupCache: { at: number; value: LocationLookup } | null = null;
 let supplierLookupCache: { at: number; value: SupplierLookup } | null = null;
+let productLookupInflight: Promise<ProductLookup> | null = null;
+let locationLookupInflight: Promise<LocationLookup> | null = null;
+let supplierLookupInflight: Promise<SupplierLookup> | null = null;
 const LOOKUP_TTL_MS = 60_000;
+
+function isCacheFresh(at: number) {
+  return Date.now() - at < LOOKUP_TTL_MS;
+}
 
 async function fetchSupplierOptions(): Promise<StockMovementSupplierOption[]> {
   const response = await client.get("/suppliers", {
@@ -233,52 +240,68 @@ async function fetchInventoryAtLocation(
 }
 
 async function getProductLookup(): Promise<ProductLookup> {
-  const now = Date.now();
-  if (productLookupCache && now - productLookupCache.at < LOOKUP_TTL_MS) {
+  if (productLookupCache && isCacheFresh(productLookupCache.at)) {
     return productLookupCache.value;
   }
-  const options = await fetchAllProductItemOptions();
-  const value = new Map(options.map((item) => [item._id, item]));
-  productLookupCache = { at: now, value };
-  return value;
+  if (productLookupInflight) return productLookupInflight;
+
+  productLookupInflight = fetchAllProductItemOptions()
+    .then((options) => {
+      const value = new Map(options.map((item) => [item._id, item]));
+      productLookupCache = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      productLookupInflight = null;
+    });
+
+  return productLookupInflight;
 }
 
 async function getLocationLookup(): Promise<LocationLookup> {
-  const now = Date.now();
-  if (locationLookupCache && now - locationLookupCache.at < LOOKUP_TTL_MS) {
+  if (locationLookupCache && isCacheFresh(locationLookupCache.at)) {
     return locationLookupCache.value;
   }
-  const options = await fetchLocationOptions();
-  const value = new Map(options.map((item) => [item._id, item]));
-  locationLookupCache = { at: now, value };
-  return value;
+  if (locationLookupInflight) return locationLookupInflight;
+
+  locationLookupInflight = fetchLocationOptions()
+    .then((options) => {
+      const value = new Map(options.map((item) => [item._id, item]));
+      locationLookupCache = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      locationLookupInflight = null;
+    });
+
+  return locationLookupInflight;
 }
 
 async function getSupplierLookup(): Promise<SupplierLookup> {
-  const now = Date.now();
-  if (supplierLookupCache && now - supplierLookupCache.at < LOOKUP_TTL_MS) {
+  if (supplierLookupCache && isCacheFresh(supplierLookupCache.at)) {
     return supplierLookupCache.value;
   }
-  const options = await fetchSupplierOptions();
-  const value = new Map(options.map((item) => [item._id, item]));
-  supplierLookupCache = { at: now, value };
-  return value;
+  if (supplierLookupInflight) return supplierLookupInflight;
+
+  supplierLookupInflight = fetchSupplierOptions()
+    .then((options) => {
+      const value = new Map(options.map((item) => [item._id, item]));
+      supplierLookupCache = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      supplierLookupInflight = null;
+    });
+
+  return supplierLookupInflight;
 }
 
-async function enrichMovement(movement: StockMovement): Promise<StockMovement> {
-  const needsProducts = movement.details.some((d) => !d.productName || !d.sku);
-  const needsLocations =
-    (!!movement.fromLocationId && !movement.fromLocationName) ||
-    !movement.toLocationName ||
-    movement.toLocationName === movement.toLocationId;
-  const needsSupplier = !!movement.fromSupplierId && !movement.supplierName;
-
-  const [products, locations, suppliers] = await Promise.all([
-    needsProducts ? getProductLookup() : Promise.resolve(null),
-    needsLocations ? getLocationLookup() : Promise.resolve(null),
-    needsSupplier ? getSupplierLookup() : Promise.resolve(null),
-  ]);
-
+function applyLookups(
+  movement: StockMovement,
+  products: ProductLookup | null,
+  locations: LocationLookup | null,
+  suppliers: SupplierLookup | null,
+): StockMovement {
   const fromLocation = movement.fromLocationId
     ? locations?.get(movement.fromLocationId)
     : undefined;
@@ -308,6 +331,31 @@ async function enrichMovement(movement: StockMovement): Promise<StockMovement> {
   };
 }
 
+function movementNeedsProducts(movement: StockMovement) {
+  return movement.details.some((d) => !d.productName || !d.sku);
+}
+
+function movementNeedsLocations(movement: StockMovement) {
+  return (
+    (!!movement.fromLocationId && !movement.fromLocationName) ||
+    !movement.toLocationName ||
+    movement.toLocationName === movement.toLocationId
+  );
+}
+
+function movementNeedsSupplier(movement: StockMovement) {
+  return !!movement.fromSupplierId && !movement.supplierName;
+}
+
+async function enrichMovement(movement: StockMovement): Promise<StockMovement> {
+  const [products, locations, suppliers] = await Promise.all([
+    movementNeedsProducts(movement) ? getProductLookup() : Promise.resolve(null),
+    movementNeedsLocations(movement) ? getLocationLookup() : Promise.resolve(null),
+    movementNeedsSupplier(movement) ? getSupplierLookup() : Promise.resolve(null),
+  ]);
+  return applyLookups(movement, products, locations, suppliers);
+}
+
 async function safeEnrichMovement(movement: StockMovement): Promise<StockMovement> {
   try {
     return await enrichMovement(movement);
@@ -316,12 +364,21 @@ async function safeEnrichMovement(movement: StockMovement): Promise<StockMovemen
   }
 }
 
+/** Enrich cả list với tối đa 1 lần gọi lookup. List UI không cần tên SP → bỏ /products. */
 async function safeEnrichMovements(
   movements: StockMovement[],
 ): Promise<StockMovement[]> {
   if (movements.length === 0) return movements;
   try {
-    return Promise.all(movements.map(enrichMovement));
+    const needsLocations = movements.some(movementNeedsLocations);
+    const needsSuppliers = movements.some(movementNeedsSupplier);
+
+    const [locations, suppliers] = await Promise.all([
+      needsLocations ? getLocationLookup() : Promise.resolve(null),
+      needsSuppliers ? getSupplierLookup() : Promise.resolve(null),
+    ]);
+
+    return movements.map((m) => applyLookups(m, null, locations, suppliers));
   } catch {
     return movements;
   }
@@ -466,11 +523,11 @@ export const stockMovementApi = {
     locationId: string,
     locationType: LocationType,
   ): Promise<StockMovementProductItemOption[]> => {
-    const [allItems, inventoryMap] = await Promise.all([
-      fetchAllProductItemOptions(),
+    const [lookup, inventoryMap] = await Promise.all([
+      getProductLookup(),
       fetchInventoryAtLocation(locationId, locationType),
     ]);
-    return allItems.map((item) => ({
+    return [...lookup.values()].map((item) => ({
       ...item,
       atLocation: inventoryMap.has(item._id),
       stock: inventoryMap.get(item._id),
@@ -482,9 +539,11 @@ export const stockMovementApi = {
     locationId: string,
     locationType: LocationType,
   ): Promise<StockMovementProductItemOption[]> => {
-    const inventoryMap = await fetchInventoryAtLocation(locationId, locationType);
-    const allItems = await fetchAllProductItemOptions();
-    return allItems
+    const [lookup, inventoryMap] = await Promise.all([
+      getProductLookup(),
+      fetchInventoryAtLocation(locationId, locationType),
+    ]);
+    return [...lookup.values()]
       .filter((item) => (inventoryMap.get(item._id) ?? 0) > 0)
       .map((item) => ({
         ...item,
