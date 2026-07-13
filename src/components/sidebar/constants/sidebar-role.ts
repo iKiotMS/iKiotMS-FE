@@ -70,7 +70,6 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       sidebarItems.donHang,
     ]),
     crmGroup,
-    cskhGroup,
   ],
 
   WAREHOUSE_MANAGER: [
@@ -80,7 +79,6 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   STAFF: [
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.donHang]),
     crmGroup,
-    cskhGroup,
   ],
 
   CUSTOMER: [],

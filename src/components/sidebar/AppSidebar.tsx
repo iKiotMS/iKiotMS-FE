@@ -70,16 +70,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         {navGroups.map((group) => (
-          <NavMain
-            key={group.label}
-            label={group.label}
-            items={group.items}
-          />
+          <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarNotification />
+        {/* <SidebarNotification /> */}
         <NavUser user={formattedUser} role={user?.role} />
       </SidebarFooter>
     </Sidebar>
