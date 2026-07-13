@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,9 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invoice, setInvoice] = useState<InitiateUpgradeResult | null>(null);
 
+  const router = useRouter();
+  const planParam = useSearchParams().get("plan");
+
   const currentPlanCode = subscription?.planCode ?? "TRIAL";
   const currentTier = baseTier(currentPlanCode);
   const currentTierIdx = TIER_ORDER.indexOf(
@@ -93,11 +97,11 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
     }
   };
 
-  const autoStartUpgradeFromQuery = (loadedPlans: Plan[]) => {
-    const planCode = new URLSearchParams(window.location.search).get("plan");
-    if (!planCode) return;
+  const autoStartPendingUpgrade = (loadedPlans: Plan[]) => {
+    if (!planParam) return;
+    const planCode = planParam;
 
-    window.history.replaceState({}, "", window.location.pathname);
+    router.replace("/settings/billing", { scroll: false });
 
     const target = loadedPlans.find((p) => p.planCode === planCode);
     if (!target || target.price === 0 || planCode === currentPlanCode) return;
@@ -117,7 +121,7 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
       .then((data) => {
         if (!active) return;
         setPlans(data);
-        autoStartUpgradeFromQuery(data);
+        autoStartPendingUpgrade(data);
       })
       .catch(() => toast.error("Không thể tải danh sách gói dịch vụ."))
       .finally(() => {

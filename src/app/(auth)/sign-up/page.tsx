@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { SignupForm2 } from "./components/signup-form";
 import { Logo } from "@/components/logo";
 import Link from "next/link";
@@ -17,7 +18,9 @@ export default function SignUp2Page() {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-lg">
-            <SignupForm2 />
+            <Suspense fallback={null}>
+              <SignupForm2 />
+            </Suspense>
           </div>
         </div>
       </div>

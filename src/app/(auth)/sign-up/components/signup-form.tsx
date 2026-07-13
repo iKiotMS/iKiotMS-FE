@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,18 +29,13 @@ export function SignupForm2({
   ...props
 }: React.ComponentProps<"form">) {
   const [isLoading, setIsLoading] = useState(false);
-  // Pre-submit uniqueness check (phone / store name) before sending the OTP
   const [isChecking, setIsChecking] = useState(false);
-  // OTP verification step (skipped entirely when OTP_BYPASS is on)
   const [otpPhase, setOtpPhase] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [pendingData, setPendingData] = useState<SignupInput | null>(null);
-  const [pendingPlan] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const plan = new URLSearchParams(window.location.search).get("plan");
-    return plan && plan !== "TRIAL" ? plan : null;
-  });
   const router = useRouter();
+  const planParam = useSearchParams().get("plan");
+  const pendingPlan = planParam && planParam !== "TRIAL" ? planParam : null;
   const { sendOtp, isSending } = usePhoneOtp();
 
   const {
@@ -94,12 +89,14 @@ export function SignupForm2({
         }
 
         // Chọn gói trả phí từ landing → sang thẳng trang thanh toán để nâng cấp.
-        router.push(
-          pendingPlan
-            ? `/settings/billing?plan=${encodeURIComponent(pendingPlan)}`
-            : "/dashboard",
-        );
-        router.refresh();
+        if (pendingPlan) {
+          router.push(
+            `/settings/billing?plan=${encodeURIComponent(pendingPlan)}`,
+          );
+        } else {
+          router.push("/dashboard");
+          router.refresh();
+        }
       } else {
         toast.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
         router.push("/sign-in");

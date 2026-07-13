@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Separator } from "@/components/ui/separator"
 import { CurrentPlanCard } from "./components/current-plan-card"
@@ -31,7 +32,9 @@ export default function BillingSettings() {
       {canManageBilling(user?.role) && (
         <>
           <Separator />
-          <UpgradePlanSection subscription={user?.subscription} />
+          <Suspense fallback={null}>
+            <UpgradePlanSection subscription={user?.subscription} />
+          </Suspense>
         </>
       )}
     </div>
