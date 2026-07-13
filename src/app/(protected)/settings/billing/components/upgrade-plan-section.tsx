@@ -65,40 +65,10 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invoice, setInvoice] = useState<InitiateUpgradeResult | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    listPlans()
-      .then((data) => {
-        if (active) setPlans(data);
-      })
-      .catch(() => toast.error("Không thể tải danh sách gói dịch vụ."))
-      .finally(() => {
-        if (active) setPlansLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const currentPlanCode = subscription?.planCode ?? "TRIAL";
   const currentTier = baseTier(currentPlanCode);
   const currentTierIdx = TIER_ORDER.indexOf(
     currentTier as (typeof TIER_ORDER)[number],
-  );
-
-  // Gom plan theo tier: { tier, monthly, yearly }
-  const tiers = useMemo(() => {
-    return TIER_ORDER.map((tier) => ({
-      tier,
-      monthly: plans.find((p) => p.planCode === tier),
-      yearly: plans.find((p) => p.planCode === `${tier}_YEARLY`),
-      features: TIER_META[tier]?.features ?? [],
-    }));
-  }, [plans]);
-
-  const hasAnyYearly = useMemo(
-    () => plans.some((p) => p.billingCycle === "YEARLY"),
-    [plans],
   );
 
   const handleAction = async (
@@ -122,6 +92,55 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
       setLoadingPlan(null);
     }
   };
+
+  const autoStartUpgradeFromQuery = (loadedPlans: Plan[]) => {
+    const planCode = new URLSearchParams(window.location.search).get("plan");
+    if (!planCode) return;
+
+    window.history.replaceState({}, "", window.location.pathname);
+
+    const target = loadedPlans.find((p) => p.planCode === planCode);
+    if (!target || target.price === 0 || planCode === currentPlanCode) return;
+
+    const targetIdx = TIER_ORDER.indexOf(
+      baseTier(planCode) as (typeof TIER_ORDER)[number],
+    );
+    if (targetIdx === -1 || targetIdx < currentTierIdx) return;
+
+    setIsYearly(target.billingCycle === "YEARLY");
+    handleAction("upgrade", planCode);
+  };
+
+  useEffect(() => {
+    let active = true;
+    listPlans()
+      .then((data) => {
+        if (!active) return;
+        setPlans(data);
+        autoStartUpgradeFromQuery(data);
+      })
+      .catch(() => toast.error("Không thể tải danh sách gói dịch vụ."))
+      .finally(() => {
+        if (active) setPlansLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const tiers = useMemo(() => {
+    return TIER_ORDER.map((tier) => ({
+      tier,
+      monthly: plans.find((p) => p.planCode === tier),
+      yearly: plans.find((p) => p.planCode === `${tier}_YEARLY`),
+      features: TIER_META[tier]?.features ?? [],
+    }));
+  }, [plans]);
+
+  const hasAnyYearly = useMemo(
+    () => plans.some((p) => p.billingCycle === "YEARLY"),
+    [plans],
+  );
 
   return (
     <>

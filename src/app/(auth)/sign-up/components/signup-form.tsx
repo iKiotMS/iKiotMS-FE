@@ -35,6 +35,11 @@ export function SignupForm2({
   const [otpPhase, setOtpPhase] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [pendingData, setPendingData] = useState<SignupInput | null>(null);
+  const [pendingPlan] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const plan = new URLSearchParams(window.location.search).get("plan");
+    return plan && plan !== "TRIAL" ? plan : null;
+  });
   const router = useRouter();
   const { sendOtp, isSending } = usePhoneOtp();
 
@@ -88,7 +93,12 @@ export function SignupForm2({
           );
         }
 
-        router.push("/dashboard");
+        // Chọn gói trả phí từ landing → sang thẳng trang thanh toán để nâng cấp.
+        router.push(
+          pendingPlan
+            ? `/settings/billing?plan=${encodeURIComponent(pendingPlan)}`
+            : "/dashboard",
+        );
         router.refresh();
       } else {
         toast.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");

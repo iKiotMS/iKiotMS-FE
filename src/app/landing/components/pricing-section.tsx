@@ -63,6 +63,11 @@ const plans = [
 export function PricingSection() {
   const [isYearly, setIsYearly] = useState(false)
 
+  const signUpHref = (planCode: string) => {
+    if (planCode === 'TRIAL') return '/sign-up'
+    return `/sign-up?plan=${isYearly ? `${planCode}_YEARLY` : planCode}`
+  }
+
   return (
     <section id="pricing" className="py-24 sm:py-32 bg-muted/40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -146,7 +151,7 @@ export function PricingSection() {
                       variant={plan.popular ? 'default' : 'secondary'}
                       asChild
                     >
-                      <Link href="/sign-up">{plan.cta}</Link>
+                      <Link href={signUpHref(plan.planCode)}>{plan.cta}</Link>
                     </Button>
                   </div>
 
