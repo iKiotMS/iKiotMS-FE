@@ -19,6 +19,23 @@ export const rolePermissions = {
     review: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
     emergencyCreate: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
   },
+  billing: {
+    manage: new Set(["TENANT_OWNER"]),
+  },
+  aiChat: {
+    access: new Set(["TENANT_OWNER"]),
+  },
+  account: {
+    editProfile: new Set(["TENANT_OWNER"]),
+  },
+  exchange: {
+    // Blocklist (not allowlist): imports page redirects BRANCH_MANAGER to /exchange/exports.
+    importsBlocked: new Set(["BRANCH_MANAGER"]),
+  },
+  promotions: {
+    view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "STAFF", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+  },
 };
 
 // Products
@@ -148,5 +165,44 @@ export function canReviewLeaveRequest(role?: string | null): boolean {
 export function canCreateEmergencyLeave(role?: string | null): boolean {
   if (!role) return false;
   return rolePermissions.leaveRequests.emergencyCreate.has(role);
+}
+
+// Billing
+export function canManageBilling(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.billing.manage.has(role);
+}
+
+// AI Chat
+export function canUseAIChat(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.aiChat.access.has(role);
+}
+
+// Account settings
+export function canEditAccountProfile(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.account.editProfile.has(role);
+}
+
+// Exchange (stock movement)
+export function canAccessImports(role?: string | null): boolean {
+  return !rolePermissions.exchange.importsBlocked.has(role ?? "");
+}
+
+// Promotions
+export function canViewPromotions(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.promotions.view.has(role);
+}
+export function canCreatePromotion(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.promotions.write.has(role);
+}
+export function canUpdatePromotion(role?: string | null): boolean {
+  return canCreatePromotion(role);
+}
+export function canDeletePromotion(role?: string | null): boolean {
+  return canCreatePromotion(role);
 }
 

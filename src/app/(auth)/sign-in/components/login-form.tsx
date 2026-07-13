@@ -42,9 +42,10 @@ export function LoginForm2({
         setTokens({ accessToken, refreshToken });
         // Fetch detailed user profile
         await useAuthStore.getState().fetchMe();
+        const role = useAuthStore.getState().user?.role;
 
         toast.success("Đăng nhập thành công!");
-        router.push("/dashboard");
+        router.push(role === "STAFF" ? "/check-out" : "/dashboard");
         router.refresh();
       } else {
         throw new Error("Không nhận được mã xác thực từ hệ thống.");

@@ -38,8 +38,14 @@ interface Customer {
 interface CheckoutSidebarProps {
   totalQuantity: number;
   subtotal: number;
+  /** Fully computed total (subtotal - discount/promotion + VAT) — the single source of truth for display and payment. */
+  grandTotal: number;
   discount: number;
   discountType: "cash" | "percent";
+  /** Total discount from auto-applied promotions. When > 0, the manual discount input below is locked (mutually exclusive). */
+  promotionDiscount: number;
+  /** Names of the promotions currently auto-applied, for display next to the discount amount. */
+  promotionNames: string[];
   paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
@@ -63,8 +69,11 @@ const formatVND = (value: number) =>
 export function CheckoutSidebar({
   totalQuantity,
   subtotal,
+  grandTotal,
   discount,
   discountType,
+  promotionDiscount,
+  promotionNames,
   paymentMethod,
   customerPay,
   note,
@@ -140,11 +149,9 @@ export function CheckoutSidebar({
     }
   }, [selectedCustomer]);
 
-  // Billing math
-  const calculatedDiscount =
-    discountType === "cash" ? discount : (subtotal * discount) / 100;
-  const subtotalAfterDiscount = Math.max(0, subtotal - calculatedDiscount);
-  const grandTotal = subtotalAfterDiscount;
+  // Billing math — grandTotal is fully computed by the parent (subtotal, discount/promotion,
+  // VAT all folded in already); this component only derives display-only values from it.
+  const hasAutoPromotion = promotionDiscount > 0;
   const changeDue = Math.max(0, customerPay - grandTotal);
 
   // Quick cash triggers
@@ -280,8 +287,32 @@ export function CheckoutSidebar({
             </span>
           </div>
 
-          {/* Discount Input */}
-          <div className="flex items-center justify-between gap-4">
+          {/* Auto-applied promotion — mutually exclusive with the manual discount below */}
+          {hasAutoPromotion && (
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-muted-foreground font-medium shrink-0">
+                Khuyến mãi tự động
+              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-lg tabular-nums">
+                  -{formatVND(promotionDiscount)}
+                </span>
+                {promotionNames.length > 0 && (
+                  <span className="text-sm text-muted-foreground text-right">
+                    {promotionNames.join(", ")}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Discount Input — locked while a promotion auto-applies */}
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4",
+              hasAutoPromotion && "opacity-50 pointer-events-none",
+            )}
+          >
             <span className="text-muted-foreground font-medium shrink-0">
               Giảm giá đơn
             </span>
@@ -289,6 +320,7 @@ export function CheckoutSidebar({
               <Input
                 type="number"
                 value={discount}
+                disabled={hasAutoPromotion}
                 onChange={(e) => {
                   const val = parseFloat(e.target.value);
                   const clean = isNaN(val) || val < 0 ? 0 : val;
@@ -303,6 +335,7 @@ export function CheckoutSidebar({
               <div className="flex border rounded-md overflow-hidden shrink-0">
                 <button
                   type="button"
+                  disabled={hasAutoPromotion}
                   onClick={() => {
                     onDiscountTypeChange("cash");
                     onDiscountChange(0);
@@ -318,6 +351,7 @@ export function CheckoutSidebar({
                 </button>
                 <button
                   type="button"
+                  disabled={hasAutoPromotion}
                   onClick={() => {
                     onDiscountTypeChange("percent");
                     onDiscountChange(0);

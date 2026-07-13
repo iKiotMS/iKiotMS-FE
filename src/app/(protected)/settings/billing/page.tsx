@@ -6,6 +6,7 @@ import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { UpgradePlanSection } from "./components/upgrade-plan-section"
 import { useAuthStore } from "@/store/auth-store"
+import { canManageBilling } from "@/components/sidebar/constants/role-permissions"
 
 export default function BillingSettings() {
   const user = useAuthStore((state) => state.user)
@@ -27,7 +28,7 @@ export default function BillingSettings() {
         <BillingHistoryCard />
       </div>
 
-      {user?.role === "TENANT_OWNER" && (
+      {canManageBilling(user?.role) && (
         <>
           <Separator />
           <UpgradePlanSection subscription={user?.subscription} />

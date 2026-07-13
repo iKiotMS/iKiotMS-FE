@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useAuthStore } from "@/store/auth-store"
+import { canEditAccountProfile } from "@/components/sidebar/constants/role-permissions"
 import { updateMe } from "@/lib/api/auth"
 import { uploadImage } from "@/lib/api/upload"
 import { getUserRoleLabel } from "@/types/role"
@@ -32,7 +33,7 @@ export function useAccountSettings() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
 
-  const isTenantOwner = user?.role === "TENANT_OWNER"
+  const isTenantOwner = canEditAccountProfile(user?.role)
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),

@@ -69,6 +69,7 @@ export function StaffsTable() {
     roleOptions,
     branchOptions,
     warehouseOptions,
+    locationKey,
     updateRoleFilter,
     updateStatusFilter,
     updateBranchFilter,
@@ -83,6 +84,14 @@ export function StaffsTable() {
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
+
+  // The global switcher wins over these manual filters (same precedence the
+  // provider applies when fetching) — lock them and reflect the active scope
+  // instead of showing a stale "Tất cả" while the list is actually filtered.
+  const isLocationLocked = locationKey !== "all";
+  const [lockedLocationType, lockedLocationId] = locationKey.split("-");
+  const lockedBranchId = lockedLocationType === "branch" ? lockedLocationId : "all";
+  const lockedWarehouseId = lockedLocationType === "warehouse" ? lockedLocationId : "all";
 
   const table = useReactTable({
     data: staffs,
@@ -159,8 +168,9 @@ export function StaffsTable() {
 
           {showBranchFilter && branchOptions.length > 0 && (
             <Select
-              value={listQuery.branchId}
+              value={isLocationLocked ? lockedBranchId : listQuery.branchId}
               onValueChange={updateBranchFilter}
+              disabled={isLocationLocked}
             >
               <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
                 <SelectValue placeholder="Chi nhánh" />
@@ -178,8 +188,9 @@ export function StaffsTable() {
 
           {showWarehouseFilter && warehouseOptions.length > 0 && (
             <Select
-              value={listQuery.warehouseId}
+              value={isLocationLocked ? lockedWarehouseId : listQuery.warehouseId}
               onValueChange={updateWarehouseFilter}
+              disabled={isLocationLocked}
             >
               <SelectTrigger className="cursor-pointer w-44 h-9 text-sm">
                 <SelectValue placeholder="Kho hàng" />
