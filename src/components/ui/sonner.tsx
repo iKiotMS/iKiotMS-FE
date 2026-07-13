@@ -1,6 +1,7 @@
 "use client";
 
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { useTheme } from "@/hooks/use-theme";
 import {
   CircleCheckIcon,
   InfoIcon,
@@ -10,6 +11,8 @@ import {
 } from "lucide-react";
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  const { theme } = useTheme();
+
   return (
     <Sonner
       className="toaster group"
@@ -22,25 +25,25 @@ const Toaster = ({ ...props }: ToasterProps) => {
         error: <OctagonXIcon className="size-4" />,
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
-      theme="light"
+      theme={theme}
       style={
         {
-          "--normal-bg": "var(--color-surface-container-high)",
-          "--normal-text": "var(--color-on-surface)",
-          "--normal-border": "var(--color-outline-variant)",
-          "--normal-icon": "var(--color-on-surface)",
-          "--success-bg": "#f0fdf4",
-          "--success-border": "#dcfce7",
-          "--success-text": "#166534",
-          "--error-bg": "#fef2f2",
-          "--error-border": "#fee2e2",
-          "--error-text": "var(--color-error)",
-          "--warning-bg": "#fffbeb",
-          "--warning-border": "#fef3c7",
-          "--warning-text": "#92400e",
-          "--info-bg": "#f0f9ff",
-          "--info-border": "#e0f2fe",
-          "--info-text": "#0c4a6e",
+          "--normal-bg": "var(--popover)",
+          "--normal-text": "var(--popover-foreground)",
+          "--normal-border": "var(--border)",
+          "--normal-icon": "var(--foreground)",
+          "--success-bg": "var(--toast-success-bg)",
+          "--success-border": "var(--toast-success-border)",
+          "--success-text": "var(--toast-success-text)",
+          "--error-bg": "var(--toast-error-bg)",
+          "--error-border": "var(--toast-error-border)",
+          "--error-text": "var(--toast-error-text)",
+          "--warning-bg": "var(--toast-warning-bg)",
+          "--warning-border": "var(--toast-warning-border)",
+          "--warning-text": "var(--toast-warning-text)",
+          "--info-bg": "var(--toast-info-bg)",
+          "--info-border": "var(--toast-info-border)",
+          "--info-text": "var(--toast-info-text)",
           "--border-radius": "0.75rem",
         } as React.CSSProperties
       }

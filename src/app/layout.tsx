@@ -24,9 +24,9 @@ export default function RootLayout({
           <SidebarConfigProvider>
             <ThemePresetInitializer />
             {children}
+            <Toaster />
           </SidebarConfigProvider>
         </ThemeProvider>
-        <Toaster />
       </body>
     </html>
   );

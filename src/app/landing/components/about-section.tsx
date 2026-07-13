@@ -1,33 +1,37 @@
-"use client"
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
-import { CardDecorator } from '@/components/ui/card-decorator'
-import { Coins, Zap, ShieldCheck, Brain } from 'lucide-react'
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { CardDecorator } from "@/components/ui/card-decorator";
+import { Coins, Zap, ShieldCheck, Brain } from "lucide-react";
 
 const values = [
   {
     icon: Coins,
-    title: 'Chi phí tối ưu',
-    description: 'Mô hình SaaS thông minh giúp tiết kiệm tối đa chi phí vận hành chuỗi cửa hàng mà vẫn đầy đủ tính năng.'
+    title: "Chi phí tối ưu",
+    description:
+      "Mô hình SaaS thông minh giúp tiết kiệm tối đa chi phí vận hành chuỗi cửa hàng mà vẫn đầy đủ tính năng.",
   },
   {
     icon: Zap,
-    title: 'Thiết lập nhanh gọn',
-    description: 'Dễ dàng mở rộng thêm các chi nhánh mới chỉ với vài bước đơn giản, đồng bộ dữ liệu tức thì.'
+    title: "Thiết lập nhanh gọn",
+    description:
+      "Dễ dàng mở rộng thêm các chi nhánh mới chỉ với vài bước đơn giản, đồng bộ dữ liệu tức thì.",
   },
   {
     icon: ShieldCheck,
-    title: 'Độ chính xác cao',
-    description: 'Dữ liệu tồn kho, giá bán và hóa đơn POS được đồng bộ chuẩn xác theo thời gian thực trên toàn chuỗi.'
+    title: "Độ chính xác cao",
+    description:
+      "Dữ liệu tồn kho, giá bán và hóa đơn POS được đồng bộ chuẩn xác theo thời gian thực trên toàn chuỗi.",
   },
   {
     icon: Brain,
-    title: 'Tư vấn thông minh AI',
-    description: 'Hệ thống tự động phân tích hành vi mua sắm, phát hiện lãi lỗ và cảnh báo nhập hàng cho chủ cửa hàng.'
-  }
-]
+    title: "Tư vấn thông minh AI",
+    description:
+      "Hệ thống tự động phân tích hành vi mua sắm, phát hiện lãi lỗ và cảnh báo nhập hàng cho chủ cửa hàng.",
+  },
+];
 
 export function AboutSection() {
   return (
@@ -42,46 +46,33 @@ export function AboutSection() {
             Giải pháp chuyên biệt cho chuỗi cửa hàng điện tử & công nghệ
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            iKiot mang sứ mệnh đồng hành cùng các nhà bán lẻ công nghệ tối ưu hóa quy trình quản trị, bán lẻ đa chi nhánh nhanh chóng và hiệu quả hơn nhờ sức mạnh của dữ liệu lớn và trí tuệ nhân tạo.
+            iKiot mang sứ mệnh đồng hành cùng các nhà bán lẻ công nghệ tối ưu
+            hóa quy trình quản trị, bán lẻ đa chi nhánh nhanh chóng và hiệu quả
+            hơn nhờ sức mạnh của dữ liệu lớn và trí tuệ nhân tạo.
           </p>
         </div>
 
         {/* Modern Values Grid with Enhanced Design */}
         <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 xl:grid-cols-4 mb-12">
           {values.map((value, index) => (
-            <Card key={index} className='group shadow-xs py-2'>
-              <CardContent className='p-8'>
-                <div className='flex flex-col items-center text-center'>
+            <Card key={index} className="group shadow-xs py-2">
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center text-center">
                   <CardDecorator>
-                    <value.icon className='h-6 w-6' aria-hidden />
+                    <value.icon className="h-6 w-6" aria-hidden />
                   </CardDecorator>
-                  <h3 className='mt-6 font-medium text-balance'>{value.title}</h3>
-                  <p className='text-muted-foreground mt-3 text-sm'>{value.description}</p>
+                  <h3 className="mt-6 font-medium text-balance">
+                    {value.title}
+                  </h3>
+                  <p className="text-muted-foreground mt-3 text-sm">
+                    {value.description}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
-
-        {/* Call to Action */}
-        <div className="mt-16 text-center">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <span className="text-muted-foreground">❤️ Đồng hành cùng sự phát triển của nhà bán lẻ Việt Nam</span>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="cursor-pointer" asChild>
-              <a href="#pricing">
-                Xem các gói dịch vụ
-              </a>
-            </Button>
-            <Button size="lg" variant="outline" className="cursor-pointer" asChild>
-              <a href="#contact">
-                Đăng ký tư vấn chuỗi
-              </a>
-            </Button>
-          </div>
-        </div>
       </div>
     </section>
-  )
+  );
 }

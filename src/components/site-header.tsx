@@ -50,7 +50,7 @@ export function SiteHeader() {
                   href="/check-out"
                   rel="noopener noreferrer"
                   target="_blank"
-                  className="dark:text-foreground flex items-center"
+                  className="flex items-center"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Bán hàng

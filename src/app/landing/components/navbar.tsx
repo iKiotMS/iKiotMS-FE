@@ -33,7 +33,7 @@ const navigationItems = [
   { name: "Trang chủ", href: "#hero" },
   { name: "Tính năng", href: "#features" },
   { name: "Giải pháp", href: "#features", hasMegaMenu: true },
-  { name: "Đội ngũ", href: "#team" },
+  // { name: "Đội ngũ", href: "#team" },
   { name: "Bảng giá", href: "#pricing" },
   { name: "Hỏi đáp", href: "#faq" },
   { name: "Liên hệ", href: "#contact" },
