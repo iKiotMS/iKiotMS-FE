@@ -64,6 +64,7 @@ export interface ProductQueryParams {
   search?: string;
   status?: ProductStatus;
   categoryId?: string;
+  supplierId?: string;
   locationId?: string;
   locationType?: LocationType;
   page?: number;
@@ -80,6 +81,17 @@ export interface PaginationResponse {
 export interface ProductListResponse {
   data: Product[];
   pagination: PaginationResponse;
+}
+
+export interface ProductSearchParams {
+  q?: string;
+  status?: ProductStatus;
+  categoryId?: string;
+  supplierId?: string;
+  locationId?: string;
+  locationType?: LocationType;
+  page?: number;
+  limit?: number;
 }
 
 export interface InitialStock {
@@ -119,6 +131,7 @@ export interface ProductCreatePayload {
   name: string;
   brandId?: string | null;
   categoryId?: string | null;
+  supplierId?: string | null;
   status: ProductStatus;
   images?: ProductImage[];
   items: ProductItemCreatePayload[];
@@ -128,6 +141,7 @@ export interface ProductUpdatePayload {
   name?: string;
   brandId?: string | null;
   categoryId?: string | null;
+  supplierId?: string | null;
   status?: ProductStatus;
   images?: ProductImage[];
 }

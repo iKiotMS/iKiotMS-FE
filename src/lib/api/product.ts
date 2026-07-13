@@ -12,6 +12,7 @@ import type {
   ProductItemUpdatePayload,
   PaginationResponse,
   ProductDetailResponse,
+  ProductSearchParams,
 } from '@/types/product'
 
 type MongoDoc<T extends object> = Omit<T, 'id'> & { _id: string }
@@ -54,6 +55,20 @@ export const productApi = {
       data: MongoProduct[]
       pagination: PaginationResponse
     }>('/products', { params: mergedParams })
+    return {
+      data: res.data.data.map(mapProduct),
+      pagination: res.data.pagination,
+    }
+  },
+
+  search: async (
+    params: ProductSearchParams,
+    signal?: AbortSignal,
+  ): Promise<ProductListResponse> => {
+    const res = await client.get<{
+      data: MongoProduct[]
+      pagination: PaginationResponse
+    }>('/products/search', { params, signal })
     return {
       data: res.data.data.map(mapProduct),
       pagination: res.data.pagination,

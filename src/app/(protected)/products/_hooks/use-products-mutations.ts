@@ -35,6 +35,7 @@ export function useProductsMutations() {
         name: data.name,
         brandId: data.brandId ?? undefined,
         categoryId: data.categoryId ?? undefined,
+        supplierId: data.supplierId ?? undefined,
         status: data.status,
         images: data.images,
         items: [
@@ -71,6 +72,7 @@ export function useProductsMutations() {
         name: data.name,
         brandId: data.brandId ?? undefined,
         categoryId: data.categoryId ?? undefined,
+        supplierId: data.supplierId ?? undefined,
         status: data.status,
         images: data.images,
       })

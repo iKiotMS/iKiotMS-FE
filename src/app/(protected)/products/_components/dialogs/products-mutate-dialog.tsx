@@ -176,6 +176,7 @@ const EMPTY_VALUES: ProductFormValues = {
   name: '',
   brandId: null,
   categoryId: null,
+  supplierId: null,
   status: 'ACTIVE',
   images: [],
   itemImages: [],
@@ -199,7 +200,17 @@ type ProductsMutateDialogProps = {
 
 export function ProductsMutateDialog({ open, onOpenChange, currentRow }: ProductsMutateDialogProps) {
   const isEdit = !!currentRow
-  const { handleAdd, handleEdit, brands, categories, branchOptions, warehouseOptions } = useProducts()
+  const {
+    handleAdd,
+    handleEdit,
+    brands,
+    categories,
+    branchOptions,
+    warehouseOptions,
+    ensureLocationOptionsLoaded,
+    suppliers,
+    ensureSuppliersLoaded,
+  } = useProducts()
   const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductFormValues>({
@@ -221,6 +232,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
         name: currentRow.name,
         brandId: currentRow.brandId ?? null,
         categoryId: currentRow.categoryId ?? null,
+        supplierId: currentRow.supplierId ?? null,
         status: currentRow.status,
         images: currentRow.images ?? [],
       })
@@ -228,6 +240,15 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
       form.reset(EMPTY_VALUES)
     }
   }, [open, isEdit, currentRow, form])
+
+  // Branch/warehouse/supplier options are only needed once this dialog is open —
+  // fetched lazily here instead of eagerly on the products page mount.
+  useEffect(() => {
+    if (!open) return
+    ensureLocationOptionsLoaded()
+    ensureSuppliersLoaded()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -427,6 +448,37 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="supplierId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nhà cung cấp</FormLabel>
+                  <Select
+                    onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                    value={field.value ?? '__none__'}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="cursor-pointer w-full">
+                        <SelectValue placeholder="Chọn nhà cung cấp" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-muted-foreground">Không có</span>
+                      </SelectItem>
+                      {suppliers.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.supplierName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

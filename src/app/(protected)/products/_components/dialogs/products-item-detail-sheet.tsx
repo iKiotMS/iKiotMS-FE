@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -98,12 +98,29 @@ export function ProductsItemDetailSheet({
   isSubDialogOpen,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const { branchOptions, warehouseOptions } = useProducts();
+  const {
+    branchOptions,
+    warehouseOptions,
+    ensureLocationOptionsLoaded,
+    suppliers,
+    ensureSuppliersLoaded,
+  } = useProducts();
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
   const canDelete = canDeleteProduct(role);
 
+  useEffect(() => {
+    if (!open) return;
+    ensureLocationOptionsLoaded();
+    ensureSuppliersLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   if (!item) return null;
+
+  const supplierName = product.supplierId
+    ? (suppliers.find((s) => s.id === product.supplierId)?.supplierName ?? "—")
+    : "—";
 
   function resolveLocationName(
     locationType: string,
@@ -187,6 +204,9 @@ export function ProductsItemDetailSheet({
                         {STATUS_MAP[product.status].label}
                       </Badge>
                     </InfoRow>
+                  </div>
+                  <div className="px-3">
+                    <InfoRow label="Nhà cung cấp">{supplierName}</InfoRow>
                   </div>
                   {item.warrantyPeriod && (
                     <div className="px-3">
