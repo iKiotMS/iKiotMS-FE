@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn, formatDateTime } from '@/lib/utils'
 import type { Promotion } from '@/types/promotion'
-import { STATUS_MAP, DISCOUNT_TYPE_MAP } from '../../_constants/promotion.constants'
+import { STATUS_MAP, DISCOUNT_TYPE_MAP, getPromotionDisplayStatus } from '../../_constants/promotion.constants'
 
 const formatVND = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
@@ -134,8 +134,7 @@ export const promotionsColumns: ColumnDef<Promotion>[] = [
     accessorKey: 'status',
     header: 'Trạng thái',
     cell: ({ row }) => {
-      const status = row.getValue('status') as Promotion['status']
-      const { label, className } = STATUS_MAP[status]
+      const { label, className } = STATUS_MAP[getPromotionDisplayStatus(row.original)]
       return (
         <Badge variant="secondary" className={cn('text-xs', className)}>
           {label}

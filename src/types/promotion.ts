@@ -79,6 +79,7 @@ export interface PromotionLog {
   _id?: string
   promotionId: string
   orderId?: string
+  paymentReference?: string | null
   branchId?: string
   customerId?: string
   discountAmount: number

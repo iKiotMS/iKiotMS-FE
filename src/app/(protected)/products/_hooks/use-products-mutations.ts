@@ -29,8 +29,10 @@ export function useProductsMutations() {
         .map((s) => ({
           locationId: s.locationId,
           locationType: s.locationType,
-          ...(s.stock && Number(s.stock) > 0 ? { stock: Number(s.stock) } : {}),
         }))
+      const itemProductName = data.useParentNameForItem
+        ? data.name
+        : (data.itemProductName?.trim() || data.name)
       const product = await productApi.create({
         name: data.name,
         brandId: data.brandId ?? undefined,
@@ -39,6 +41,7 @@ export function useProductsMutations() {
         images: data.images,
         items: [
           {
+            productName: itemProductName,
             productCode: data.productCode!,
             sku: data.sku!,
             barcode: data.barcode,

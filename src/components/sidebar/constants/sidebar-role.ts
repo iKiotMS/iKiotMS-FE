@@ -65,7 +65,6 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     },
     quanLyBanHangGroup([
       sidebarItems.hangHoa,
-      sidebarItems.giaoDich,
       sidebarItems.giaoDichBranch,
       sidebarItems.donHang,
     ]),

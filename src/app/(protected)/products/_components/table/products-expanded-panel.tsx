@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ import { ProductsEmpty } from "../products-empty";
 import { ProductsItemMutateDialog } from "../dialogs/products-item-mutate-dialog";
 import { ProductsItemDetailSheet } from "../dialogs/products-item-detail-sheet";
 import { getCachedUser } from "@/lib/auth";
+import { useAuthStore } from "@/store/auth-store";
 import {
   canUpdateProduct,
   canDeleteProduct,
@@ -40,8 +41,14 @@ export function ProductsExpandedPanel({
   product,
   isExpanded,
 }: ProductsExpandedPanelProps) {
-  const { setOpen, setCurrentRow, branchOptions, warehouseOptions } =
-    useProducts();
+  const {
+    setOpen,
+    setCurrentRow,
+    branchOptions,
+    warehouseOptions,
+    ensureLocationOptionsLoaded,
+  } = useProducts();
+  const locationKey = useAuthStore((s) => s.locationKey);
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
   const canDelete = canDeleteProduct(role);
@@ -53,22 +60,48 @@ export function ProductsExpandedPanel({
   const [addOpen, setAddOpen] = useState(false);
   const [viewingItem, setViewingItem] = useState<ProductItem | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
+  const fetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isExpanded || detail) return;
+    if (!isExpanded) return;
 
+    const key = `${product.id}:${locationKey}`;
+    if (fetchedKeyRef.current === key) return;
+    const isLocationChange =
+      fetchedKeyRef.current !== null &&
+      fetchedKeyRef.current.split(":")[1] !== locationKey;
+    fetchedKeyRef.current = key;
+
+    let cancelled = false;
     const fetchDetail = async () => {
+      if (isLocationChange) {
+        setViewOpen(false);
+        setViewingItem(null);
+        setEditOpen(false);
+        setEditingItem(null);
+      }
       setLoading(true);
       try {
         const res = await productApi.getById(product.id);
-        setDetail({ ...res, items: res.items ?? [] });
+        if (!cancelled) setDetail({ ...res, items: res.items ?? [] });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchDetail();
-  }, [isExpanded, product.id, detail]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isExpanded, product.id, locationKey]);
+
+  // Branch/warehouse options are only needed by the "Thêm phiên bản" (create item)
+  // dialog, so fetch them lazily on first open instead of on every page mount.
+  useEffect(() => {
+    if (!addOpen) return;
+    ensureLocationOptionsLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addOpen]);
 
   function handleItemAdded(newItem: ProductItem) {
     setDetail((prev) => {
@@ -82,7 +115,11 @@ export function ProductsExpandedPanel({
       if (!prev) return prev;
       return {
         ...prev,
-        items: prev.items.map((i) => (i.id === updated.id ? updated : i)),
+        // PATCH /products/items/:id doesn't populate `suppliers`, so keep the
+        // previously-populated list instead of clobbering it with raw ObjectIds.
+        items: prev.items.map((i) =>
+          i.id === updated.id ? { ...updated, suppliers: i.suppliers } : i,
+        ),
       };
     });
   }
@@ -178,36 +215,21 @@ export function ProductsExpandedPanel({
                       </span>
                       <span className="font-mono">{item.barcode || "—"}</span>
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        Trạng thái
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "w-fit text-xs",
-                          STATUS_MAP[product.status].className,
-                        )}
-                      >
-                        {STATUS_MAP[product.status].label}
-                      </Badge>
-                    </div>
-                      <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        Tên phiên bản
-                      </span>
-                      <span className="block min-w-0 truncate font-medium">
-                        {item.productDetails?.length
-                          ? `${item.productName} - ${item.productDetails.map((d) => d.value).join(" / ")}`
-                          : item.productName}
-                      </span>
-                    </div>
+
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
                         Giá bán
                       </span>
                       <span className="tabular-nums font-medium text-primary">
                         {formatVND(item.retailPrice)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
+                        Tên phiên bản
+                      </span>
+                      <span className="block min-w-0 truncate font-medium">
+                        {item.productName}
                       </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
@@ -342,6 +364,7 @@ export function ProductsExpandedPanel({
       <ProductsItemMutateDialog
         mode="create"
         productId={product.id}
+        productName={product.name}
         open={addOpen}
         onOpenChange={setAddOpen}
         onSuccess={handleItemAdded}

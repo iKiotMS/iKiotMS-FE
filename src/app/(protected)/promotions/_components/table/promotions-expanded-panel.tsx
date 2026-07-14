@@ -195,7 +195,7 @@ export function PromotionsExpandedPanel({
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow className="bg-muted">
-                    <TableHead className="text-xs">Đơn hàng</TableHead>
+                    <TableHead className="text-xs">Mã hóa đơn</TableHead>
                     <TableHead className="text-xs">Thời gian</TableHead>
                     <TableHead className="text-xs text-right">Số tiền giảm</TableHead>
                   </TableRow>
@@ -203,7 +203,7 @@ export function PromotionsExpandedPanel({
                 <TableBody>
                   {(logs ?? []).map((log) => (
                     <TableRow key={log.id} className="text-sm">
-                      <TableCell className="font-mono text-xs">{log.orderId ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-xs">{log.paymentReference ?? '—'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDateTime(log.createdAt)}
                       </TableCell>
