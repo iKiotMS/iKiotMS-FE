@@ -108,6 +108,7 @@ function buildCreateBody(payload: CreateStaffPayload) {
     taxNumber: parseTaxNumber(payload.profile?.taxNumber) || undefined,
     dob: normalizeDateInput(payload.profile?.dob),
     profile,
+    ...(payload.paySheetId ? { paySheetId: payload.paySheetId } : {}),
   };
 }
 
@@ -123,6 +124,10 @@ function buildUpdateBody(payload: UpdateStaffPayload) {
   }
   if (payload.accountNote !== undefined) {
     data.accountNote = payload.accountNote.trim();
+  }
+  // OpenAPI: null removes assignment.
+  if (payload.paySheetId !== undefined) {
+    data.paySheetId = payload.paySheetId;
   }
 
   const profile = buildProfileBody(

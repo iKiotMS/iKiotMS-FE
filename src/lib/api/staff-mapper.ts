@@ -31,6 +31,7 @@ export interface ApiStaffUser {
   };
   hireDate?: string;
   accountNote?: string;
+  paySheetId?: string | { _id?: string; name?: string } | null;
   leaveBalance?: {
     annualLeaveDays?: number;
     remainingDays?: number;
@@ -112,6 +113,22 @@ function mapLeaveBalance(
   return { annualLeaveDays: annual, remainingDays: remaining };
 }
 
+function resolvePaySheetId(
+  ref?: string | { _id?: string; name?: string } | null,
+): string | null | undefined {
+  if (ref === null) return null;
+  if (ref === undefined) return undefined;
+  if (typeof ref === "string") return ref || null;
+  return ref._id ?? null;
+}
+
+function resolvePaySheetName(
+  ref?: string | { _id?: string; name?: string } | null,
+): string | undefined {
+  if (!ref || typeof ref === "string") return undefined;
+  return ref.name?.trim() || undefined;
+}
+
 export function isDeletedStaff(user: ApiStaffUser): boolean {
   return user.status === "DELETED";
 }
@@ -159,6 +176,8 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     role: mapRole(user.role),
     status: mapStatus(user.status),
     joinedAt: user.hireDate ?? user.createdAt,
+    paySheetId: resolvePaySheetId(user.paySheetId),
+    paySheetName: resolvePaySheetName(user.paySheetId),
     profile: mapProfile(user.profile),
     accountNote: user.accountNote,
     leaveBalance: mapLeaveBalance(user.leaveBalance),

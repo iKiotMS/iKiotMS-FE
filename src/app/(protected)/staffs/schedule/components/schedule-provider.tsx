@@ -14,12 +14,13 @@ import {
   workingScheduleApi,
 } from "@/lib/api/schedule";
 import { holidayApi } from "@/lib/api/holiday";
+import { leaveRequestApi } from "@/lib/api/leave-request";
 import {
   mapShiftTemplatesToOptions,
   scheduleMatchesUserFilter,
 } from "@/lib/api/schedule-mapper";
 import { staffApi } from "@/lib/api/staff";
-import { getSessionRole } from "@/lib/auth";
+import { getSessionRole, getSessionUserId } from "@/lib/auth";
 import {
   getApiErrorMessage,
   getStaffRoleLabel,
@@ -29,8 +30,10 @@ import {
   canManageShiftTemplates,
   canViewSchedule,
 } from "@/app/(protected)/staffs/shared/schedule-permissions";
+import { canCreatePersonalLeave } from "@/components/sidebar/constants/role-permissions";
 import { buildHolidayNamesByDate } from "@/app/(protected)/staffs/shared/schedule-day-meta";
 import type { Holiday } from "@/types/holiday";
+import type { LeaveRequestPerDay } from "@/types/leave-request";
 import type {
   CreateWorkingSchedulePayload,
   ScheduleCalendarFilters,
@@ -80,6 +83,8 @@ type ScheduleContextType = {
   schedules: WorkingSchedule[];
   /** YYYY-MM-DD → tên ngày lễ thật (từ /holidays, bổ sung dayInfo). */
   holidaysByDate: Map<string, string>;
+  /** YYYY-MM-DD → đơn nghỉ phép cá nhân (GET /leave-requests/me/per-day). */
+  leaveByDate: Map<string, LeaveRequestPerDay[]>;
   isInitialLoading: boolean;
   isFetching: boolean;
   filters: ScheduleCalendarFilters;
@@ -167,7 +172,10 @@ export function ScheduleProvider({
   const [currentSchedule, setCurrentSchedule] =
     useState<WorkingSchedule | null>(null);
   const [monthHolidays, setMonthHolidays] = useState<Holiday[]>([]);
+  const [myLeaveDays, setMyLeaveDays] = useState<LeaveRequestPerDay[]>([]);
   const holidayYear = calendarMonth.getFullYear();
+  const sessionUserId = getSessionUserId();
+  const canFetchPersonalLeave = canCreatePersonalLeave(userRole);
 
   // Có /holidays thì không scan lại schedules mỗi lần list ca đổi.
   const holidayScheduleFallback = monthHolidays.length > 0 ? EMPTY_SCHEDULES : schedules;
@@ -175,6 +183,26 @@ export function ScheduleProvider({
     () => buildHolidayNamesByDate(monthHolidays, holidayScheduleFallback),
     [monthHolidays, holidayScheduleFallback],
   );
+
+  const leaveByDate = useMemo(() => {
+    const map = new Map<string, LeaveRequestPerDay[]>();
+    // Chỉ hiện nghỉ của chính mình; khi filter nhân viên khác thì ẩn.
+    const showMine =
+      filters.userId === "all" ||
+      (!!sessionUserId && filters.userId === sessionUserId);
+    if (!showMine) return map;
+
+    for (const item of myLeaveDays) {
+      if (item.status !== "APPROVED" && item.status !== "PENDING") continue;
+      const key = item.date.slice(0, 10);
+      if (!key) continue;
+      const list = map.get(key);
+      if (list) list.push(item);
+      else map.set(key, [item]);
+    }
+    return map;
+  }, [myLeaveDays, filters.userId, sessionUserId]);
+
   const visibleSchedules = useMemo(() => {
     return schedules.filter((schedule) => {
       if (
@@ -275,6 +303,29 @@ export function ScheduleProvider({
     userRole,
   ]);
 
+  const fetchMyLeaveDays = useCallback(async () => {
+    if (!canFetch || !canFetchPersonalLeave) {
+      setMyLeaveDays([]);
+      return;
+    }
+
+    try {
+      const days = await leaveRequestApi.getMinePerDay({
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+      });
+      setMyLeaveDays(days);
+    } catch {
+      // TO không có read_mine; role khác lỗi thì bỏ qua để lịch ca vẫn dùng được.
+      setMyLeaveDays([]);
+    }
+  }, [
+    canFetch,
+    canFetchPersonalLeave,
+    filters.endDate,
+    filters.startDate,
+  ]);
+
   const fetchScheduleById = useCallback(async (id: string) => {
     try {
       return await workingScheduleApi.getById(id);
@@ -315,6 +366,10 @@ export function ScheduleProvider({
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  useEffect(() => {
+    void fetchMyLeaveDays();
+  }, [fetchMyLeaveDays]);
 
   useEffect(() => {
     if (!canFetch) {
@@ -530,6 +585,7 @@ export function ScheduleProvider({
       value={{
         schedules: visibleSchedules,
         holidaysByDate,
+        leaveByDate,
         isInitialLoading,
         isFetching,
         filters,

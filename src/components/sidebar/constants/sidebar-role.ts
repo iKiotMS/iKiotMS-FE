@@ -74,10 +74,18 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   ],
 
   WAREHOUSE_MANAGER: [
+    {
+      label: "Quản lý",
+      items: [sidebarItems.nhanVien],
+    },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich]),
   ],
 
   STAFF: [
+    {
+      label: "Quản lý",
+      items: [sidebarItems.nhanVien],
+    },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.donHang]),
     crmGroup,
     cskhGroup,
