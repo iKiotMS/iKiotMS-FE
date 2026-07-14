@@ -29,6 +29,7 @@ import {
   parseImportPriceInput,
   type OpeningRowFieldErrors,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
+import { resolveItemImportPrice } from "@/lib/api/stock-movement";
 import type { OpeningDetailRow } from "@/app/(protected)/exchange/shared/use-stock-movement-detail";
 import { cn } from "@/lib/utils";
 import type {
@@ -147,14 +148,10 @@ export function MovementDetailsTable({
                             updateOpeningRow(idx, {
                               productItemId: value,
                               quantity: nextQty,
-                              ...(typeof product?.costPrice === "number"
-                                ? {
-                                    importPrice: Math.min(
-                                      product.costPrice,
-                                      1_000_000_000_000,
-                                    ),
-                                  }
-                                : {}),
+                              importPrice: Math.min(
+                                Math.max(0, resolveItemImportPrice(product)),
+                                1_000_000_000_000,
+                              ),
                             });
                           }}
                         >

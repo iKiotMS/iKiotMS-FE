@@ -71,7 +71,7 @@ export function DetailLineCard({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-3 rounded-lg border bg-muted/20 p-4", className)}>
+    <div className={cn("space-y-3 rounded-lg border bg-muted/20 p-3 sm:p-4", className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">Dòng {index + 1}</p>
         <Button
@@ -119,7 +119,6 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
         }
         onChange={(e) => {
           const next = parseImportPriceInput(e.target.value);
-          // Always emit a number so form.watch / useWatch updates realtime totals.
           onChange(next);
         }}
       />
@@ -130,11 +129,11 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
 /* ─── ProductSelect ─── */
 
 const PRODUCT_TRIGGER_CLASS =
-  "h-auto min-h-16 w-full cursor-pointer items-center gap-2 px-3 py-3 text-left text-sm whitespace-normal " +
+  "flex h-auto min-h-11 w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm whitespace-normal " +
   "*:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:flex " +
-  "*:data-[slot=select-value]:w-full *:data-[slot=select-value]:items-start";
+  "*:data-[slot=select-value]:w-full *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:items-start";
 
-type ProductMetaMode = "atLocation" | "stock" | "skuOnly";
+type ProductMetaMode = "atLocation" | "stock" | "skuOnly" | "price";
 
 function ProductMeta({
   product,
@@ -145,7 +144,7 @@ function ProductMeta({
 }) {
   if (mode === "atLocation") {
     return (
-      <span className="flex flex-wrap items-center gap-1.5 leading-tight">
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 leading-snug">
         {product.sku ? (
           <span className="text-xs text-muted-foreground">SKU: {product.sku}</span>
         ) : null}
@@ -155,18 +154,40 @@ function ProductMeta({
         >
           {product.atLocation ? "Đã có tại kho" : "Chưa có tại kho"}
         </Badge>
+        {typeof product.costPrice === "number" ? (
+          <span className="text-xs text-muted-foreground">
+            Giá vốn: {formatMoneyVnd(product.costPrice)}
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
+  if (mode === "price") {
+    return (
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-snug">
+        {product.sku ? <span>SKU: {product.sku}</span> : null}
+        {typeof product.costPrice === "number" ? (
+          <span>Giá vốn: {formatMoneyVnd(product.costPrice)}</span>
+        ) : null}
+        {typeof product.retailPrice === "number" ? (
+          <span>Giá bán: {formatMoneyVnd(product.retailPrice)}</span>
+        ) : null}
       </span>
     );
   }
 
   if (mode === "stock") {
     return (
-      <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground leading-tight">
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-snug">
         {product.sku ? <span>SKU: {product.sku}</span> : null}
         {typeof product.stock === "number" ? (
           <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
             Tồn: {product.stock.toLocaleString("vi-VN")}
           </Badge>
+        ) : null}
+        {typeof product.costPrice === "number" ? (
+          <span>Giá: {formatMoneyVnd(product.costPrice)}</span>
         ) : null}
       </span>
     );
@@ -174,7 +195,7 @@ function ProductMeta({
 
   if (!product.sku) return null;
   return (
-    <span className="text-xs text-muted-foreground leading-tight">
+    <span className="text-xs text-muted-foreground leading-snug">
       SKU: {product.sku}
       {typeof product.stock === "number"
         ? ` · Tồn: ${product.stock.toLocaleString("vi-VN")}`
@@ -191,7 +212,7 @@ function ProductOptionLabel({
   mode: ProductMetaMode;
 }) {
   return (
-    <span className="flex min-w-0 max-w-full flex-col gap-1.5 text-left">
+    <span className="flex min-w-0 max-w-full flex-col gap-0.5 text-left">
       <span className="truncate font-medium leading-snug">{product.name}</span>
       <ProductMeta product={product} mode={mode} />
     </span>
@@ -206,6 +227,7 @@ export function ProductSelect({
   metaMode = "skuOnly",
   className,
   disabled,
+  displayProduct,
 }: {
   products: StockMovementProductItemOption[];
   value: string;
@@ -214,11 +236,22 @@ export function ProductSelect({
   metaMode?: ProductMetaMode;
   className?: string;
   disabled?: boolean;
+  displayProduct?: StockMovementProductItemOption;
 }) {
-  const selected = products.find((p) => p._id === value);
+  const selected =
+    products.find((p) => p._id === value) ??
+    (displayProduct?._id === value ? displayProduct : undefined);
+  const orphan =
+    !!displayProduct &&
+    displayProduct._id === value &&
+    !products.some((p) => p._id === displayProduct._id);
 
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+    <Select
+      value={value || undefined}
+      onValueChange={onValueChange}
+      disabled={disabled}
+    >
       <FormControl>
         <SelectTrigger className={cn(PRODUCT_TRIGGER_CLASS, className)}>
           <SelectValue placeholder={placeholder}>
@@ -228,12 +261,26 @@ export function ProductSelect({
           </SelectValue>
         </SelectTrigger>
       </FormControl>
-      <SelectContent className="max-w-[min(90vw,40rem)]">
-        {products.map((p) => (
-          <SelectItem key={p._id} value={p._id} className="py-2">
-            <ProductOptionLabel product={p} mode={metaMode} />
+      <SelectContent
+        position="popper"
+        className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]"
+      >
+        {orphan && (
+          <SelectItem value={displayProduct._id} className="py-2.5" disabled>
+            <ProductOptionLabel product={displayProduct} mode={metaMode} />
           </SelectItem>
-        ))}
+        )}
+        {products.length === 0 && !orphan ? (
+          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+            Không có hàng hóa
+          </div>
+        ) : (
+          products.map((p) => (
+            <SelectItem key={p._id} value={p._id} className="py-2.5 items-start">
+              <ProductOptionLabel product={p} mode={metaMode} />
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
   );

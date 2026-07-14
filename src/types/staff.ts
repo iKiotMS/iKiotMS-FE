@@ -36,6 +36,9 @@ export interface Staff {
   role: StaffRole;
   status: StaffStatus;
   joinedAt: string;
+  /** Assigned paysheet from User.paySheetId (POST/PATCH /staff). */
+  paySheetId?: string | null;
+  paySheetName?: string;
   profile?: StaffProfile;
   accountNote?: string;
   leaveBalance?: StaffLeaveBalance;
@@ -88,6 +91,8 @@ export interface CreateStaffPayload {
   role: StaffRole;
   branchId?: string | null;
   warehouseId?: string | null;
+  /** Optional — createStaffDTO accepts paySheetId. */
+  paySheetId?: string | null;
   hireDate?: string;
   profile?: StaffProfilePayload;
   newPassword?: string;
@@ -101,6 +106,11 @@ export interface UpdateStaffPayload {
   /** Không gửi qua PATCH /staff — đổi manager dùng API gán Branch/Warehouse. */
   branchId?: string | null;
   warehouseId?: string | null;
+  /**
+   * PATCH /staff data.paySheetId — ObjectId string, or null to remove assignment
+   * (OpenAPI UpdateStaffRequest).
+   */
+  paySheetId?: string | null;
   hireDate?: string;
   profile?: StaffProfilePayload;
   accountNote?: string;

@@ -1,47 +1,14 @@
 import { type ColumnDef } from "@tanstack/react-table";
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  ChevronsUpDown,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
+  LEAVE_KIND_MAP,
   LEAVE_STATUS_MAP,
-  LEAVE_TYPE_MAP,
 } from "@/app/(protected)/staffs/shared/leave-request-status";
 import { formatLeaveDate } from "@/lib/api/leave-request-mapper";
 import type { LeaveRequest } from "@/types/leave-request";
-
-function SortableHeader({
-  label,
-  column,
-}: {
-  label: string;
-  column: {
-    getIsSorted: () => false | "asc" | "desc";
-    toggleSorting: (desc?: boolean) => void;
-  };
-}) {
-  const sorted = column.getIsSorted();
-  return (
-    <button
-      className="flex items-center gap-1 cursor-pointer hover:text-foreground"
-      onClick={() => column.toggleSorting(sorted === "asc")}
-    >
-      {label}
-      {sorted === "asc" ? (
-        <ChevronUp className="size-3" />
-      ) : sorted === "desc" ? (
-        <ChevronDown className="size-3" />
-      ) : (
-        <ChevronsUpDown className="size-3 text-muted-foreground" />
-      )}
-    </button>
-  );
-}
 
 export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
   {
@@ -73,9 +40,7 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
   },
   {
     accessorKey: "staffName",
-    header: ({ column }) => (
-      <SortableHeader label="Nhân viên" column={column} />
-    ),
+    header: "Nhân viên",
     cell: ({ row }) => (
       <div className="flex flex-col">
         <span className="font-medium">{row.original.staffName}</span>
@@ -86,11 +51,11 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     ),
   },
   {
-    accessorKey: "type",
-    header: "Loại nghỉ",
+    accessorKey: "kind",
+    header: "Phân loại",
     cell: ({ row }) => {
-      const config = LEAVE_TYPE_MAP[row.original.type] ?? {
-        label: row.original.type,
+      const config = LEAVE_KIND_MAP[row.original.kind] ?? {
+        label: row.original.kind,
         variant: "secondary" as const,
       };
       return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -102,13 +67,22 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     cell: ({ row }) => (
       <div className="flex flex-col text-sm">
         <span>
-          {formatLeaveDate(row.original.fromDate)} -{" "}
-          {formatLeaveDate(row.original.toDate)}
+          {formatLeaveDate(row.original.fromDate, true)} -{" "}
+          {formatLeaveDate(row.original.toDate, true)}
         </span>
         <span className="text-muted-foreground">
           {row.original.totalDays} ngày
         </span>
       </div>
+    ),
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Ngày tạo",
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
+        {formatLeaveDate(row.original.createdAt, true)}
+      </span>
     ),
   },
   {
@@ -147,5 +121,3 @@ export const leaveRequestsColumns: ColumnDef<LeaveRequest>[] = [
     enableHiding: false,
   },
 ];
-
-export { LEAVE_TYPE_MAP as TYPE_LABELS, LEAVE_STATUS_MAP as STATUS_MAP };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Building2,
   CalendarDays,
@@ -11,15 +11,21 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  LEAVE_KIND_MAP,
   LEAVE_STATUS_MAP,
-  LEAVE_TYPE_MAP,
 } from "@/app/(protected)/staffs/shared/leave-request-status";
-import { canReviewLeaveRequest } from "@/components/sidebar/constants/role-permissions";
+import {
+  canCancelOwnLeave,
+  canReviewLeaveRequest,
+  canReviewLeaveRequestTarget,
+} from "@/components/sidebar/constants/role-permissions";
+import { leaveRequestApi } from "@/lib/api/leave-request";
 import { formatLeaveDate } from "@/lib/api/leave-request-mapper";
 import { useAuth } from "@/hooks/use-auth";
 import type { LeaveRequest } from "@/types/leave-request";
@@ -45,54 +51,122 @@ function InfoItem({
   );
 }
 
+function isApproveDaysInvalid(
+  paid: number,
+  unpaid: number,
+  totalDays: number,
+): boolean {
+  return (
+    Number.isNaN(paid) ||
+    Number.isNaN(unpaid) ||
+    paid < 0 ||
+    unpaid < 0 ||
+    paid + unpaid <= 0 ||
+    paid + unpaid > totalDays
+  );
+}
+
 export function LeaveRequestsExpandedPanel({
   request,
-  isExpanded,
 }: {
   request: LeaveRequest;
-  isExpanded: boolean;
 }) {
   const { user } = useAuth();
-  const { handleApprove, handleReject } = useLeaveRequests();
-  const [loading, setLoading] = useState(false);
+  const { handleApprove, handleReject, handleCancel, currentUserId } =
+    useLeaveRequests();
+
+  const [detail, setDetail] = useState<LeaveRequest | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [note, setNote] = useState("");
   const [rejectNote, setRejectNote] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const wasExpandedRef = useRef(false);
+  const [paidLeaveDays, setPaidLeaveDays] = useState(String(request.totalDays));
+  const [unpaidLeaveDays, setUnpaidLeaveDays] = useState("0");
 
-  const canReview = canReviewLeaveRequest(user?.role);
+  const effective = detail ?? request;
+  const sessionUserId = currentUserId ?? "";
+  const isOwnRequest =
+    !!sessionUserId &&
+    !!request.userId &&
+    String(request.userId) === String(sessionUserId);
 
-  useLayoutEffect(() => {
-    if (isExpanded && !wasExpandedRef.current) {
-      wasExpandedRef.current = true;
-      setLoading(true);
-      const t = setTimeout(() => setLoading(false), 350);
-      return () => clearTimeout(t);
-    }
-    if (!isExpanded) {
-      wasExpandedRef.current = false;
-      setNote("");
-      setRejectNote("");
-      setShowRejectForm(false);
-    }
-  }, [isExpanded]);
+  const canReview = canReviewLeaveRequestTarget(user?.role, {
+    requestUserId: effective.userId,
+    currentUserId: sessionUserId,
+    requesterRole: effective.requesterRole,
+  });
+  const canCancel =
+    canCancelOwnLeave(user?.role) &&
+    isOwnRequest &&
+    (effective.status === "PENDING" || effective.status === "APPROVED");
+  const isPending = effective.status === "PENDING";
+  const showReviewActions = isPending && canReview && !isOwnRequest;
 
-  const status = LEAVE_STATUS_MAP[request.status] ?? {
-    label: request.status,
+  // List BR thường thiếu role — chỉ fetch khi cần resolve quyền duyệt Staff.
+  useEffect(() => {
+    const needsRole =
+      request.status === "PENDING" &&
+      user?.role === "BRANCH_MANAGER" &&
+      canReviewLeaveRequest(user.role) &&
+      !request.requesterRole &&
+      !isOwnRequest;
+
+    if (!needsRole) return;
+
+    let cancelled = false;
+    setDetailLoading(true);
+    void leaveRequestApi
+      .getById(request._id)
+      .then((full) => {
+        if (!cancelled) setDetail(full);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    request._id,
+    request.status,
+    request.requesterRole,
+    request.userId,
+    user?.role,
+    isOwnRequest,
+  ]);
+
+  const status = LEAVE_STATUS_MAP[effective.status] ?? {
+    label: effective.status,
     variant: "secondary" as const,
   };
-  const type = LEAVE_TYPE_MAP[request.type] ?? {
-    label: request.type,
+  const kind = LEAVE_KIND_MAP[effective.kind] ?? {
+    label: effective.kind,
     variant: "secondary" as const,
   };
-  const isPending = request.status === "PENDING";
+
+  const paidNum = Number(paidLeaveDays);
+  const unpaidNum = Number(unpaidLeaveDays);
+  const approveInvalid = isApproveDaysInvalid(
+    paidNum,
+    unpaidNum,
+    effective.totalDays,
+  );
 
   const onApprove = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!showReviewActions || approveInvalid) return;
     setSubmitting(true);
     try {
-      await handleApprove(request._id, note || undefined);
+      await handleApprove(effective._id, {
+        paidLeaveDays: paidNum,
+        unpaidLeaveDays: unpaidNum,
+        reviewNote: note || undefined,
+      });
       setNote("");
     } finally {
       setSubmitting(false);
@@ -101,10 +175,10 @@ export function LeaveRequestsExpandedPanel({
 
   const onReject = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!rejectNote.trim()) return;
+    if (!showReviewActions || !rejectNote.trim()) return;
     setSubmitting(true);
     try {
-      await handleReject(request._id, rejectNote.trim());
+      await handleReject(effective._id, rejectNote.trim());
       setRejectNote("");
       setShowRejectForm(false);
     } finally {
@@ -112,7 +186,17 @@ export function LeaveRequestsExpandedPanel({
     }
   };
 
-  if (loading) {
+  const onCancel = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSubmitting(true);
+    try {
+      await handleCancel(effective._id);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (detailLoading) {
     return (
       <div className="bg-background border-b px-6 py-4 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -132,51 +216,56 @@ export function LeaveRequestsExpandedPanel({
     <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
-        <Badge variant={type.variant}>{type.label}</Badge>
+        <Badge variant={kind.variant}>{kind.label}</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-4">
         <InfoItem
           icon={<User className="size-4" />}
           label="Nhân viên"
-          value={request.staffName}
+          value={effective.staffName}
         />
         <InfoItem
           icon={<Building2 className="size-4" />}
           label="Đơn vị"
-          value={request.branchName}
+          value={effective.branchName}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Từ ngày"
-          value={formatLeaveDate(request.fromDate)}
+          value={formatLeaveDate(effective.fromDate, true)}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Đến ngày"
-          value={formatLeaveDate(request.toDate)}
+          value={formatLeaveDate(effective.toDate, true)}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Số ngày nghỉ"
-          value={`${request.totalDays} ngày`}
+          value={`${effective.totalDays} ngày`}
+        />
+        <InfoItem
+          icon={<CalendarDays className="size-4" />}
+          label="Có lương / Không lương"
+          value={`${effective.paidLeaveDays ?? 0} / ${effective.unpaidLeaveDays ?? 0}`}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
           label="Ngày tạo"
-          value={formatLeaveDate(request.createdAt, true)}
+          value={formatLeaveDate(effective.createdAt, true)}
         />
-        {request.reviewedAt && (
+        {effective.reviewedAt && (
           <InfoItem
             icon={<CalendarDays className="size-4" />}
             label="Ngày xử lý"
-            value={formatLeaveDate(request.reviewedAt, true)}
+            value={formatLeaveDate(effective.reviewedAt, true)}
           />
         )}
         <InfoItem
           icon={<User className="size-4" />}
           label="Mã đơn"
-          value={`#${request._id.slice(-6).toUpperCase()}`}
+          value={`#${effective._id.slice(-6).toUpperCase()}`}
         />
       </div>
 
@@ -185,20 +274,57 @@ export function LeaveRequestsExpandedPanel({
           <FileText className="mt-0.5 size-4 text-muted-foreground shrink-0" />
           <div>
             <span className="font-medium">Lý do: </span>
-            {request.reason}
+            {effective.reason}
           </div>
         </div>
       </div>
 
-      {request.reviewNote && (
+      {effective.reviewNote && (
         <div className="mb-4 rounded-lg border p-3 text-sm">
           <span className="font-medium">Ghi chú duyệt: </span>
-          {request.reviewNote}
+          {effective.reviewNote}
         </div>
       )}
 
-      {isPending && canReview && !showRejectForm && (
+      {isPending && isOwnRequest && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+          {user?.role === "BRANCH_MANAGER" ||
+          user?.role === "WAREHOUSE_MANAGER"
+            ? "Đơn của bạn đang chờ Tenant Owner duyệt. Bạn không thể tự duyệt đơn này."
+            : "Đơn của bạn đang chờ quản lý duyệt."}
+        </div>
+      )}
+
+      {showReviewActions && !showRejectForm && (
         <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm">Ngày có lương *</Label>
+              <Input
+                type="number"
+                min={0}
+                value={paidLeaveDays}
+                onChange={(e) => setPaidLeaveDays(e.target.value)}
+                className="mt-1"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Ngày không lương *</Label>
+              <Input
+                type="number"
+                min={0}
+                value={unpaidLeaveDays}
+                onChange={(e) => setUnpaidLeaveDays(e.target.value)}
+                className="mt-1"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tổng có lương + không lương phải &gt; 0 và ≤ {effective.totalDays}{" "}
+            ngày xin nghỉ.
+          </p>
           <div>
             <Label className="text-sm">Ghi chú duyệt (tuỳ chọn)</Label>
             <Textarea
@@ -214,7 +340,7 @@ export function LeaveRequestsExpandedPanel({
             <Button
               className="flex-1 cursor-pointer"
               onClick={onApprove}
-              disabled={submitting}
+              disabled={submitting || approveInvalid}
             >
               <CheckCircle className="mr-2 size-4" />
               Duyệt đơn
@@ -235,7 +361,7 @@ export function LeaveRequestsExpandedPanel({
         </div>
       )}
 
-      {isPending && canReview && showRejectForm && (
+      {showReviewActions && showRejectForm && (
         <div className="space-y-3 rounded-lg border p-4">
           <h4 className="text-sm font-semibold">Từ chối đơn nghỉ phép</h4>
           <div>
@@ -270,6 +396,19 @@ export function LeaveRequestsExpandedPanel({
               Huỷ
             </Button>
           </div>
+        </div>
+      )}
+
+      {canCancel && (
+        <div className="mt-3">
+          <Button
+            variant="outline"
+            className="cursor-pointer"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Hủy đơn của tôi
+          </Button>
         </div>
       )}
 

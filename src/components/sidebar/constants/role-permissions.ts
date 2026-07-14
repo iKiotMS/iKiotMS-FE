@@ -15,9 +15,20 @@ export const rolePermissions = {
     delete: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
   },
   leaveRequests: {
-    view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER"]),
+    view: new Set([
+      "TENANT_OWNER",
+      "BRANCH_MANAGER",
+      "WAREHOUSE_MANAGER",
+      "STAFF",
+    ]),
     review: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
     emergencyCreate: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
+    createPersonal: new Set([
+      "BRANCH_MANAGER",
+      "WAREHOUSE_MANAGER",
+      "STAFF",
+    ]),
+    cancel: new Set(["BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF"]),
   },
   billing: {
     manage: new Set(["TENANT_OWNER"]),
@@ -153,7 +164,7 @@ export function canPromoteStaffToManager(role?: string | null): boolean {
   return role === "TENANT_OWNER";
 }
 
-// Leave requests
+// Leave requests — aligned with BE permissions.json leaveRequests actions
 export function canViewLeaveRequests(role?: string | null): boolean {
   if (!role) return false;
   return rolePermissions.leaveRequests.view.has(role);
@@ -162,9 +173,63 @@ export function canReviewLeaveRequest(role?: string | null): boolean {
   if (!role) return false;
   return rolePermissions.leaveRequests.review.has(role);
 }
+
+/**
+ * Ai được duyệt đơn cụ thể (khớp BE reviewLeaveRequest):
+ * - Không tự duyệt đơn của mình
+ * - TO: duyệt BR / WH / STAFF
+ * - BR: chỉ duyệt STAFF (đơn BR/WH chờ TENANT_OWNER)
+ */
+export function canReviewLeaveRequestTarget(
+  reviewerRole?: string | null,
+  options?: {
+    requestUserId?: string | null;
+    currentUserId?: string | null;
+    requesterRole?: string | null;
+  },
+): boolean {
+  if (!canReviewLeaveRequest(reviewerRole)) return false;
+
+  const requestUserId = options?.requestUserId
+    ? String(options.requestUserId).trim()
+    : "";
+  const currentUserId = options?.currentUserId
+    ? String(options.currentUserId).trim()
+    : "";
+
+  // BR/TO không được tự duyệt đơn của chính mình.
+  if (requestUserId && currentUserId && requestUserId === currentUserId) {
+    return false;
+  }
+
+  if (reviewerRole === "TENANT_OWNER") {
+    if (!options?.requesterRole) return true;
+    return ["BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF"].includes(
+      options.requesterRole,
+    );
+  }
+
+  if (reviewerRole === "BRANCH_MANAGER") {
+    // Chưa biết role người nộp → không hiện nút duyệt (tránh BR tự duyệt đơn mình).
+    if (!options?.requesterRole) return false;
+    return options.requesterRole === "STAFF";
+  }
+
+  return false;
+}
 export function canCreateEmergencyLeave(role?: string | null): boolean {
   if (!role) return false;
   return rolePermissions.leaveRequests.emergencyCreate.has(role);
+}
+/** BR / WH / STAFF: POST /leave-requests (đơn nghỉ của chính mình). */
+export function canCreatePersonalLeave(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.leaveRequests.createPersonal.has(role);
+}
+/** BR / WH / STAFF: POST /leave-requests/:id/cancel. */
+export function canCancelOwnLeave(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.leaveRequests.cancel.has(role);
 }
 
 // Billing

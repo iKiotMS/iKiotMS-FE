@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Building2,
   CalendarDays,
@@ -16,11 +17,13 @@ import {
   UserCheck,
   UserCog,
   Warehouse,
+  Wallet,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatStaffDate,
   formatStaffDateTime,
@@ -46,8 +49,10 @@ import {
 import {
   getStaffGenderLabel,
 } from "@/lib/api/staff-mapper";
+import { describeBasicPay, paySheetApi } from "@/lib/api/paysheet";
 import { formatIdentificationId } from "@/app/(protected)/staffs/shared/identification-format";
 import type { Staff } from "@/types/staff";
+import type { PaySheetDetail } from "@/types/paysheet";
 import { useStaffs } from "./staffs-provider";
 
 function InfoItem({
@@ -81,6 +86,11 @@ export function StaffsExpandedPanel({
     useStaffs();
   const userRole = getSessionRole();
   const requesterBranchId = getSessionBranchId();
+  const [paySheetDetail, setPaySheetDetail] = useState<PaySheetDetail | null>(
+    null,
+  );
+  const [paySheetLoading, setPaySheetLoading] = useState(false);
+
   const showDelete =
     canDeleteStaff(userRole) &&
     canDeleteStaffRow(userRole, staff, requesterBranchId);
@@ -97,6 +107,32 @@ export function StaffsExpandedPanel({
     staff.role === "WAREHOUSE_MANAGER" &&
     Boolean(staff.warehouseId);
 
+  useEffect(() => {
+    if (!isExpanded || !staff.paySheetId) {
+      setPaySheetDetail(null);
+      setPaySheetLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPaySheetLoading(true);
+    void paySheetApi
+      .getById(staff.paySheetId)
+      .then((detail) => {
+        if (!cancelled) setPaySheetDetail(detail);
+      })
+      .catch(() => {
+        if (!cancelled) setPaySheetDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPaySheetLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isExpanded, staff.paySheetId]);
+
   if (!isExpanded) return null;
 
   const status = getStaffStatusDisplay(staff.status);
@@ -111,6 +147,14 @@ export function StaffsExpandedPanel({
     canDeactivateStaffRow(userRole, staff, requesterBranchId);
   const canChangePassword =
     showAccountActions && staff.status === "ACTIVE";
+
+  const paySheetName =
+    paySheetDetail?.name ||
+    staff.paySheetName ||
+    (staff.paySheetId
+      ? `#${String(staff.paySheetId).slice(-6).toUpperCase()}`
+      : null);
+  const paySheetSummary = describeBasicPay(paySheetDetail?.basicPay);
 
   return (
     <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
@@ -129,6 +173,38 @@ export function StaffsExpandedPanel({
         <div>
           <p className="text-xs text-muted-foreground">Ảnh đại diện</p>
           <p className="text-sm font-medium">{staff.fullName}</p>
+        </div>
+      </div>
+
+      <div className="mb-4 rounded-lg border bg-muted/30 px-4 py-3">
+        <div className="flex items-start gap-2">
+          <Wallet className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-xs text-muted-foreground">Bảng lương</p>
+            {paySheetLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-56" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            ) : paySheetName ? (
+              <>
+                <p className="text-sm font-semibold break-words">
+                  {paySheetName}
+                </p>
+                {paySheetSummary ? (
+                  <p className="text-sm text-foreground/80">{paySheetSummary}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Đã gán bảng lương cho nhân viên này.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm font-medium text-muted-foreground">
+                Chưa gán bảng lương
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

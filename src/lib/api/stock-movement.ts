@@ -71,9 +71,12 @@ type ApiProductItem = {
   sku?: string;
   costPrice?: number;
   retailPrice?: number;
+  stock?: number;
+  suppliers?: Array<string | { _id?: string; id?: string }>;
 };
 
 type ApiProduct = {
+  _id?: string;
   name?: string;
   items?: ApiProductItem[];
   productItems?: ApiProductItem[];
@@ -203,40 +206,191 @@ async function fetchLocationOptions(): Promise<StockMovementLocationOption[]> {
   return [...warehouses, ...branches];
 }
 
-async function fetchAllProductItemOptions(): Promise<
-  StockMovementProductItemOption[]
-> {
-  const response = await client.get("/products", {
-    params: { page: 1, limit: 100 },
-  });
-  return asArray<ApiProduct>(response.data?.data).flatMap((product) =>
+async function fetchInventoryAtLocation(
+  locationId: string,
+  locationType: LocationType,
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const response = await client.get("/inventory", {
+      params: { page, limit: 100, locationId, locationType },
+    });
+    for (const row of asArray<ApiInventoryRow>(response.data?.data)) {
+      const id =
+        typeof row.productItemId === "string"
+          ? row.productItemId
+          : row.productItemId?._id;
+      if (id) map.set(id, row.stock ?? 0);
+    }
+    totalPages = Number(response.data?.pagination?.totalPages ?? 1);
+    page += 1;
+  } while (page <= totalPages);
+
+  return map;
+}
+
+function resolveSupplierIds(
+  suppliers?: Array<string | { id?: string; _id?: string }>,
+): string[] {
+  if (!suppliers?.length) return [];
+  return suppliers
+    .map((s) => (typeof s === "string" ? s : (s.id ?? s._id ?? "")))
+    .filter(Boolean);
+}
+
+function mapApiProductsToItemOptions(
+  products: ApiProduct[],
+): StockMovementProductItemOption[] {
+  return products.flatMap((product) =>
     asArray<ApiProductItem>(product.items ?? product.productItems).map(
       (item) => ({
         _id: item._id,
+        productId: product._id,
         name: item.productName ?? item.name ?? product.name ?? item._id,
         sku: item.sku ?? "",
         costPrice: item.costPrice ?? item.retailPrice ?? 0,
+        retailPrice: item.retailPrice,
+        supplierIds: resolveSupplierIds(item.suppliers),
+        stock: item.stock,
       }),
     ),
   );
 }
 
-async function fetchInventoryAtLocation(
-  locationId: string,
-  locationType: LocationType,
-): Promise<Map<string, number>> {
-  const response = await client.get("/inventory", {
-    params: { page: 1, limit: 100, locationId, locationType },
+/** GET /products/search — có items + costPrice/retailPrice. */
+async function fetchProductSearch(params: {
+  q?: string;
+  page?: number;
+  limit?: number;
+  status?: string;
+}): Promise<{
+  items: StockMovementProductItemOption[];
+  totalPages: number;
+}> {
+  const response = await client.get("/products/search", {
+    params: {
+      q: params.q?.trim() || undefined,
+      page: params.page ?? 1,
+      limit: Math.min(params.limit ?? 50, 50),
+      status: params.status ?? "ACTIVE",
+    },
   });
-  const map = new Map<string, number>();
-  for (const row of asArray<ApiInventoryRow>(response.data?.data)) {
-    const id =
-      typeof row.productItemId === "string"
-        ? row.productItemId
-        : row.productItemId?._id;
-    if (id) map.set(id, row.stock ?? 0);
+  return {
+    items: mapApiProductsToItemOptions(
+      asArray<ApiProduct>(response.data?.data),
+    ),
+    totalPages: Number(response.data?.pagination?.totalPages ?? 1),
+  };
+}
+
+/**
+ * Catalog với giá: GET /products/search
+ * (GET /products thường không gắn items nên không dùng cho giá).
+ */
+async function fetchAllProductItemOptions(): Promise<
+  StockMovementProductItemOption[]
+> {
+  const all: StockMovementProductItemOption[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await fetchProductSearch({ page, limit: 50, status: "ACTIVE" });
+    all.push(...res.items);
+    totalPages = res.totalPages || 1;
+    page += 1;
+  } while (page <= totalPages);
+
+  return all;
+}
+
+/** Item đã gắn NCC + giá (GET /products?supplierId= + GET /products/:id). */
+async function fetchSupplierProductItemOptions(
+  supplierId: string,
+): Promise<StockMovementProductItemOption[]> {
+  const options: StockMovementProductItemOption[] = [];
+  let page = 1;
+  let totalPages = 1;
+  const productIds: string[] = [];
+
+  do {
+    const response = await client.get("/products", {
+      params: {
+        supplierId,
+        page,
+        limit: 100,
+        status: "ACTIVE",
+      },
+    });
+    const rows = asArray<{ _id?: string }>(response.data?.data);
+    for (const p of rows) {
+      if (p._id) productIds.push(p._id);
+    }
+    totalPages = Number(response.data?.pagination?.totalPages ?? 1);
+    page += 1;
+  } while (page <= totalPages);
+
+  const chunkSize = 8;
+  for (let i = 0; i < productIds.length; i += chunkSize) {
+    const chunk = productIds.slice(i, i + chunkSize);
+    const details = await Promise.all(
+      chunk.map((id) =>
+        client
+          .get(`/products/${id}`)
+          .then((res) => res.data?.data as ApiProduct | undefined)
+          .catch(() => null),
+      ),
+    );
+    for (const detail of details) {
+      if (!detail) continue;
+      for (const item of asArray<ApiProductItem>(detail.items)) {
+        const ids = resolveSupplierIds(item.suppliers);
+        if (!ids.includes(supplierId)) continue;
+        options.push({
+          _id: item._id,
+          productId: detail._id,
+          name: item.productName ?? item.name ?? detail.name ?? item._id,
+          sku: item.sku ?? "",
+          costPrice: item.costPrice ?? item.retailPrice ?? 0,
+          retailPrice: item.retailPrice,
+          supplierIds: ids,
+        });
+      }
+    }
   }
-  return map;
+
+  return options;
+}
+
+/** Giá gợi ý khi chọn hàng (ưu tiên costPrice, ≤ retailPrice). */
+export function resolveItemImportPrice(
+  item?: Pick<StockMovementProductItemOption, "costPrice" | "retailPrice">,
+): number {
+  if (!item) return 0;
+  const cost =
+    typeof item.costPrice === "number" && Number.isFinite(item.costPrice)
+      ? item.costPrice
+      : typeof item.retailPrice === "number" && Number.isFinite(item.retailPrice)
+        ? item.retailPrice
+        : 0;
+  if (
+    typeof item.retailPrice === "number" &&
+    Number.isFinite(item.retailPrice) &&
+    item.retailPrice > 0
+  ) {
+    return Math.min(cost, item.retailPrice);
+  }
+  return cost;
+}
+
+async function attachSupplierToProductItem(
+  itemId: string,
+  supplierId: string,
+): Promise<void> {
+  await client.post(`/products/items/${itemId}/suppliers`, { supplierId });
 }
 
 async function getProductLookup(): Promise<ProductLookup> {
@@ -585,6 +739,18 @@ export const stockMovementApi = {
 
   getSupplierOptions: fetchSupplierOptions,
   getLocationOptions: fetchLocationOptions,
+  getSupplierProductItems: fetchSupplierProductItemOptions,
+  searchProductItems: async (q: string) => {
+    const res = await fetchProductSearch({
+      q,
+      page: 1,
+      limit: 50,
+      status: "ACTIVE",
+    });
+    return res.items;
+  },
+  attachSupplierToProductItem,
+  resolveItemImportPrice,
 
   /** Sản phẩm kèm cờ có tại location (nhập hàng) */
   getProductItemsForDestination: async (
@@ -600,6 +766,11 @@ export const stockMovementApi = {
       atLocation: inventoryMap.has(item._id),
       stock: inventoryMap.get(item._id),
     }));
+  },
+
+  /** Toàn bộ catalog + giá (không lọc tồn) — dùng nhập từ NCC */
+  getCatalogProductItems: async (): Promise<StockMovementProductItemOption[]> => {
+    return fetchAllProductItemOptions();
   },
 
   /** Sản phẩm có tồn tại kho nguồn (chuyển kho) */
