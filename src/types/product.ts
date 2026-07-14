@@ -19,6 +19,13 @@ export interface StockDetail {
   stock: number;
 }
 
+export interface ProductItemSupplier {
+  _id: string;
+  supplierName: string;
+  email?: string;
+  phoneNumber?: string;
+}
+
 export interface ProductItem {
   id: string;
   tenantId: string;
@@ -36,6 +43,7 @@ export interface ProductItem {
   productDetails?: ProductDetail[];
   stock?: number;
   stockDetails?: StockDetail[];
+  suppliers?: ProductItemSupplier[];
   createdAt?: string;
   updatedAt?: string;
 }

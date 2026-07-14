@@ -287,6 +287,16 @@ export function ProductsExpandedPanel({
                         </div>
                       </div>
                     )}
+                    {item.suppliers && item.suppliers.length > 0 && (
+                      <div className="col-span-2 md:col-span-4 flex flex-col gap-0.5 pt-1">
+                        <span className="text-xs text-muted-foreground">
+                          Nhà cung cấp
+                        </span>
+                        <span className="text-sm">
+                          {item.suppliers.map(s => s.supplierName).join(", ")}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Separator />
