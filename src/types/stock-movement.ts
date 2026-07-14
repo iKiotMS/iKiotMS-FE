@@ -139,7 +139,12 @@ export interface StockMovementProductItemOption {
   _id: string;
   name: string;
   sku: string;
+  /** Product parent id — dùng để tải suppliers khi cần */
+  productId?: string;
   costPrice?: number;
+  retailPrice?: number;
+  /** Id NCC đã gắn với biến thể (ProductItem.suppliers) */
+  supplierIds?: string[];
   /** Có bản ghi tồn kho tại location đang chọn */
   atLocation?: boolean;
   /** Tồn tại location nguồn (chuyển kho) */

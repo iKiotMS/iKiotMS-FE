@@ -66,7 +66,11 @@ export function findDuplicateProductIds(details: { productItemId: string }[]): s
 /** Lỗi theo từng dòng — hiện ngay dưới field. */
 export function getOpeningRowFieldErrors(
   details: MovementDetailInput[],
-  options: { requireImportPrice: boolean },
+  options: {
+    requireImportPrice: boolean
+    /** productItemId → giá bán (retailPrice) để chặn giá nhập > giá bán */
+    retailPriceByItemId?: Record<string, number>
+  },
 ): OpeningRowFieldErrors[] {
   const dupes = new Set(findDuplicateProductIds(details))
   return details.map((d) => {
@@ -81,10 +85,18 @@ export function getOpeningRowFieldErrors(
     }
     if (options.requireImportPrice) {
       const price = d.importPrice ?? 0
+      const retail = options.retailPriceByItemId?.[d.productItemId]
       if (!Number.isFinite(price) || price <= 0) {
         err.importPrice = "Giá nhập phải > 0"
       } else if (price > MAX_IMPORT_PRICE) {
         err.importPrice = "Giá nhập tối đa 1000 tỷ"
+      } else if (
+        typeof retail === "number" &&
+        Number.isFinite(retail) &&
+        retail > 0 &&
+        price > retail
+      ) {
+        err.importPrice = `Giá nhập không được cao hơn giá bán (${new Intl.NumberFormat("vi-VN").format(retail)} đ)`
       }
     }
     return err
@@ -95,20 +107,41 @@ export function hasOpeningRowFieldErrors(errors: OpeningRowFieldErrors[]): boole
   return errors.some((e) => !!(e.productItemId || e.quantity || e.importPrice))
 }
 
-/** EXPORT/RETURN: BE chỉ cần quantity > 0 (+ stock). IMPORT: cần importPrice. */
+export type MovementDetailValidateOptions = {
+  requireImportPrice: boolean
+  /** productItemId → retailPrice (khớp BE: importPrice ≤ retailPrice) */
+  retailPriceByItemId?: Record<string, number>
+}
+
+/** Build map giá bán từ danh sách product options (search / catalog). */
+export function buildRetailPriceByItemId(
+  products: { _id: string; retailPrice?: number }[],
+): Record<string, number> {
+  const map: Record<string, number> = {}
+  for (const p of products) {
+    if (
+      typeof p.retailPrice === "number" &&
+      Number.isFinite(p.retailPrice) &&
+      p.retailPrice > 0
+    ) {
+      map[p._id] = p.retailPrice
+    }
+  }
+  return map
+}
+
+/** EXPORT/RETURN: BE chỉ cần quantity > 0 (+ stock). IMPORT: cần importPrice ≤ retailPrice. */
 export function validateOpeningDetailsSubmit(
   details: MovementDetailInput[],
-  options: { requireImportPrice: boolean },
+  options: MovementDetailValidateOptions,
 ): string | null {
-  return validateMovementDetails(details, {
-    requireImportPrice: options.requireImportPrice,
-  })
+  return validateMovementDetails(details, options)
 }
 
 /** Validate line items before create / update details. */
 export function validateMovementDetails(
   details: MovementDetailInput[],
-  options: { requireImportPrice: boolean },
+  options: MovementDetailValidateOptions,
 ): string | null {
   const errors = getOpeningRowFieldErrors(details, options)
   if (details.length === 0 || details.every((d) => !d.productItemId)) {

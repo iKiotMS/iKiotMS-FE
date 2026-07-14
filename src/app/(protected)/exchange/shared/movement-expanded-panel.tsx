@@ -21,6 +21,7 @@ import { CancelConfirmDialog } from "@/app/(protected)/exchange/shared/cancel-co
 import { buildReceivePayload } from "@/app/(protected)/exchange/shared/qty";
 import { InfoItem } from "@/app/(protected)/exchange/shared/form-fields";
 import {
+  buildRetailPriceByItemId,
   validateMovementDetails,
   validateReceiveDetails,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
@@ -248,7 +249,10 @@ export function MovementExpandedPanel({
         quantity: item.quantity,
         importPrice: item.importPrice,
       })),
-      { requireImportPrice: true },
+      {
+        requireImportPrice: true,
+        retailPriceByItemId: buildRetailPriceByItemId(openingProducts),
+      },
     );
     if (err) {
       toast.error(err);
