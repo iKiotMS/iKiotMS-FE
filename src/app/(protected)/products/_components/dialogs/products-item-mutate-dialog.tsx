@@ -28,9 +28,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -39,8 +37,11 @@ import type { ProductItem } from '@/types/product'
 import { productApi } from '@/lib/api/product'
 import { productItemFormSchema, type ProductItemFormValues } from '../../_types/product.types'
 import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
+import { InitialStockSection, type StockLocation } from '../initial-stock-section'
 
 const EMPTY_VALUES: ProductItemFormValues = {
+  useParentNameForItem: true,
+  itemProductName: '',
   productCode: '',
   sku: '',
   barcode: '',
@@ -60,6 +61,7 @@ type Props =
   | {
       mode: 'create'
       productId: string
+      productName: string
       open: boolean
       onOpenChange: (open: boolean) => void
       onSuccess: (item: ProductItem) => void
@@ -92,11 +94,6 @@ export function ProductsItemMutateDialog(props: Props) {
     name: 'productDetails',
   })
 
-  const { fields: stockFields, append: appendStock, remove: removeStock } = useFieldArray({
-    control: form.control,
-    name: 'initialStock',
-  })
-
   useEffect(() => {
     if (!open) return
     if (isEdit && existingItem) {
@@ -112,10 +109,15 @@ export function ProductsItemMutateDialog(props: Props) {
         images: existingItem.images ?? [],
         productDetails: existingItem.productDetails?.map((d) => ({ name: d.name, value: d.value })) ?? [],
         initialStock: [],
+        // Not used in edit mode (only create needs the parent/custom choice),
+        // but the schema requires a value.
+        useParentNameForItem: true,
+        itemProductName: existingItem.productName,
       })
     } else {
       form.reset(EMPTY_VALUES)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEdit, existingItem, form])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,8 +136,18 @@ export function ProductsItemMutateDialog(props: Props) {
   }
 
   async function onSubmit(data: ProductItemFormValues) {
+    if (props.mode === 'create' && !data.useParentNameForItem && !data.itemProductName?.trim()) {
+      form.setError('itemProductName', { message: 'Tên phiên bản là bắt buộc' })
+      return
+    }
+    if (isEdit && !data.itemProductName?.trim()) {
+      form.setError('itemProductName', { message: 'Tên phiên bản là bắt buộc' })
+      return
+    }
+
+    const { useParentNameForItem, itemProductName, ...rest } = data
     const payload = {
-      ...data,
+      ...rest,
       costPrice: parsePriceAmount(data.costPrice),
       retailPrice: parsePriceAmount(data.retailPrice),
       VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
@@ -147,16 +159,21 @@ export function ProductsItemMutateDialog(props: Props) {
             .map((s) => ({
               locationId: s.locationId,
               locationType: s.locationType,
-              ...(s.stock && Number(s.stock) > 0 ? { stock: Number(s.stock) } : {}),
             })),
     }
     try {
       let result: ProductItem
       if (props.mode === 'edit') {
-        result = await productApi.updateItem(props.item.id, payload)
+        result = await productApi.updateItem(props.item.id, {
+          ...payload,
+          productName: itemProductName!.trim(),
+        })
         toast.success('Cập nhật phiên bản thành công')
       } else {
-        result = await productApi.createItem(props.productId, payload)
+        const productName = useParentNameForItem
+          ? props.productName
+          : (itemProductName?.trim() || props.productName)
+        result = await productApi.createItem(props.productId, { ...payload, productName })
         toast.success('Thêm phiên bản thành công')
       }
       onSuccess(result)
@@ -165,8 +182,6 @@ export function ProductsItemMutateDialog(props: Props) {
       toast.error(isEdit ? 'Cập nhật phiên bản thất bại' : 'Thêm phiên bản thất bại')
     }
   }
-
-  const hasLocations = branchOptions.length > 0 || warehouseOptions.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,6 +197,72 @@ export function ProductsItemMutateDialog(props: Props) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* === Tên phiên bản: dùng tên hàng hóa hoặc đặt tên riêng === */}
+            {!isEdit && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="useParentNameForItem"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tên phiên bản</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === 'parent')}
+                        value={field.value ? 'parent' : 'custom'}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="cursor-pointer w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="parent">Dùng tên hàng hóa</SelectItem>
+                          <SelectItem value="custom">Đặt tên riêng cho phiên bản</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {!form.watch('useParentNameForItem') && (
+                  <FormField
+                    control={form.control}
+                    name="itemProductName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Tên riêng phiên bản <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nhập tên riêng cho phiên bản" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </>
+            )}
+
+            {isEdit && (
+              <FormField
+                control={form.control}
+                name="itemProductName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Tên phiên bản <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập tên phiên bản" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             {/* === Tải ảnh phiên bản === */}
             <div className="space-y-2">
               <FormLabel>Hình ảnh phiên bản</FormLabel>
@@ -436,101 +517,13 @@ export function ProductsItemMutateDialog(props: Props) {
               </div>
             </div>
 
-            {/* === Tồn kho ban đầu (chỉ khi tạo) === */}
             {!isEdit && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <FormLabel>Tồn kho ban đầu</FormLabel>
-                      <p className="text-xs text-muted-foreground mt-0.5">Tùy chọn</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer h-7 text-xs"
-                      disabled={!hasLocations}
-                      onClick={() => appendStock({ locationId: '', locationType: 'branch', stock: '0' })}
-                    >
-                      <Plus className="mr-1 size-3.5" />
-                      Thêm địa điểm
-                    </Button>
-                  </div>
-                  {!hasLocations && (
-                    <p className="text-xs text-muted-foreground">
-                      Chưa có chi nhánh hoặc kho. Vui lòng tạo trước để nhập tồn kho.
-                    </p>
-                  )}
-                  <div className="space-y-2">
-                    {stockFields.map((field, index) => {
-                      const watched = form.watch('initialStock') ?? []
-                      const current = watched[index]
-                      const combined =
-                        current?.locationId
-                          ? `${current.locationType}:${current.locationId}`
-                          : ''
-                      return (
-                        <div key={field.id} className="flex gap-2 items-center">
-                          <Select
-                            value={combined}
-                            onValueChange={(val) => {
-                              const sepIdx = val.indexOf(':')
-                              const type = val.slice(0, sepIdx) as 'branch' | 'warehouse'
-                              const id = val.slice(sepIdx + 1)
-                              form.setValue(`initialStock.${index}.locationId`, id, { shouldDirty: true })
-                              form.setValue(`initialStock.${index}.locationType`, type, { shouldDirty: true })
-                            }}
-                          >
-                            <SelectTrigger className="flex-1 cursor-pointer">
-                              <SelectValue placeholder="Chọn chi nhánh / kho" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {branchOptions.length > 0 && (
-                                <SelectGroup>
-                                  <SelectLabel>Chi nhánh</SelectLabel>
-                                  {branchOptions.map((b) => (
-                                    <SelectItem key={b.value} value={`branch:${b.value}`}>
-                                      {b.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              )}
-                              {warehouseOptions.length > 0 && (
-                                <SelectGroup>
-                                  <SelectLabel>Kho</SelectLabel>
-                                  {warehouseOptions.map((w) => (
-                                    <SelectItem key={w.value} value={`warehouse:${w.value}`}>
-                                      {w.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            className="w-24 tabular-nums"
-                            {...form.register(`initialStock.${index}.stock`)}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0 cursor-pointer text-muted-foreground hover:text-destructive"
-                            onClick={() => removeStock(index)}
-                          >
-                            <X className="size-4" />
-                          </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
+              <InitialStockSection
+                branchOptions={branchOptions}
+                warehouseOptions={warehouseOptions}
+                value={(form.watch('initialStock') ?? []) as StockLocation[]}
+                onChange={(v) => form.setValue('initialStock', v)}
+              />
             )}
 
             <DialogFooter>

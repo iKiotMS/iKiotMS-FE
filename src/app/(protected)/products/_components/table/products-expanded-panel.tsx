@@ -115,7 +115,11 @@ export function ProductsExpandedPanel({
       if (!prev) return prev;
       return {
         ...prev,
-        items: prev.items.map((i) => (i.id === updated.id ? updated : i)),
+        // PATCH /products/items/:id doesn't populate `suppliers`, so keep the
+        // previously-populated list instead of clobbering it with raw ObjectIds.
+        items: prev.items.map((i) =>
+          i.id === updated.id ? { ...updated, suppliers: i.suppliers } : i,
+        ),
       };
     });
   }
@@ -211,36 +215,21 @@ export function ProductsExpandedPanel({
                       </span>
                       <span className="font-mono">{item.barcode || "—"}</span>
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        Trạng thái
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "w-fit text-xs",
-                          STATUS_MAP[product.status].className,
-                        )}
-                      >
-                        {STATUS_MAP[product.status].label}
-                      </Badge>
-                    </div>
-                      <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        Tên phiên bản
-                      </span>
-                      <span className="block min-w-0 truncate font-medium">
-                        {item.productDetails?.length
-                          ? `${item.productName} - ${item.productDetails.map((d) => d.value).join(" / ")}`
-                          : item.productName}
-                      </span>
-                    </div>
+
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
                         Giá bán
                       </span>
                       <span className="tabular-nums font-medium text-primary">
                         {formatVND(item.retailPrice)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
+                        Tên phiên bản
+                      </span>
+                      <span className="block min-w-0 truncate font-medium">
+                        {item.productName}
                       </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
@@ -375,6 +364,7 @@ export function ProductsExpandedPanel({
       <ProductsItemMutateDialog
         mode="create"
         productId={product.id}
+        productName={product.name}
         open={addOpen}
         onOpenChange={setAddOpen}
         onSuccess={handleItemAdded}

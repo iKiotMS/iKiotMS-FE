@@ -11,7 +11,6 @@ const productDetailEntrySchema = z.object({
 const initialStockEntrySchema = z.object({
   locationId: z.string(),
   locationType: z.enum(['branch', 'warehouse']),
-  stock: z.string().optional(),
 })
 
 // Schema cho form tạo/chỉnh sửa Product (item fields optional — validate thủ công khi create)
@@ -19,7 +18,6 @@ export const productFormSchema = z.object({
   name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
   brandId: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable(),
-  supplierId: z.string().optional().nullable(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']),
   images: z
     .array(
@@ -33,6 +31,10 @@ export const productFormSchema = z.object({
   itemImages: z
     .array(z.object({ url: z.string(), isThumbnail: z.boolean() }))
     .optional(),
+  // Tên phiên bản: mặc định dùng tên hàng hóa (name) ở trên; nếu false thì
+  // dùng itemProductName riêng (bắt buộc, validate thủ công khi tạo).
+  useParentNameForItem: z.boolean(),
+  itemProductName: z.string().optional(),
   productCode: z.string().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
@@ -49,6 +51,9 @@ export type ProductFormValues = z.infer<typeof productFormSchema>
 
 // Schema cho form tạo/chỉnh sửa ProductItem (standalone)
 export const productItemFormSchema = z.object({
+  // Chỉ áp dụng khi tạo mới — BE không cho sửa productName qua PATCH item.
+  useParentNameForItem: z.boolean(),
+  itemProductName: z.string().optional(),
   productCode: z.string().min(1, 'Mã hàng là bắt buộc'),
   sku: z.string().min(1, 'SKU là bắt buộc'),
   barcode: z.string().optional(),

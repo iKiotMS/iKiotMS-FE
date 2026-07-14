@@ -98,13 +98,8 @@ export function ProductsItemDetailSheet({
   isSubDialogOpen,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const {
-    branchOptions,
-    warehouseOptions,
-    ensureLocationOptionsLoaded,
-    suppliers,
-    ensureSuppliersLoaded,
-  } = useProducts();
+  const { branchOptions, warehouseOptions, ensureLocationOptionsLoaded } =
+    useProducts();
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
   const canDelete = canDeleteProduct(role);
@@ -112,15 +107,15 @@ export function ProductsItemDetailSheet({
   useEffect(() => {
     if (!open) return;
     ensureLocationOptionsLoaded();
-    ensureSuppliersLoaded();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!item) return null;
 
-  const supplierName = product.supplierId
-    ? (suppliers.find((s) => s.id === product.supplierId)?.supplierName ?? "—")
-    : "—";
+  const supplierNames =
+    item.suppliers && item.suppliers.length > 0
+      ? item.suppliers.map((s) => s.supplierName).join(", ")
+      : "—";
 
   function resolveLocationName(
     locationType: string,
@@ -205,14 +200,14 @@ export function ProductsItemDetailSheet({
                       </Badge>
                     </InfoRow>
                   </div>
-                  <div className="px-3">
-                    <InfoRow label="Nhà cung cấp">{supplierName}</InfoRow>
-                  </div>
                   {item.warrantyPeriod && (
                     <div className="px-3">
                       <InfoRow label="Bảo hành">{item.warrantyPeriod}</InfoRow>
                     </div>
                   )}
+                  <div className="px-3">
+                    <InfoRow label="Nhà cung cấp">{supplierNames}</InfoRow>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,9 +218,7 @@ export function ProductsItemDetailSheet({
               <Section title="Tên phiên bản">
                 <div className="px-4 py-3">
                   <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                    {item.productDetails?.length
-                      ? `${item.productName} - ${item.productDetails.map((d) => d.value).join(" / ")}`
-                      : item.productName}
+                    {item.productName}
                   </p>
                 </div>
               </Section>
@@ -309,7 +302,7 @@ export function ProductsItemDetailSheet({
             {item.description && (
               <Section title="Mô tả">
                 <div className="px-4 py-3">
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words leading-relaxed">
+                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                     {item.description}
                   </p>
                 </div>
