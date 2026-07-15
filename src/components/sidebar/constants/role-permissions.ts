@@ -2,13 +2,13 @@
 export const rolePermissions = {
   products: {
     view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF", "SUPER_ADMIN"]),
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "WAREHOUSE_MANAGER", "SUPER_ADMIN"]),
   },
   brands: {
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "WAREHOUSE_MANAGER", "SUPER_ADMIN"]),
   },
   categories: {
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "WAREHOUSE_MANAGER", "SUPER_ADMIN"]),
   },
   staff: {
     write: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
