@@ -51,6 +51,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       items: [
         sidebarItems.tongQuan,
         sidebarItems.troLyAI,
+        sidebarItems.soThuChi,
         sidebarItems.nhanVien,
       ],
     },
@@ -68,7 +69,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   BRANCH_MANAGER: [
     {
       label: "Quản lý",
-      items: [sidebarItems.tongQuan, sidebarItems.nhanVien],
+      items: [sidebarItems.tongQuan, sidebarItems.soThuChi, sidebarItems.nhanVien],
     },
     quanLyBanHangGroup([
       sidebarItems.hangHoa,

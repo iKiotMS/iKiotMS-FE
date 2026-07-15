@@ -68,6 +68,25 @@ export interface Cashflow {
   byType: CashflowByType[];
 }
 
+export interface CashflowTransaction {
+  _id: string;
+  flowType: 'INCOME' | 'EXPENSE';
+  amount: number;
+  paymentMethod: string | null;
+  description: string | null;
+  paymentReference: string | null;
+  branchName: string | null;
+  supplierName: string | null;
+  createdByName: string | null;
+  orderId: string | null;
+  createdAt: string;
+}
+
+export interface CashflowList {
+  data: CashflowTransaction[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}
+
 export interface TopProductItem {
   productItemId: string;
   productName: string;
@@ -178,8 +197,18 @@ export const statsApi = {
   getRevenueByStaff: (params?: StatsDateRangeParams) =>
     getStats<RevenueByStaff>('/stats/revenue-by-staff', params),
 
-  getCashflow: (params?: StatsDateRangeParams & { flow?: 'ORD' | 'SUP'; flowType?: 'INCOME' | 'EXPENSE' }) =>
+  getCashflow: (params?: StatsDateRangeParams & { flow?: 'ORD' | 'SUP' | 'PAYR'; flowType?: 'INCOME' | 'EXPENSE' }) =>
     getStats<Cashflow>('/stats/cashflow', params),
+
+  getCashflowList: (
+    params?: StatsDateRangeParams & {
+      flow?: 'ORD' | 'SUP' | 'PAYR';
+      flowType?: 'INCOME' | 'EXPENSE';
+      paymentMethod?: string;
+      page?: number;
+      limit?: number;
+    },
+  ) => getStats<CashflowList>('/stats/cashflow/transactions', params),
 
   getTopProducts: (params?: StatsDateRangeParams & { sortBy?: 'quantity' | 'revenue'; limit?: number }) =>
     getStats<TopProducts>('/stats/top-products', params),

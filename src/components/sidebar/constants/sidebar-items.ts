@@ -15,6 +15,7 @@ import {
   MessageSquarePlus,
   Wallet,
   Landmark,
+  Wallet,
   Vault,
 } from "lucide-react";
 import { type NavItem } from "./types";
@@ -30,6 +31,11 @@ export const sidebarItems = {
     title: "Trợ lý AI",
     url: "/chat",
     icon: MessageCircle,
+  },
+  soThuChi: {
+    title: "Sổ thu chi",
+    url: "/cashflow",
+    icon: Wallet,
   },
   nhanVien: {
     title: "Nhân viên",
