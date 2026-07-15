@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -30,11 +31,12 @@ import {
   STATUS_MAP,
 } from "../../_constants/product.constants";
 import { useProducts } from "../../_context/products-provider";
-import type { Product, ProductItem } from "@/types/product";
+import type { Product, ProductItem, StockDetail } from "@/types/product";
 import { getCachedUser } from "@/lib/auth";
 import {
   canUpdateProduct,
   canDeleteProduct,
+  canRemoveInventoryLocation,
 } from "@/components/sidebar/constants/role-permissions";
 
 const formatDate = (iso?: string) => {
@@ -51,6 +53,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onRemoveLocation?: (inventoryId: string) => void;
   isSubDialogOpen?: boolean;
 };
 
@@ -95,14 +98,19 @@ export function ProductsItemDetailSheet({
   onOpenChange,
   onEdit,
   onDelete,
+  onRemoveLocation,
   isSubDialogOpen,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [removingLocation, setRemovingLocation] = useState<StockDetail | null>(
+    null,
+  );
   const { branchOptions, warehouseOptions, ensureLocationOptionsLoaded } =
     useProducts();
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
   const canDelete = canDeleteProduct(role);
+  const canRemoveLocation = canRemoveInventoryLocation(role);
 
   useEffect(() => {
     if (!open) return;
@@ -124,6 +132,8 @@ export function ProductsItemDetailSheet({
     const opts = locationType === "branch" ? branchOptions : warehouseOptions;
     return opts.find((o) => o.value === locationId)?.label ?? locationId;
   }
+
+  const hasLocations = (item.stockDetails?.length ?? 0) > 0;
 
   const profit = item.retailPrice - item.costPrice;
   const profitPositive = profit >= 0;
@@ -289,9 +299,21 @@ export function ProductsItemDetailSheet({
                         <span className="text-muted-foreground">
                           {resolveLocationName(sd.locationType, sd.locationId)}
                         </span>
-                        <span className="font-semibold tabular-nums">
-                          {sd.stock}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold tabular-nums">
+                            {sd.stock}
+                          </span>
+                          {canRemoveLocation && sd.stock === 0 && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6 cursor-pointer text-muted-foreground hover:text-destructive"
+                              onClick={() => setRemovingLocation(sd)}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -336,7 +358,15 @@ export function ProductsItemDetailSheet({
           {canDelete ? (
             <Button
               variant="destructive"
-              onClick={() => setConfirmDeleteOpen(true)}
+              onClick={() => {
+                if (hasLocations) {
+                  toast.error(
+                    "Chỉ có thể xóa phiên bản khi đã gỡ khỏi mọi vị trí",
+                  );
+                  return;
+                }
+                setConfirmDeleteOpen(true);
+              }}
             >
               <Trash2 className=" size-4" />
               Xóa phiên bản
@@ -385,6 +415,48 @@ export function ProductsItemDetailSheet({
             </DialogContent>
           </Dialog>
         )}
+
+        <Dialog
+          open={!!removingLocation}
+          onOpenChange={(v) => !v && setRemovingLocation(null)}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Gỡ vị trí khỏi phiên bản</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc muốn gỡ{" "}
+                <strong className="text-foreground">
+                  {removingLocation &&
+                    resolveLocationName(
+                      removingLocation.locationType,
+                      removingLocation.locationId,
+                    )}
+                </strong>{" "}
+                khỏi phiên bản này? Tồn kho tại vị trí này đang bằng 0.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRemovingLocation(null)}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (removingLocation) {
+                    onRemoveLocation?.(removingLocation.inventoryId);
+                  }
+                  setRemovingLocation(null);
+                }}
+              >
+                <Trash2 className=" size-4" />
+                Gỡ vị trí
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );

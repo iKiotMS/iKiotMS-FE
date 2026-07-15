@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -75,11 +74,6 @@ export function HolidaysMutateDialog({
             <DialogTitle>
               {isEdit ? "Chỉnh sửa ngày lễ" : "Thêm ngày lễ"}
             </DialogTitle>
-            <DialogDescription>
-              {isEdit
-                ? "Cập nhật ngày và tên ngày lễ."
-                : "Tạo ngày nghỉ lễ áp dụng cho doanh nghiệp."}
-            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-5">

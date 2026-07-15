@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -139,7 +139,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (!isBranchActor) {
       return {
         title: labels.createDialogTitle,
-        description: labels.createDialogDescription,
         toLabel: labels.toLabel,
         toPlaceholder: labels.toPlaceholder,
         listTitle: 'Danh sách hàng hóa cần chuyển',
@@ -149,7 +148,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (branchRequestKind === 'return') {
       return {
         title: 'Tạo yêu cầu trả hàng',
-        description: 'Chọn nơi nhận và danh sách hàng hóa cần trả.',
         toLabel: 'Nơi nhận',
         toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
         listTitle: 'Danh sách hàng hóa cần trả / chuyển',
@@ -158,7 +156,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     }
     return {
       title: 'Tạo yêu cầu chuyển hàng',
-      description: 'Chọn nơi nhận và danh sách hàng hóa cần chuyển.',
       toLabel: 'Nơi nhận',
       toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
       listTitle: 'Danh sách hàng hóa cần chuyển',
@@ -287,7 +284,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dialogCopy.title}</DialogTitle>
-          <DialogDescription>{dialogCopy.description}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -393,9 +389,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                 </Button>
               </div>
 
-              {!fromLocationId && (
-                <p className="text-xs text-muted-foreground">{labels.selectFromHint}</p>
-              )}
               {fromLocationId && products.length === 0 && (
                 <p className="text-xs text-amber-600">{labels.noStockAtSource}</p>
               )}

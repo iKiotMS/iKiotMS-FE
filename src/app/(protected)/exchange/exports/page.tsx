@@ -21,7 +21,6 @@ function ExportsPageContent() {
             { label: "Chuyển kho" },
           ]}
           title={labels.moduleTitle}
-          description={labels.moduleSubtitle}
           actions={<TransfersButtonGroup />}
         />
         <TransfersTable />

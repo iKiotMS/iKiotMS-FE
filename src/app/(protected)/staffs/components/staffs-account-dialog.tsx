@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -87,11 +86,6 @@ export function StaffsAccountDialog({
           <DialogTitle>
             {isActivate ? "Kích hoạt tài khoản" : "Đổi mật khẩu"}
           </DialogTitle>
-          <DialogDescription>
-            {isActivate
-              ? `Tạo mật khẩu đăng nhập cho ${currentRow?.fullName ?? "nhân viên"}.`
-              : `Đặt mật khẩu mới cho ${currentRow?.fullName ?? "nhân viên"}.`}
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

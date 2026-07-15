@@ -12,7 +12,11 @@ import { cn } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import type { Brand } from "@/types/brand";
 import type { Category } from "@/types/category";
-import { safeImageSrc, STATUS_MAP } from "../../_constants/product.constants";
+import {
+  safeImageSrc,
+  STATUS_MAP,
+  STATUS_ORDER,
+} from "../../_constants/product.constants";
 
 function SortableHeader({
   label,
@@ -154,6 +158,8 @@ export function getProductsColumns(
       },
       filterFn: (row, columnId, value: string) =>
         row.getValue(columnId) === value,
+      sortingFn: (rowA, rowB) =>
+        STATUS_ORDER[rowA.original.status] - STATUS_ORDER[rowB.original.status],
     },
     {
       id: "stock",

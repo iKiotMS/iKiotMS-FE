@@ -33,7 +33,6 @@ function StaffsPageContent() {
           { label: "Danh sách" },
         ]}
         title="Nhân viên"
-        description="Quản lý danh sách nhân viên, vai trò và trạng thái làm việc"
         actions={<StaffsButtonGroup />}
       />
       <StaffsTable />

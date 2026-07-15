@@ -43,11 +43,6 @@ export default function StaffSchedulePage() {
           { label: "Lịch làm" },
         ]}
         title="Lịch làm việc"
-        description={
-          scopeLabel
-            ? `Phân ca theo ngày · Phạm vi: ${scopeLabel}`
-            : "Phân ca theo ngày và theo dõi chấm công nhân viên"
-        }
         actions={
           <div className="flex items-center gap-2">
             {scopeLabel && userRole !== "TENANT_OWNER" && (

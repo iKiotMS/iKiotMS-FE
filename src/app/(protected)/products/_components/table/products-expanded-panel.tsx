@@ -20,6 +20,7 @@ import type {
   ProductItem,
 } from "@/types/product";
 import { productApi } from "@/lib/api/product";
+import { inventoryApi } from "@/lib/api/inventory";
 import Image from "next/image";
 import { ProductsEmpty } from "../products-empty";
 import { ProductsItemMutateDialog } from "../dialogs/products-item-mutate-dialog";
@@ -136,6 +137,31 @@ export function ProductsExpandedPanel({
       toast.success("Xóa phiên bản thành công");
     } catch {
       toast.error("Xóa phiên bản thất bại");
+    }
+  }
+
+  async function handleLocationRemove(itemId: string, inventoryId: string) {
+    try {
+      await inventoryApi.removeLocation(inventoryId);
+      const stripLocation = (i: ProductItem) =>
+        i.id === itemId
+          ? {
+              ...i,
+              stockDetails: (i.stockDetails ?? []).filter(
+                (sd) => sd.inventoryId !== inventoryId,
+              ),
+            }
+          : i;
+      setDetail((prev) =>
+        prev ? { ...prev, items: prev.items.map(stripLocation) } : prev,
+      );
+      setViewingItem((prev) => (prev ? stripLocation(prev) : prev));
+      toast.success("Đã gỡ vị trí khỏi phiên bản");
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Gỡ vị trí thất bại";
+      toast.error(message);
     }
   }
 
@@ -296,7 +322,7 @@ export function ProductsExpandedPanel({
         )}
 
         <div className="flex items-center justify-between mt-3">
-          {canDelete ? (
+          {canDelete && product.status !== "DISCONTINUED" ? (
             <Button
               variant="destructive"
               size="sm"
@@ -364,6 +390,11 @@ export function ProductsExpandedPanel({
           if (viewingItem) {
             setViewOpen(false);
             handleItemDelete(viewingItem.id);
+          }
+        }}
+        onRemoveLocation={(inventoryId) => {
+          if (viewingItem) {
+            handleLocationRemove(viewingItem.id, inventoryId);
           }
         }}
       />

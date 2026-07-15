@@ -10,7 +10,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -18,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -168,11 +166,6 @@ export function LeaveRequestsEmergencyDialog({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Tạo đơn nghỉ phép khẩn</DialogTitle>
-          <DialogDescription>
-            {isBranchManager
-              ? "Tạo đơn thay cho nhân viên (ví dụ gọi điện / nhắn tin báo nghỉ). Có thể duyệt ngay sau khi tạo."
-              : "Tenant Owner tạo đơn nghỉ khẩn cho quản lý / nhân viên thuộc quyền quản lý."}
-          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -300,10 +293,6 @@ export function LeaveRequestsEmergencyDialog({
                       <FormLabel className="cursor-pointer">
                         Tạo và duyệt ngay
                       </FormLabel>
-                      <FormDescription>
-                        Dùng khi nhân viên gọi/nhắn báo nghỉ và bạn xác nhận
-                        luôn.
-                      </FormDescription>
                     </div>
                   </FormItem>
                 )}

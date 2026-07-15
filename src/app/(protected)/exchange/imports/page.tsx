@@ -36,7 +36,6 @@ export default function ImportsPage() {
             { label: "Nhập hàng" },
           ]}
           title="Nhập hàng"
-          description="Quản lý đơn nhập hàng từ nhà cung cấp vào kho / chi nhánh"
           actions={<ImportsButtonGroup />}
         />
         <ImportsTable />

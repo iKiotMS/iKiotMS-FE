@@ -16,7 +16,6 @@ export default function AdjustmentsPage() {
             { label: "Điều chỉnh tồn kho" },
           ]}
           title="Điều chỉnh tồn kho"
-          description="Kiểm kê và điều chỉnh tồn thực tế so với hệ thống."
           actions={<AdjustmentsButtonGroup />}
         />
         <AdjustmentsTable />
