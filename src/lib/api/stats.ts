@@ -98,6 +98,68 @@ export interface InventoryStats {
   lowStock: LowStockItem[];
 }
 
+// ── Platform-operator overview (SUPER_ADMIN) ──────────────────────────────────
+export interface AdminRevenuePoint {
+  bucket: string;
+  revenue: number;
+  count: number;
+}
+
+export interface AdminPlanDistItem {
+  planId: string;
+  planCode?: string;
+  planName?: string;
+  count: number;
+}
+
+export interface AdminTopTenant {
+  tenantId: string;
+  name?: string;
+  revenue: number;
+  invoiceCount: number;
+}
+
+export interface AdminRecentInvoice {
+  _id: string;
+  amount: number;
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentReference?: string;
+  createdAt: string;
+  paidAt?: string;
+  planId?: { planName?: string; planCode?: string };
+  tenantId?: { name?: string };
+}
+
+export interface AdminOverview {
+  period: { fromDate: string; toDate: string };
+  tenants: {
+    total: number;
+    active: number;
+    inactive: number;
+    suspended: number;
+    newInPeriod: number;
+    changePct: number | null;
+  };
+  subscriptions: {
+    byStatus: { TRIAL: number; ACTIVE: number; PAST_DUE: number; EXPIRED: number; CANCELLED: number };
+    planDistribution: AdminPlanDistItem[];
+    conversionRate: number | null;
+  };
+  revenue: {
+    total: number;
+    inPeriod: number;
+    invoiceCountInPeriod: number;
+    changePct: number | null;
+    groupBy: 'day' | 'month';
+    series: AdminRevenuePoint[];
+  };
+  tenantGrowth: { bucket: string; count: number }[];
+  tickets: { open: number; resolved: number; total: number };
+  sepay: { linked: number; total: number };
+  topTenants: AdminTopTenant[];
+  recentInvoices: AdminRecentInvoice[];
+}
+
 async function getStats<T, P extends object = object>(path: string, params?: P): Promise<T> {
   const res = await client.get<{ success: boolean; data: T }>(path, { params });
   return res.data.data;
@@ -124,4 +186,7 @@ export const statsApi = {
 
   getInventory: (params?: { branchId?: string; lowStockThreshold?: number }) =>
     getStats<InventoryStats>('/stats/inventory', params),
+
+  getAdminOverview: (params?: { fromDate?: string; toDate?: string; groupBy?: 'day' | 'month' }) =>
+    getStats<AdminOverview>('/stats/admin/overview', params),
 };

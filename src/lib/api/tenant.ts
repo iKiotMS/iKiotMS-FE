@@ -66,9 +66,22 @@ export interface Tenant {
   createdAt: string;
   activeSubscription?: Subscription;
   invoices?: Invoice[];
+  /** True when a SePay webhook key has been saved for this tenant (key itself is never exposed). */
+  hasSepayKey?: boolean;
 }
 
 export async function listTenants(): Promise<Tenant[]> {
   const response = await client.get("/tenant");
   return response.data.data;
+}
+
+/**
+ * SUPER_ADMIN: save the SePay webhook API key for a tenant after manually
+ * linking their bank account in the SePay dashboard. Marks the tenant as linked.
+ */
+export async function setSepayKey(
+  tenantId: string,
+  sepayWebhookApiKey: string,
+): Promise<void> {
+  await client.put(`/tenant/${tenantId}/sepay-key`, { sepayWebhookApiKey });
 }

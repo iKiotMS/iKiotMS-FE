@@ -28,6 +28,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
         sidebarItems.adminSystemNotifications,
         sidebarItems.adminUsers,
         sidebarItems.subscriptions,
+        sidebarItems.adminSepay,
         sidebarItems.adminGiaoDich,
         sidebarItems.adminAuditLog,
         sidebarItems.adminNotifications,
