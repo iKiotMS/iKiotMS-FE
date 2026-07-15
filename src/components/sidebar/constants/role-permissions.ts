@@ -149,9 +149,9 @@ export function canEditStaffRoleAndWorkplace(
   return true;
 }
 
-/** PATCH /branches/:id/manager — TENANT_OWNER hoặc BRANCH_MANAGER. */
+/** PATCH /branches/:id/manager — chỉ TENANT_OWNER. */
 export function canAssignBranchManager(role?: string | null): boolean {
-  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER";
+  return role === "TENANT_OWNER";
 }
 
 /** PATCH /warehouses/:id/manager — chỉ TENANT_OWNER. */

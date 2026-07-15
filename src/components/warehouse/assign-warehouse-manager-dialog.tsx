@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -33,6 +32,10 @@ import {
 import { staffApi } from "@/lib/api/staff";
 import { getApiErrorMessage } from "@/lib/api/staff-mapper";
 import { warehouseApi } from "@/lib/api/warehouse";
+import {
+  formatStaffOptionLabel,
+  StaffSearchSelect,
+} from "@/app/(protected)/staffs/shared/staff-search-select";
 import type { Staff } from "@/types/staff";
 import type { Warehouse } from "@/types/warehouse";
 
@@ -51,15 +54,10 @@ type AssignWarehouseManagerDialogProps = {
   onSuccess?: () => void;
 };
 
-function getStaffOptionLabel(staff: Staff): string {
-  return `${staff.fullName}${staff.phoneNumber ? ` · ${staff.phoneNumber}` : ""}`;
-}
-
 export function AssignWarehouseManagerDialog({
   open,
   onOpenChange,
   initialWarehouseId,
-  initialWarehouseName,
   onSuccess,
 }: AssignWarehouseManagerDialogProps) {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -78,11 +76,6 @@ export function AssignWarehouseManagerDialog({
   const selectedWarehouseId = form.watch("warehouseId");
   const warehouseIsLocked = Boolean(initialWarehouseId);
 
-  const selectedWarehouseName = useMemo(() => {
-    if (initialWarehouseName) return initialWarehouseName;
-    return warehouses.find((w) => w._id === selectedWarehouseId)?.name;
-  }, [warehouses, initialWarehouseName, selectedWarehouseId]);
-
   const currentManager = useMemo(() => {
     if (!selectedWarehouseId) return null;
     return (
@@ -95,40 +88,56 @@ export function AssignWarehouseManagerDialog({
     );
   }, [allStaff, selectedWarehouseId]);
 
-  const staffCandidates = useMemo(() => {
-    return allStaff.filter(
-      (staff) => staff.status === "ACTIVE" && staff.role === "STAFF",
-    );
-  }, [allStaff]);
+  const staffCandidates = useMemo(
+    () =>
+      allStaff.filter(
+        (staff) => staff.status === "ACTIVE" && staff.role === "STAFF",
+      ),
+    [allStaff],
+  );
 
   useEffect(() => {
     if (!open) return;
 
+    let cancelled = false;
     form.reset({
       warehouseId: initialWarehouseId ?? "",
       staffId: "",
     });
-    setWarehouses([]);
-    setAllStaff([]);
 
     setLoadingWarehouses(true);
+    setLoadingStaff(true);
+
     void warehouseApi
       .getList({ status: "ACTIVE", limit: 100 })
       .then((response) => {
-        setWarehouses(response.data ?? []);
+        if (!cancelled) setWarehouses(response.data ?? []);
       })
       .catch((error) => {
-        toast.error(getApiErrorMessage(error));
-        setWarehouses([]);
+        if (!cancelled) {
+          toast.error(getApiErrorMessage(error));
+          setWarehouses([]);
+        }
       })
-      .finally(() => setLoadingWarehouses(false));
+      .finally(() => {
+        if (!cancelled) setLoadingWarehouses(false);
+      });
 
-    setLoadingStaff(true);
     void staffApi
       .getAllForOptions()
-      .then(setAllStaff)
-      .catch(() => setAllStaff([]))
-      .finally(() => setLoadingStaff(false));
+      .then((list) => {
+        if (!cancelled) setAllStaff(list);
+      })
+      .catch(() => {
+        if (!cancelled) setAllStaff([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingStaff(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, form, initialWarehouseId]);
 
   useEffect(() => {
@@ -151,10 +160,6 @@ export function AssignWarehouseManagerDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Đổi quản lý kho</DialogTitle>
-          <DialogDescription>
-            Chọn nhân viên STAFF đang hoạt động. Hệ thống sẽ thăng thành quản lý
-            kho và hạ quản lý hiện tại về STAFF.
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -175,7 +180,7 @@ export function AssignWarehouseManagerDialog({
                         <SelectValue
                           placeholder={
                             loadingWarehouses
-                              ? "Đang tải kho..."
+                              ? "Đang tải..."
                               : "Chọn kho hàng"
                           }
                         />
@@ -189,25 +194,18 @@ export function AssignWarehouseManagerDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  {warehouseIsLocked && selectedWarehouseName && (
-                    <p className="text-xs text-muted-foreground">
-                      Đang đổi quản lý cho kho {selectedWarehouseName}.
-                    </p>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             {selectedWarehouseId && (
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                <p className="text-xs text-muted-foreground">
-                  Quản lý hiện tại
-                </p>
-                <p className="font-medium">
+              <div className="rounded-md border px-3 py-2 text-sm">
+                <p className="text-xs text-muted-foreground">Quản lý hiện tại</p>
+                <p className="mt-0.5 font-medium truncate">
                   {currentManager
-                    ? getStaffOptionLabel(currentManager)
-                    : "Chưa có quản lý kho active"}
+                    ? formatStaffOptionLabel(currentManager)
+                    : "—"}
                 </p>
               </div>
             )}
@@ -217,36 +215,16 @@ export function AssignWarehouseManagerDialog({
               name="staffId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nhân viên mới (STAFF)</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!selectedWarehouseId || loadingStaff}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full">
-                        <SelectValue
-                          placeholder={
-                            loadingStaff
-                              ? "Đang tải nhân viên..."
-                              : "Chọn nhân viên"
-                          }
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {staffCandidates.map((staff) => (
-                        <SelectItem key={staff._id} value={staff._id}>
-                          {getStaffOptionLabel(staff)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {!loadingStaff && staffCandidates.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Không có nhân viên STAFF đang hoạt động trong hệ thống.
-                    </p>
-                  )}
+                  <FormLabel>Nhân viên mới</FormLabel>
+                  <FormControl>
+                    <StaffSearchSelect
+                      staff={staffCandidates}
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={!selectedWarehouseId}
+                      loading={loadingStaff}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

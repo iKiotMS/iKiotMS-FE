@@ -45,7 +45,6 @@ import {
 import {
   canDeactivateStaffRow,
   canDeleteStaffRow,
-  requiresManagerReplacement,
 } from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import {
   getStaffGenderLabel,
@@ -102,9 +101,7 @@ export function StaffsExpandedPanel({
   const showAssignBranchManager =
     canAssignBranchManager(userRole) &&
     staff.role === "BRANCH_MANAGER" &&
-    Boolean(staff.branchId) &&
-    (userRole === "TENANT_OWNER" ||
-      staff.branchId === requesterBranchId);
+    Boolean(staff.branchId);
   const showAssignWarehouseManager =
     canAssignWarehouseManager(userRole) &&
     staff.role === "WAREHOUSE_MANAGER" &&
@@ -322,26 +319,19 @@ export function StaffsExpandedPanel({
       <Separator className="mt-4" />
       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
         {showDelete ? (
-          <div className="space-y-1">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentRow(staff);
-                setOpen("delete");
-              }}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Xóa nhân viên
-            </Button>
-            {requiresManagerReplacement(staff) && (
-              <p className="text-xs text-muted-foreground max-w-xs">
-                Quản lý cần chọn nhân viên thay thế trước khi xóa.
-              </p>
-            )}
-          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(staff);
+              setOpen("delete");
+            }}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa nhân viên
+          </Button>
         ) : (
           <div />
         )}
@@ -358,9 +348,7 @@ export function StaffsExpandedPanel({
               }}
             >
               <UserCog className="mr-2 size-4" />
-              {userRole === "BRANCH_MANAGER"
-                ? "Chuyển nhượng chi nhánh"
-                : "Thay quản lý chi nhánh"}
+              Thay quản lý chi nhánh
             </Button>
           )}
           {showAssignWarehouseManager && (
@@ -396,26 +384,19 @@ export function StaffsExpandedPanel({
             </Button>
           )}
           {showAccountActions && canDeactivate && (
-            <div className="space-y-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentRow(staff);
-                  setOpen("deactivate");
-                }}
-              >
-                <Lock className="mr-2 size-4" />
-                Khóa tài khoản
-              </Button>
-              {requiresManagerReplacement(staff) && (
-                <p className="text-xs text-muted-foreground max-w-xs">
-                  Quản lý cần chọn nhân viên thay thế trước khi khóa.
-                </p>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("deactivate");
+              }}
+            >
+              <Lock className="mr-2 size-4" />
+              Khóa tài khoản
+            </Button>
           )}
           {showAccountActions && canChangePassword && (
             <Button
