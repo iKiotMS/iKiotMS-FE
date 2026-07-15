@@ -3,13 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar } from 'lucide-react'
+import { Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar } from 'lucide-react'
 import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
 
@@ -59,7 +53,7 @@ export function PeriodsTable() {
             <TableHead className="text-right">Tổng chi dự kiến</TableHead>
             <TableHead className="text-center">Trạng thái</TableHead>
             <TableHead>Ngày tạo</TableHead>
-            <TableHead className="w-[100px]"></TableHead>
+            <TableHead className="text-right pr-6">Thao tác</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -82,65 +76,73 @@ export function PeriodsTable() {
                   {p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : '—'}
                 </TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer text-slate-500 hover:text-slate-900">
-                        <MoreHorizontal className="size-4" />
+                  <div className="flex items-center justify-end gap-1.5">
+                    {/* View Details */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDetails(p._id)}
+                      className="cursor-pointer h-8 text-xs flex items-center gap-1 hover:bg-slate-100 hover:text-slate-800"
+                      title="Xem chi tiết"
+                    >
+                      <Eye className="size-3.5" />
+                      Chi tiết
+                    </Button>
+
+                    {/* Contextual actions */}
+                    {p.status === 'DRAFT' && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleSubmitPeriod(p._id)}
+                        className="cursor-pointer h-8 text-xs flex items-center gap-1"
+                      >
+                        <ArrowUpRight className="size-3.5" />
+                        Gửi duyệt
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[180px]">
-                      <DropdownMenuItem onClick={() => handleViewDetails(p._id)} className="cursor-pointer">
-                        <Eye className="mr-2 size-4 text-slate-400" />
-                        Xem chi tiết
-                      </DropdownMenuItem>
+                    )}
 
-                      {p.status === 'DRAFT' && (
-                        <DropdownMenuItem
-                          onClick={() => handleSubmitPeriod(p._id)}
-                          className="cursor-pointer"
-                        >
-                          <ArrowUpRight className="mr-2 size-4 text-blue-500" />
-                          Gửi yêu cầu duyệt
-                        </DropdownMenuItem>
-                      )}
-
-                      {p.status === 'REVIEW' && (
-                        <DropdownMenuItem
-                          onClick={() => handleApprovePeriod(p._id)}
-                          className="cursor-pointer font-medium"
-                        >
-                          <CheckCircle2 className="mr-2 size-4 text-green-500" />
-                          Phê duyệt lương
-                        </DropdownMenuItem>
-                      )}
-
-                      {p.status === 'REVIEW' && (
-                        <DropdownMenuItem
+                    {p.status === 'REVIEW' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             setCurrentRow(p)
                             setOpen('returnDraft')
                           }}
-                          className="cursor-pointer text-orange-600 focus:text-orange-600 focus:bg-orange-50/50"
+                          className="cursor-pointer h-8 text-xs flex items-center gap-1 text-orange-600 border-orange-200 hover:bg-orange-50/50 hover:text-orange-700"
                         >
-                          <Ban className="mr-2 size-4 text-orange-500" />
-                          Trả về nháp
-                        </DropdownMenuItem>
-                      )}
+                          <Ban className="size-3.5" />
+                          Trả nháp
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleApprovePeriod(p._id)}
+                          className="cursor-pointer h-8 text-xs flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle2 className="size-3.5" />
+                          Phê duyệt
+                        </Button>
+                      </>
+                    )}
 
-                      {p.status === 'APPROVED' && (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCurrentRow(p)
-                            setOpen('markPaid')
-                          }}
-                          className="cursor-pointer bg-green-50/20 text-green-700 hover:bg-green-50"
-                        >
-                          <DollarSign className="mr-2 size-4 text-green-600" />
-                          Xác nhận thanh toán
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    {p.status === 'APPROVED' && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentRow(p)
+                          setOpen('markPaid')
+                        }}
+                        className="cursor-pointer h-8 text-xs flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <DollarSign className="size-3.5" />
+                        Thanh toán
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             )

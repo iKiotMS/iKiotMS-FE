@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   Bell,
   MessageSquarePlus,
+  Wallet,
 } from "lucide-react";
 import { type NavItem } from "./types";
 
@@ -39,6 +40,11 @@ export const sidebarItems = {
       { title: "Ngày lễ", url: "/staffs/holidays" },
       { title: "Bảng lương", url: "/staffs/payroll" },
     ],
+  },
+  luong: {
+    title: "Lương của tôi",
+    url: "/staffs/payroll/my-payslips",
+    icon: Wallet,
   },
 
   // Quản lý bán hàng
