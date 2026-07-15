@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDateTime } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 import { getCachedUser } from '@/lib/auth'
 import {
   canUpdatePromotion,
@@ -36,11 +36,13 @@ const formatVND = (value: number) =>
 type PromotionsExpandedPanelProps = {
   promotion: Promotion
   isExpanded: boolean
+  isLastRow?: boolean
 }
 
 export function PromotionsExpandedPanel({
   promotion,
   isExpanded,
+  isLastRow,
 }: PromotionsExpandedPanelProps) {
   const { setOpen, setCurrentRow } = usePromotions()
   const role = getCachedUser()?.role
@@ -60,7 +62,12 @@ export function PromotionsExpandedPanel({
   }, [isExpanded, logs, promotion.id])
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        'bg-background px-6 py-4 animate-in fade-in-0 duration-200',
+        !isLastRow && 'border-b',
+      )}
+    >
       <Tabs defaultValue="info">
         <TabsList className="mb-4">
           <TabsTrigger value="info" className="cursor-pointer">

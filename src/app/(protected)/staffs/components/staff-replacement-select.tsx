@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { StaffSearchSelect } from "@/app/(protected)/staffs/shared/staff-search-select";
 import { staffApi } from "@/lib/api/staff";
 import type { Staff, StaffRole } from "@/types/staff";
 
@@ -75,32 +69,15 @@ export function StaffReplacementSelect({
 
   return (
     <div className="space-y-2">
-      <Label>Chọn nhân viên thay thế {managerLabel[manager.role]}</Label>
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Đang tải danh sách...</p>
-      ) : candidates.length === 0 ? (
-        <p className="text-sm text-destructive rounded-md border border-dashed px-3 py-2">
-          Không có nhân viên ACTIVE phù hợp để thay thế. Vui lòng thêm hoặc kích
-          hoạt nhân viên trước.
-        </p>
-      ) : (
-        <Select value={value} onValueChange={onChange} disabled={disabled}>
-          <SelectTrigger className="cursor-pointer w-full">
-            <SelectValue placeholder="Chọn nhân viên thay thế" />
-          </SelectTrigger>
-          <SelectContent>
-            {candidates.map((staff) => (
-              <SelectItem key={staff._id} value={staff._id}>
-                {staff.fullName} — {staff.phoneNumber}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      <p className="text-xs text-muted-foreground">
-        Nhân viên được chọn sẽ được thăng chức lên{" "}
-        {managerLabel[manager.role]} trước khi thao tác tiếp tục.
-      </p>
+      <Label>Nhân viên thay thế {managerLabel[manager.role]}</Label>
+      <StaffSearchSelect
+        staff={candidates}
+        value={value}
+        onChange={onChange}
+        disabled={disabled || isLoading || candidates.length === 0}
+        loading={isLoading}
+        placeholder="Chọn nhân viên thay thế"
+      />
     </div>
   );
 }

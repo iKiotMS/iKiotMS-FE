@@ -5,10 +5,11 @@ import { CustomersTable } from './_components/table/customers-table'
 
 export default function CustomersPage() {
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+    <div className="flex flex-col gap-6 px-4 lg:px-6">
       <PageHeader
         breadcrumbs={[
           { label: 'Trang chủ', href: '/dashboard' },
+          { label: 'CRM' },
           { label: 'Khách hàng' },
         ]}
         title="Khách hàng"

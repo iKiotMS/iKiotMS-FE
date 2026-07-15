@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import type { Category } from '@/types/category'
 import { useCategories } from '../../_context/categories-provider'
 import { getCachedUser } from '@/lib/auth'
@@ -20,9 +21,14 @@ function resolveParentId(category: Category): string | null {
 type CategoriesExpandedPanelProps = {
   category: Category
   isExpanded: boolean
+  isLastRow?: boolean
 }
 
-export function CategoriesExpandedPanel({ category, isExpanded }: CategoriesExpandedPanelProps) {
+export function CategoriesExpandedPanel({
+  category,
+  isExpanded,
+  isLastRow,
+}: CategoriesExpandedPanelProps) {
   const { categories, setOpen, setCurrentRow } = useCategories()
   const role = getCachedUser()?.role
   const canEdit = canUpdateCategory(role)
@@ -36,7 +42,12 @@ export function CategoriesExpandedPanel({ category, isExpanded }: CategoriesExpa
 
   return (
     <>
-      <div className="bg-background px-6 py-4 animate-in fade-in-0 duration-200">
+      <div
+        className={cn(
+          'bg-background px-6 py-4 animate-in fade-in-0 duration-200',
+          !isLastRow && 'border-b',
+        )}
+      >
         {children.length > 0 ? (
           <div>
             {children.map((child) => (

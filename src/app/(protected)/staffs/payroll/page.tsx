@@ -14,7 +14,7 @@ import { PaysheetDetail } from './_components/paysheet-detail'
 
 export default function PayrollPage() {
   const userRole = getCachedUser()?.role
-  const canView = userRole === 'TENANT_OWNER' || userRole === 'SUPER_ADMIN'
+  const canView = userRole === 'TENANT_OWNER'
 
   const {
     activeTab,
@@ -28,7 +28,7 @@ export default function PayrollPage() {
 
   if (!canView) {
     return (
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-16 text-center bg-white dark:bg-slate-900/10">
           <h2 className="text-lg font-semibold">Không có quyền truy cập</h2>
           <p className="text-muted-foreground mt-2 max-w-md text-sm">
@@ -83,12 +83,12 @@ export default function PayrollPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+    <div className="flex flex-col gap-6 px-4 lg:px-6">
       <PageHeader
         breadcrumbs={[
           { label: 'Trang chủ', href: '/dashboard' },
-          { label: 'Quản lý nhân sự', href: '/staffs' },
-          { label: 'Tính lương & Chi trả' },
+          { label: 'Nhân viên', href: '/staffs' },
+          { label: 'Bảng lương' },
         ]}
         title="Tính lương & Chi trả"
         description="Quản lý cấu hình kỳ lương, mức thu nhập cơ bản, tính toán ngày công và chi trả lương."
@@ -102,13 +102,18 @@ export default function PayrollPage() {
       <div className="bg-slate-50/40 dark:bg-slate-900/5 rounded-xl border p-4 sm:p-6 space-y-6">
         {activePeriodId ? (
           /* Detailed Drill-down View */
-          <PayslipsTable />
+          <div className="animate-in fade-in slide-in-from-right-8 duration-300 ease-out-sine">
+            <PayslipsTable />
+          </div>
         ) : activePaysheetId ? (
           /* Detailed Paysheet sub-view */
-          <PaysheetDetail />
+          <div className="animate-in fade-in slide-in-from-right-8 duration-300 ease-out-sine">
+            <PaysheetDetail />
+          </div>
         ) : (
           /* Tabbed Master View */
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <div className="animate-in fade-in slide-in-from-left-8 duration-300 ease-out-sine">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="bg-muted/80 p-1 border rounded-lg max-w-md grid grid-cols-3">
               <TabsTrigger value="periods" className="cursor-pointer">
                 Kỳ lương
@@ -205,6 +210,7 @@ export default function PayrollPage() {
               </div>
             </TabsContent>
           </Tabs>
+          </div>
         )}
       </div>
     </div>

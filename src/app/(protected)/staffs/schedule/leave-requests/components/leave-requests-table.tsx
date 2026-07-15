@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   type ExpandedState,
   type VisibilityState,
@@ -64,10 +65,21 @@ export function LeaveRequestsTable() {
     updatePageSize,
   } = useLeaveRequests();
 
+  const params = useParams();
+  const targetId = params.id as string | undefined;
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [keywordInput, setKeywordInput] = useState(listQuery.keyword);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    if (targetId) {
+      setExpanded({ [targetId]: true });
+    } else {
+      setExpanded({});
+    }
+  }, [targetId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -195,13 +207,14 @@ export function LeaveRequestsTable() {
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row, index, rows) => (
                 <Fragment key={row.id}>
                   <TableRow
                     data-state={row.getIsSelected() ? "selected" : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
                       "cursor-pointer",
+                      index === rows.length - 1 && "border-b-0",
                       row.getIsExpanded() &&
                         "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
                     )}
@@ -245,6 +258,7 @@ export function LeaveRequestsTable() {
                           {row.getIsExpanded() && (
                             <LeaveRequestsExpandedPanel
                               request={row.original}
+                              isLastRow={index === rows.length - 1}
                             />
                           )}
                         </div>

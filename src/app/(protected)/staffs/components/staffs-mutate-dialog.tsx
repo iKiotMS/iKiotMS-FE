@@ -59,7 +59,6 @@ import { warehouseApi } from "@/lib/api/warehouse";
 import { getApiErrorMessage } from "@/lib/api/staff-mapper";
 import { getSessionBranchId, getSessionRole } from "@/lib/auth";
 import {
-  canAssignBranchManager,
   canAssignWarehouseOnStaffForm,
   canEditStaffRoleAndWorkplace,
   canPromoteStaffToManager,
@@ -738,15 +737,6 @@ export function StaffsMutateDialog({
                         ))}
                       </SelectContent>
                     </Select>
-                    {isEdit && (
-                      <p className="text-xs text-muted-foreground">
-                        {isEditingManager
-                          ? "Đổi quản lý qua «Đổi quản lý chi nhánh/kho»."
-                          : canPromoteRole
-                            ? "Có thể thăng STAFF thành quản lý chi nhánh hoặc kho."
-                            : "Không đổi vai trò khi cập nhật hồ sơ."}
-                      </p>
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}

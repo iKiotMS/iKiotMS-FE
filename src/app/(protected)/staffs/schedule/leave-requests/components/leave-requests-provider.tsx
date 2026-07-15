@@ -17,6 +17,7 @@ import {
 } from "@/components/sidebar/constants/role-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { getSessionUserId } from "@/lib/auth";
+import { useParams } from "next/navigation";
 import type {
   ApproveLeavePayload,
   CreateEmergencyLeavePayload,
@@ -88,6 +89,9 @@ export function LeaveRequestsProvider({
   const branchId = user?.branchId;
   const warehouseId = user?.warehouseId;
   const currentUserId = getSessionUserId() ?? user?.id;
+
+  const params = useParams();
+  const targetId = params.id as string | undefined;
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -243,7 +247,20 @@ export function LeaveRequestsProvider({
           keyword: listQuery.keyword || undefined,
         },
       );
-      setLeaveRequests(response.data);
+
+      let data = response.data;
+      if (targetId && !data.some((r) => r._id === targetId)) {
+        try {
+          const targetReq = await leaveRequestApi.getById(targetId);
+          if (targetReq) {
+            data = [targetReq, ...data];
+          }
+        } catch (err) {
+          console.error("Failed to fetch target leave request:", err);
+        }
+      }
+
+      setLeaveRequests(data);
       setTotal(response.total);
       setTotalPages(response.totalPages);
     } catch (error) {
@@ -262,6 +279,7 @@ export function LeaveRequestsProvider({
     listQuery.recordPerPage,
     listQuery.status,
     listQuery.keyword,
+    targetId,
   ]);
 
   useEffect(() => {

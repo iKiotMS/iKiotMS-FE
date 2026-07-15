@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
   LEAVE_KIND_MAP,
   LEAVE_STATUS_MAP,
@@ -68,8 +69,10 @@ function isApproveDaysInvalid(
 
 export function LeaveRequestsExpandedPanel({
   request,
+  isLastRow,
 }: {
   request: LeaveRequest;
+  isLastRow?: boolean;
 }) {
   const { user } = useAuth();
   const { handleApprove, handleReject, handleCancel, currentUserId } =
@@ -198,7 +201,7 @@ export function LeaveRequestsExpandedPanel({
 
   if (detailLoading) {
     return (
-      <div className="bg-background border-b px-6 py-4 space-y-4">
+      <div className={cn("bg-background px-6 py-4 space-y-4", !isLastRow && "border-b")}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
@@ -213,7 +216,12 @@ export function LeaveRequestsExpandedPanel({
   }
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        "bg-background px-6 py-4 animate-in fade-in-0 duration-200",
+        !isLastRow && "border-b",
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
         <Badge variant={kind.variant}>{kind.label}</Badge>

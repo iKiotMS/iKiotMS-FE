@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,13 +30,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { branchApi } from "@/lib/api/branch";
-import { logout } from "@/lib/api/auth";
 import { staffApi } from "@/lib/api/staff";
 import { getApiErrorMessage } from "@/lib/api/staff-mapper";
-import { getSessionRole } from "@/lib/auth";
+import {
+  formatStaffOptionLabel,
+  StaffSearchSelect,
+} from "@/app/(protected)/staffs/shared/staff-search-select";
 import type { Branch } from "@/types/branch";
 import type { Staff } from "@/types/staff";
-import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   branchId: z.string().min(1, "Vui lòng chọn chi nhánh"),
@@ -54,22 +54,12 @@ type AssignBranchManagerDialogProps = {
   onSuccess?: () => void;
 };
 
-function getStaffBranchId(staff: Staff): string {
-  return staff.branchId ?? "";
-}
-
-function getStaffOptionLabel(staff: Staff): string {
-  return `${staff.fullName}${staff.phoneNumber ? ` · ${staff.phoneNumber}` : ""}`;
-}
-
 export function AssignBranchManagerDialog({
   open,
   onOpenChange,
   initialBranchId,
-  initialBranchName,
   onSuccess,
 }: AssignBranchManagerDialogProps) {
-  const router = useRouter();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [allStaff, setAllStaff] = useState<Staff[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
@@ -86,11 +76,6 @@ export function AssignBranchManagerDialog({
   const selectedBranchId = form.watch("branchId");
   const branchIsLocked = Boolean(initialBranchId);
 
-  const selectedBranchName = useMemo(() => {
-    if (initialBranchName) return initialBranchName;
-    return branches.find((branch) => branch._id === selectedBranchId)?.name;
-  }, [branches, initialBranchName, selectedBranchId]);
-
   const currentManager = useMemo(() => {
     if (!selectedBranchId) return null;
     return (
@@ -98,7 +83,7 @@ export function AssignBranchManagerDialog({
         (staff) =>
           staff.status === "ACTIVE" &&
           staff.role === "BRANCH_MANAGER" &&
-          getStaffBranchId(staff) === selectedBranchId,
+          staff.branchId === selectedBranchId,
       ) ?? null
     );
   }, [allStaff, selectedBranchId]);
@@ -109,38 +94,52 @@ export function AssignBranchManagerDialog({
       (staff) =>
         staff.status === "ACTIVE" &&
         staff.role === "STAFF" &&
-        getStaffBranchId(staff) === selectedBranchId,
+        staff.branchId === selectedBranchId,
     );
   }, [allStaff, selectedBranchId]);
 
   useEffect(() => {
     if (!open) return;
 
+    let cancelled = false;
     form.reset({
       branchId: initialBranchId ?? "",
       staffId: "",
     });
-    setBranches([]);
-    setAllStaff([]);
 
     setLoadingBranches(true);
+    setLoadingStaff(true);
+
     void branchApi
       .getList({ status: "ACTIVE", limit: 100 })
       .then((response) => {
-        setBranches(response.data ?? []);
+        if (!cancelled) setBranches(response.data ?? []);
       })
       .catch((error) => {
-        toast.error(getApiErrorMessage(error));
-        setBranches([]);
+        if (!cancelled) {
+          toast.error(getApiErrorMessage(error));
+          setBranches([]);
+        }
       })
-      .finally(() => setLoadingBranches(false));
+      .finally(() => {
+        if (!cancelled) setLoadingBranches(false);
+      });
 
-    setLoadingStaff(true);
     void staffApi
       .getAllForOptions()
-      .then(setAllStaff)
-      .catch(() => setAllStaff([]))
-      .finally(() => setLoadingStaff(false));
+      .then((list) => {
+        if (!cancelled) setAllStaff(list);
+      })
+      .catch(() => {
+        if (!cancelled) setAllStaff([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingStaff(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, form, initialBranchId]);
 
   useEffect(() => {
@@ -148,19 +147,8 @@ export function AssignBranchManagerDialog({
   }, [form, selectedBranchId]);
 
   async function onSubmit(values: FormValues) {
-    const isSelfTransfer = getSessionRole() === "BRANCH_MANAGER";
-
     try {
       await branchApi.assignManager(values.branchId, values.staffId);
-
-      if (isSelfTransfer) {
-        toast.success("Đã chuyển nhượng. Vui lòng đăng nhập lại.");
-        onOpenChange(false);
-        await logout();
-        router.replace("/sign-in");
-        return;
-      }
-
       toast.success("Đã chuyển nhượng quản lý chi nhánh");
       onOpenChange(false);
       onSuccess?.();
@@ -174,12 +162,10 @@ export function AssignBranchManagerDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {initialBranchId ? "Chuyển nhượng quản lý chi nhánh" : "Đổi quản lý chi nhánh"}
+            {initialBranchId
+              ? "Chuyển nhượng quản lý chi nhánh"
+              : "Đổi quản lý chi nhánh"}
           </DialogTitle>
-          <DialogDescription>
-            Chọn nhân viên STAFF đang hoạt động trong chi nhánh. Người này sẽ
-            thành quản lý chi nhánh; quản lý hiện tại về STAFF.
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -200,7 +186,7 @@ export function AssignBranchManagerDialog({
                         <SelectValue
                           placeholder={
                             loadingBranches
-                              ? "Đang tải chi nhánh..."
+                              ? "Đang tải..."
                               : "Chọn chi nhánh"
                           }
                         />
@@ -214,25 +200,18 @@ export function AssignBranchManagerDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  {branchIsLocked && selectedBranchName && (
-                    <p className="text-xs text-muted-foreground">
-                      Đang đổi quản lý cho chi nhánh {selectedBranchName}.
-                    </p>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             {selectedBranchId && (
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                <p className="text-xs text-muted-foreground">
-                  Quản lý hiện tại
-                </p>
-                <p className="font-medium">
+              <div className="rounded-md border px-3 py-2 text-sm">
+                <p className="text-xs text-muted-foreground">Quản lý hiện tại</p>
+                <p className="mt-0.5 font-medium truncate">
                   {currentManager
-                    ? getStaffOptionLabel(currentManager)
-                    : "Chưa tìm thấy quản lý đang active"}
+                    ? formatStaffOptionLabel(currentManager)
+                    : "—"}
                 </p>
               </div>
             )}
@@ -242,38 +221,16 @@ export function AssignBranchManagerDialog({
               name="staffId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nhân viên mới (STAFF)</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!selectedBranchId || loadingStaff}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full">
-                        <SelectValue
-                          placeholder={
-                            loadingStaff
-                              ? "Đang tải nhân viên..."
-                              : "Chọn nhân viên"
-                          }
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {staffCandidates.map((staff) => (
-                        <SelectItem key={staff._id} value={staff._id}>
-                          {getStaffOptionLabel(staff)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedBranchId &&
-                    !loadingStaff &&
-                    staffCandidates.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Không có nhân viên STAFF active trong chi nhánh này.
-                      </p>
-                    )}
+                  <FormLabel>Nhân viên mới</FormLabel>
+                  <FormControl>
+                    <StaffSearchSelect
+                      staff={staffCandidates}
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={!selectedBranchId}
+                      loading={loadingStaff}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

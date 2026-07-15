@@ -11,6 +11,8 @@ import { LeaveRequestsDialogs } from "./components/leave-requests-dialogs";
 import { LeaveRequestsProvider } from "./components/leave-requests-provider";
 import { LeaveRequestsTable } from "./components/leave-requests-table";
 
+import { PageHeader } from "@/components/page-header";
+
 function getRoleDescription(role?: string | null): string {
   switch (role) {
     case "TENANT_OWNER":
@@ -32,7 +34,7 @@ export default function LeaveRequestsPage() {
 
   if (!canViewLeaveRequests(role)) {
     return (
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <Button asChild variant="ghost" size="sm" className="w-fit px-2">
           <Link href="/staffs/schedule">
             <ArrowLeft className="mr-2 size-4" />
@@ -48,27 +50,17 @@ export default function LeaveRequestsPage() {
 
   return (
     <LeaveRequestsProvider>
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <Button asChild variant="ghost" size="sm" className="w-fit px-2">
-              <Link href="/staffs/schedule">
-                <ArrowLeft className="mr-2 size-4" />
-                Quay lại lịch làm
-              </Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <CalendarClock className="size-6 text-primary" />
-              <h1 className="text-2xl font-bold tracking-tight">
-                Đơn nghỉ phép
-              </h1>
-            </div>
-            <p className="text-muted-foreground text-sm max-w-2xl">
-              {getRoleDescription(role)}
-            </p>
-          </div>
-          <LeaveRequestsButtonGroup />
-        </div>
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: "Trang chủ", href: "/dashboard" },
+            { label: "Nhân viên", href: "/staffs" },
+            { label: "Nghỉ phép" },
+          ]}
+          title="Đơn nghỉ phép"
+          description={getRoleDescription(role)}
+          actions={<LeaveRequestsButtonGroup />}
+        />
 
         <LeaveRequestsTable />
       </div>

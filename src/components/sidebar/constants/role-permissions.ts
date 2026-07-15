@@ -2,7 +2,7 @@
 export const rolePermissions = {
   products: {
     view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF", "SUPER_ADMIN"]),
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
   },
   brands: {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
@@ -149,9 +149,9 @@ export function canEditStaffRoleAndWorkplace(
   return true;
 }
 
-/** PATCH /branches/:id/manager — TENANT_OWNER hoặc BRANCH_MANAGER. */
+/** PATCH /branches/:id/manager — chỉ TENANT_OWNER. */
 export function canAssignBranchManager(role?: string | null): boolean {
-  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER";
+  return role === "TENANT_OWNER";
 }
 
 /** PATCH /warehouses/:id/manager — chỉ TENANT_OWNER. */
@@ -269,5 +269,14 @@ export function canUpdatePromotion(role?: string | null): boolean {
 }
 export function canDeletePromotion(role?: string | null): boolean {
   return canCreatePromotion(role);
+}
+
+// Cash drawers
+export function canManageCashDrawer(role?: string | null): boolean {
+  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER";
+}
+
+export function canReportShift(role?: string | null): boolean {
+  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER" || role === "STAFF";
 }
 

@@ -292,7 +292,8 @@ export default function TenantTicketsPage() {
       <PageHeader
         breadcrumbs={[
           { label: "Trang chủ", href: "/dashboard" },
-          { label: "Phản ánh / Hỗ trợ" },
+          { label: "CSKH" },
+          { label: "Phản ánh" },
         ]}
         title="Phản ánh & Hỗ trợ"
         description="Gửi yêu cầu hỗ trợ kỹ thuật hoặc phản ánh vấn đề đến đội ngũ quản trị hệ thống."

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Building2,
   CalendarDays,
@@ -44,7 +45,6 @@ import {
 import {
   canDeactivateStaffRow,
   canDeleteStaffRow,
-  requiresManagerReplacement,
 } from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import {
   getStaffGenderLabel,
@@ -78,9 +78,11 @@ function InfoItem({
 export function StaffsExpandedPanel({
   staff,
   isExpanded,
+  isLastRow,
 }: {
   staff: Staff;
   isExpanded: boolean;
+  isLastRow?: boolean;
 }) {
   const { setOpen, setCurrentRow, openAssignBranchManager, openAssignWarehouseManager } =
     useStaffs();
@@ -99,9 +101,7 @@ export function StaffsExpandedPanel({
   const showAssignBranchManager =
     canAssignBranchManager(userRole) &&
     staff.role === "BRANCH_MANAGER" &&
-    Boolean(staff.branchId) &&
-    (userRole === "TENANT_OWNER" ||
-      staff.branchId === requesterBranchId);
+    Boolean(staff.branchId);
   const showAssignWarehouseManager =
     canAssignWarehouseManager(userRole) &&
     staff.role === "WAREHOUSE_MANAGER" &&
@@ -157,7 +157,12 @@ export function StaffsExpandedPanel({
   const paySheetSummary = describeBasicPay(paySheetDetail?.basicPay);
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        "bg-background px-6 py-4 animate-in fade-in-0 duration-200",
+        !isLastRow && "border-b",
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
         <Badge variant={role.variant}>{role.label}</Badge>
@@ -314,26 +319,19 @@ export function StaffsExpandedPanel({
       <Separator className="mt-4" />
       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
         {showDelete ? (
-          <div className="space-y-1">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentRow(staff);
-                setOpen("delete");
-              }}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Xóa nhân viên
-            </Button>
-            {requiresManagerReplacement(staff) && (
-              <p className="text-xs text-muted-foreground max-w-xs">
-                Quản lý cần chọn nhân viên thay thế trước khi xóa.
-              </p>
-            )}
-          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentRow(staff);
+              setOpen("delete");
+            }}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Xóa nhân viên
+          </Button>
         ) : (
           <div />
         )}
@@ -350,9 +348,7 @@ export function StaffsExpandedPanel({
               }}
             >
               <UserCog className="mr-2 size-4" />
-              {userRole === "BRANCH_MANAGER"
-                ? "Chuyển nhượng chi nhánh"
-                : "Thay quản lý chi nhánh"}
+              Thay quản lý chi nhánh
             </Button>
           )}
           {showAssignWarehouseManager && (
@@ -388,26 +384,19 @@ export function StaffsExpandedPanel({
             </Button>
           )}
           {showAccountActions && canDeactivate && (
-            <div className="space-y-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentRow(staff);
-                  setOpen("deactivate");
-                }}
-              >
-                <Lock className="mr-2 size-4" />
-                Khóa tài khoản
-              </Button>
-              {requiresManagerReplacement(staff) && (
-                <p className="text-xs text-muted-foreground max-w-xs">
-                  Quản lý cần chọn nhân viên thay thế trước khi khóa.
-                </p>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentRow(staff);
+                setOpen("deactivate");
+              }}
+            >
+              <Lock className="mr-2 size-4" />
+              Khóa tài khoản
+            </Button>
           )}
           {showAccountActions && canChangePassword && (
             <Button
