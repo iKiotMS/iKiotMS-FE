@@ -31,9 +31,14 @@ const formatVND = (value: number) =>
 type CustomersExpandedPanelProps = {
   customer: Customer
   isExpanded: boolean
+  isLastRow?: boolean
 }
 
-export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpandedPanelProps) {
+export function CustomersExpandedPanel({
+  customer,
+  isExpanded,
+  isLastRow,
+}: CustomersExpandedPanelProps) {
   const { setOpen, setCurrentRow } = useCustomers()
   const [loading, setLoading] = useState(false)
   const wasExpandedRef = useRef(false)
@@ -56,7 +61,7 @@ export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpand
 
   if (loading) {
     return (
-      <div className="bg-background border-b px-6 py-4 space-y-4">
+      <div className={cn('bg-background px-6 py-4 space-y-4', !isLastRow && 'border-b')}>
         <div className="flex gap-4 mb-2">
           <Skeleton className="h-8 w-24 rounded-md" />
           <Skeleton className="h-8 w-32 rounded-md" />
@@ -74,7 +79,12 @@ export function CustomersExpandedPanel({ customer, isExpanded }: CustomersExpand
   }
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        'bg-background px-6 py-4 animate-in fade-in-0 duration-200',
+        !isLastRow && 'border-b',
+      )}
+    >
       <Tabs defaultValue="info">
         <TabsList className="mb-4">
           <TabsTrigger value="info" className="cursor-pointer">

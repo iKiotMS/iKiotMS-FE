@@ -13,6 +13,7 @@ import { useSuppliers } from "../../_context/suppliers-provider";
 type SuppliersExpandedPanelProps = {
   supplier: Supplier;
   isExpanded: boolean;
+  isLastRow?: boolean;
 };
 
 function formatVND(amount: number) {
@@ -22,6 +23,7 @@ function formatVND(amount: number) {
 export function SuppliersExpandedPanel({
   supplier,
   isExpanded,
+  isLastRow,
 }: SuppliersExpandedPanelProps) {
   const { setOpen, setCurrentRow } = useSuppliers();
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,7 @@ export function SuppliersExpandedPanel({
 
   if (loading) {
     return (
-      <div className="bg-background border-b px-6 py-4 space-y-4">
+      <div className={cn("bg-background px-6 py-4 space-y-4", !isLastRow && "border-b")}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
@@ -65,7 +67,12 @@ export function SuppliersExpandedPanel({
       : 0;
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        "bg-background px-6 py-4 animate-in fade-in-0 duration-200",
+        !isLastRow && "border-b",
+      )}
+    >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
         <div className="flex flex-col gap-0.5 col-span-2 md:col-span-1">
           <span className="text-xs text-muted-foreground">Tên nhà cung cấp</span>

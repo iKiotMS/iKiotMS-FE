@@ -9,6 +9,7 @@ import {
   User2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -25,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 interface InvoicesExpandedPanelProps {
   invoice: Invoice;
   isExpanded: boolean;
+  isLastRow?: boolean;
 }
 
 const formatVND = (value: number) =>
@@ -35,6 +37,7 @@ const formatVND = (value: number) =>
 export function InvoicesExpandedPanel({
   invoice,
   isExpanded,
+  isLastRow,
 }: InvoicesExpandedPanelProps) {
   const [loading, setLoading] = useState(false);
   const wasExpandedRef = useRef(false);
@@ -53,7 +56,7 @@ export function InvoicesExpandedPanel({
 
   if (loading) {
     return (
-      <div className="bg-muted/30 border-b px-6 py-6 space-y-4">
+      <div className={cn("bg-muted/30 px-6 py-6 space-y-4", !isLastRow && "border-b")}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Skeleton className="h-6 w-48" />
@@ -75,7 +78,12 @@ export function InvoicesExpandedPanel({
   );
 
   return (
-    <div className="bg-muted/20 border-b px-6 pb-6 pt-3 space-y-6 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        "bg-muted/20 px-6 pb-6 pt-3 space-y-6 animate-in fade-in-0 duration-200",
+        !isLastRow && "border-b",
+      )}
+    >
       <Tabs defaultValue="products" className="w-full">
         <TabsList>
           <TabsTrigger value="products">Danh sách sản phẩm</TabsTrigger>

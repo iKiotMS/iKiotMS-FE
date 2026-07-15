@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import type { Brand } from '@/types/brand'
 import { useBrands } from '../../_context/brands-provider'
 import { getCachedUser } from '@/lib/auth'
@@ -14,9 +15,14 @@ import { canUpdateBrand, canDeleteBrand } from '@/components/sidebar/constants/r
 type BrandsExpandedPanelProps = {
   brand: Brand
   isExpanded: boolean
+  isLastRow?: boolean
 }
 
-export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelProps) {
+export function BrandsExpandedPanel({
+  brand,
+  isExpanded,
+  isLastRow,
+}: BrandsExpandedPanelProps) {
   const { setOpen, setCurrentRow } = useBrands()
   const role = getCachedUser()?.role
   const canEdit = canUpdateBrand(role)
@@ -38,7 +44,7 @@ export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelPr
 
   if (loading) {
     return (
-      <div className="bg-background border-b px-6 py-4 space-y-4">
+      <div className={cn('bg-background px-6 py-4 space-y-4', !isLastRow && 'border-b')}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
@@ -57,7 +63,12 @@ export function BrandsExpandedPanel({ brand, isExpanded }: BrandsExpandedPanelPr
   }
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        'bg-background px-6 py-4 animate-in fade-in-0 duration-200',
+        !isLastRow && 'border-b',
+      )}
+    >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Tên thương hiệu</span>

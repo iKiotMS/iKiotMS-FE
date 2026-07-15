@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Building2,
   CalendarDays,
@@ -78,9 +79,11 @@ function InfoItem({
 export function StaffsExpandedPanel({
   staff,
   isExpanded,
+  isLastRow,
 }: {
   staff: Staff;
   isExpanded: boolean;
+  isLastRow?: boolean;
 }) {
   const { setOpen, setCurrentRow, openAssignBranchManager, openAssignWarehouseManager } =
     useStaffs();
@@ -157,7 +160,12 @@ export function StaffsExpandedPanel({
   const paySheetSummary = describeBasicPay(paySheetDetail?.basicPay);
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        "bg-background px-6 py-4 animate-in fade-in-0 duration-200",
+        !isLastRow && "border-b",
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge variant={status.variant}>{status.label}</Badge>
         <Badge variant={role.variant}>{role.label}</Badge>
