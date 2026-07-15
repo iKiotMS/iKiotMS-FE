@@ -39,6 +39,16 @@ export const sidebarItems = {
       { title: "Nghỉ phép", url: "/staffs/schedule/leave-requests" },
       { title: "Ngày lễ", url: "/staffs/holidays" },
       { title: "Bảng lương", url: "/staffs/payroll" },
+
+    ],
+  },
+  luong: {
+    title: "Lương",
+    url: "#",
+    icon: CreditCard,
+    items: [
+      { title: "Bảng lương", url: "/staffs/payroll" },
+      { title: "Lương của tôi", url: "/staffs/payroll/my-payslips" },
     ],
   },
   luong: {

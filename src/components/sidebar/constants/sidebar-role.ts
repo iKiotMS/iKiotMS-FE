@@ -59,6 +59,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     ]),
     crmGroup,
     cskhGroup,
+    salaryGroup,
   ],
 
   BRANCH_MANAGER: [
@@ -87,7 +88,6 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     crmGroup,
     cskhGroup,
     salaryGroup
-
   ],
 
   CUSTOMER: [],
