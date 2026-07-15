@@ -105,6 +105,23 @@ export interface ProductSearchParams {
   limit?: number;
 }
 
+// GET /products/items — flat SKU list for pickers (e.g. promotion product-scope selector).
+// Unlike Product.items, this doesn't require fetching every product's detail.
+export interface ProductItemListEntry {
+  id: string;
+  productId: string;
+  productName: string;
+  productCode: string;
+  sku: string;
+}
+
+export interface ProductItemListParams {
+  limit?: number;
+  search?: string;
+  // Comma-separated branch IDs — scopes results to items stocked at one of these branches.
+  branchIds?: string;
+}
+
 export interface InitialStock {
   locationId: string;
   locationType: LocationType;

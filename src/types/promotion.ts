@@ -13,7 +13,8 @@ export interface Promotion {
   id: string
   _id?: string
   tenantId?: string
-  branchId?: string | null
+  /** Empty/omitted = applies to all branches (tenant-wide). */
+  branchIds?: string[]
   promoName: string
   description?: string
   discountType: DiscountType
@@ -54,7 +55,7 @@ export interface PromotionListResponse {
 }
 
 export interface PromotionCreatePayload {
-  branchId?: string | null
+  branchIds?: string[]
   promoName: string
   description?: string
   discountType: DiscountType

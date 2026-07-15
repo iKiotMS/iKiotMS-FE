@@ -7,7 +7,7 @@ export const promotionFormSchema = z
   .object({
     promoName: z.string().min(1, 'Tên chương trình là bắt buộc'),
     description: z.string().optional(),
-    branchId: z.string().nullable(),
+    branchIds: z.array(z.string()),
     discountType: z.enum(['PERCENT', 'FIXED_AMOUNT']),
     discountValue: z.number().gt(0, 'Giá trị giảm phải lớn hơn 0'),
     maxDiscountAmount: z.number().nullable(),

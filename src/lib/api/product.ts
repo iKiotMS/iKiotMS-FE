@@ -13,6 +13,8 @@ import type {
   PaginationResponse,
   ProductDetailResponse,
   ProductSearchParams,
+  ProductItemListEntry,
+  ProductItemListParams,
 } from "@/types/product";
 
 type MongoDoc<T extends object> = Omit<T, "id"> & { _id: string };
@@ -61,6 +63,18 @@ export const productApi = {
       data: res.data.data.map(mapProduct),
       pagination: res.data.pagination,
     };
+  },
+
+  // GET /products/items — flat SKU list, does not require fetching each product's detail
+  // (GET /products list responses don't include `items` per product; see ProductService.js).
+  listItems: async (
+    params?: ProductItemListParams,
+  ): Promise<ProductItemListEntry[]> => {
+    const res = await client.get<{ data: MongoDoc<Omit<ProductItemListEntry, "id">>[] }>(
+      "/products/items",
+      { params },
+    );
+    return res.data.data.map(mapId);
   },
 
   search: async (
