@@ -27,6 +27,7 @@ type DashboardContextType = {
   topProducts: TopProducts | null
   inventory: InventoryStats | null
   isLoading: boolean
+  isWarehouse: boolean
   range: DashboardRange
   setRange: (range: DashboardRange) => void
   topProductsSortBy: TopProductsSortBy

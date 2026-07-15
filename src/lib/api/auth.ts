@@ -121,6 +121,8 @@ export async function updateMe(payload: {
   lastName?: string;
   email?: string;
   profile?: {
+    firstName?: string;
+    lastName?: string;
     avatarUrl?: string;
     address?: string;
     gender?: string;

@@ -24,6 +24,7 @@ export function CashflowInventory() {
     cashflow,
     inventory,
     isLoading,
+    isWarehouse,
     lowStockThreshold,
     setLowStockThreshold,
     branchOptions,
@@ -46,7 +47,11 @@ export function CashflowInventory() {
     <Card className="h-fit">
       <CardHeader>
         <CardTitle>Dòng tiền &amp; Tồn kho</CardTitle>
-        <CardDescription>Thu chi bán hàng và tình trạng tồn kho hiện tại</CardDescription>
+        <CardDescription>
+          {isWarehouse
+            ? "Dòng tiền nhập hàng và tình trạng tồn kho của kho"
+            : "Thu chi bán hàng và tình trạng tồn kho hiện tại"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -75,7 +80,7 @@ export function CashflowInventory() {
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowUpIcon className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium">Thu (bán hàng)</span>
+                    <span className="text-sm font-medium">{isWarehouse ? "Tiền vào" : "Thu (bán hàng)"}</span>
                   </div>
                   <div className="text-2xl font-bold">{formatVND(cashflow?.income ?? 0)}</div>
                   <div className="text-xs text-muted-foreground mt-1">{formatNumber(incomeCount)} giao dịch</div>
@@ -83,7 +88,7 @@ export function CashflowInventory() {
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowDownIcon className="h-4 w-4 text-red-600" />
-                    <span className="text-sm font-medium">Chi (hoàn trả)</span>
+                    <span className="text-sm font-medium">{isWarehouse ? "Chi (nhập hàng)" : "Chi (hoàn trả)"}</span>
                   </div>
                   <div className="text-2xl font-bold">{formatVND(cashflow?.expense ?? 0)}</div>
                   <div className="text-xs text-muted-foreground mt-1">{formatNumber(expenseCount)} giao dịch</div>

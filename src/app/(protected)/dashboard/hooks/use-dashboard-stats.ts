@@ -25,13 +25,16 @@ const RANGE_DAYS: Record<DashboardRange, number> = {
 }
 
 function toDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 }
 
-function getBranchIdFromLocationKey(locationKey: string): string | undefined {
-  if (!locationKey || locationKey === 'all') return undefined
+function parseLocationKey(locationKey: string): { branchId?: string; warehouseId?: string } {
+  if (!locationKey || locationKey === 'all') return {}
   const [type, id] = locationKey.split('-')
-  return type === 'branch' && id ? id : undefined
+  if (!id) return {}
+  if (type === 'branch') return { branchId: id }
+  if (type === 'warehouse') return { warehouseId: id }
+  return {}
 }
 
 export type TopProductsSortBy = 'quantity' | 'revenue'
@@ -40,7 +43,8 @@ export type RevenueDateRange = { fromDate: string; toDate: string; groupBy: 'day
 
 export function useDashboardStats(range: DashboardRange) {
   const locationKey = useAuthStore((state) => state.locationKey)
-  const branchId = getBranchIdFromLocationKey(locationKey)
+  const { branchId, warehouseId } = parseLocationKey(locationKey)
+  const isWarehouse = Boolean(warehouseId)
 
   const [overview, setOverview] = useState<StatsOverview | null>(null)
   const [revenue, setRevenue] = useState<RevenueSeries | null>(null)
@@ -61,6 +65,27 @@ export function useDashboardStats(range: DashboardRange) {
       const fromDate = new Date(toDate.getTime() - RANGE_DAYS[range] * 24 * 60 * 60 * 1000)
       const fromDateStr = toDateOnly(fromDate)
       const toDateStr = toDateOnly(toDate)
+
+      // A warehouse has no sales/orders, so the order-based widgets don't apply.
+      // Only cashflow (imports) and inventory are meaningful — fetch just those
+      // and clear the rest so the UI can hide the sales sections.
+      if (isWarehouse) {
+        const [cashflowRes, inventoryRes] = await Promise.all([
+          statsApi.getCashflow({ fromDate: fromDateStr, toDate: toDateStr, warehouseId }),
+          statsApi.getInventory({ warehouseId, lowStockThreshold }),
+        ])
+
+        setOverview(null)
+        setRevenue(null)
+        setRevenueDateRange(null)
+        setRevenueByPaymentMethod(null)
+        setRevenueByStaff(null)
+        setTopProducts(null)
+        setCashflow(cashflowRes)
+        setInventory(inventoryRes)
+        return
+      }
+
       const dateParams = { fromDate: fromDateStr, toDate: toDateStr, branchId }
       const groupBy = range === '12m' ? ('month' as const) : ('day' as const)
 
@@ -89,7 +114,7 @@ export function useDashboardStats(range: DashboardRange) {
     } finally {
       setIsLoading(false)
     }
-  }, [range, branchId, topProductsSortBy, lowStockThreshold])
+  }, [range, branchId, warehouseId, isWarehouse, topProductsSortBy, lowStockThreshold])
 
   useEffect(() => {
     fetchAll()
@@ -105,6 +130,7 @@ export function useDashboardStats(range: DashboardRange) {
     topProducts,
     inventory,
     isLoading,
+    isWarehouse,
     topProductsSortBy,
     setTopProductsSortBy,
     lowStockThreshold,

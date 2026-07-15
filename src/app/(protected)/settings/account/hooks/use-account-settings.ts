@@ -252,10 +252,10 @@ export function useAccountSettings() {
       }
 
       await updateMe({
-        firstName: data.firstName,
-        lastName: data.lastName,
         email: data.email,
         profile: {
+          firstName: data.firstName,
+          lastName: data.lastName,
           avatarUrl: finalAvatarUrl || undefined,
           address: data.address || undefined,
           gender: data.gender,

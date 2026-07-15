@@ -1,4 +1,4 @@
-import { format, isValid, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
 import type {
   ApiLeaveRequest,
@@ -147,4 +147,71 @@ export function extractHandoverPreview(payload: unknown): {
     count: Number(nested.count ?? 0),
     message: typeof nested.message === "string" ? nested.message : undefined,
   };
+}
+
+export function formatMissingDateRanges(dates: Date[]): string {
+  if (dates.length === 0) return "";
+  
+  const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
+  const groups: Date[][] = [];
+  let currentGroup: Date[] = [sortedDates[0]];
+
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prevDate = sortedDates[i - 1];
+    const currDate = sortedDates[i];
+    
+    if (differenceInCalendarDays(currDate, prevDate) === 1) {
+      currentGroup.push(currDate);
+    } else {
+      groups.push(currentGroup);
+      currentGroup = [currDate];
+    }
+  }
+  groups.push(currentGroup);
+
+  return groups.map(group => {
+    if (group.length === 1) {
+      return format(group[0], "dd/MM");
+    }
+    const start = group[0];
+    const end = group[group.length - 1];
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${format(start, "dd")} - ${format(end, "dd/MM")}`;
+    } else {
+      return `${format(start, "dd/MM")} - ${format(end, "dd/MM")}`;
+    }
+  }).join(", ");
+}
+
+export type ScheduleWarningData = 
+  | { type: "none" } 
+  | { type: "all" } 
+  | { type: "summary"; missingCount: number; totalCount: number } 
+  | { type: "detailed"; formattedRanges: string };
+
+export function getScheduleWarningData(
+  missingDates: Date[],
+  totalDaysInRange: number,
+  maxRangeGroups = 5
+): ScheduleWarningData {
+  if (missingDates.length === 0) return { type: "none" };
+  
+  if (missingDates.length === totalDaysInRange) {
+    return { type: "all" };
+  }
+
+  const sortedDates = [...missingDates].sort((a, b) => a.getTime() - b.getTime());
+  let groupCount = 1;
+  for (let i = 1; i < sortedDates.length; i++) {
+    if (differenceInCalendarDays(sortedDates[i], sortedDates[i - 1]) > 1) {
+      groupCount++;
+    }
+  }
+
+  if (groupCount > maxRangeGroups) {
+    return { type: "summary", missingCount: missingDates.length, totalCount: totalDaysInRange };
+  }
+
+  return { type: "detailed", formattedRanges: formatMissingDateRanges(missingDates) };
 }

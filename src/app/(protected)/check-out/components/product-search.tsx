@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCheckoutProducts } from "../_hooks/use-checkout-products";
 import { productApi } from "@/lib/api/product";
 import { useAuthStore } from "@/store/auth-store";
+import { getCachedUser } from "@/lib/auth";
 
 interface Product {
   id: string;
@@ -47,8 +48,28 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Fetch initial active products for quick purchase on mount or location changes
   useEffect(() => {
+    const resolveBranchId = (): string => {
+      const cachedUser = getCachedUser() as any;
+      if (cachedUser?.branchId) return cachedUser.branchId;
+      if (typeof window !== "undefined") {
+        const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
+        const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
+        if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+          return activeSwitcherItemId;
+        }
+      }
+      return "";
+    };
+
+    const branchId = resolveBranchId();
+    const params: any = { limit: 10, status: "ACTIVE" };
+    if (branchId) {
+      params.locationId = branchId;
+      params.locationType = "branch";
+    }
+
     productApi
-      .search({ limit: 10, status: "ACTIVE" })
+      .search(params)
       .then((res) => {
         const flattened = res.data.flatMap((product) =>
           (product.items || []).map((item) => ({

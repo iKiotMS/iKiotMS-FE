@@ -85,6 +85,9 @@ function mapBEOrderToInvoice(order: any): Invoice {
       unitPrice: item.unitPrice || 0,
       discountAmount: item.discountAmount || 0,
     })),
+    discountType: order.discountType || null,
+    discountValue: order.discountValue || 0,
+    appliedPromotions: order.appliedPromotions || null,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
   };

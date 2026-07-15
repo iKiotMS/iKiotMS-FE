@@ -36,6 +36,14 @@ interface ReceiptDialogProps {
     change: number;
     paymentMethod: string;
     note?: string;
+    discountType?: "ORDER" | "PROMOTION" | null;
+    discountValue?: number;
+    appliedPromotions?: Array<{
+      promotionId: string;
+      promoName: string;
+      discountAmount: number;
+      _id?: string;
+    }> | null;
   } | null;
 }
 
@@ -242,6 +250,27 @@ export function ReceiptDialog({
                 </div>
               )}
 
+              {order.discountValue && order.discountValue > 0 ? (
+                <>
+                  <div className="flex justify-between text-red-500 font-medium">
+                    <span>Chiết khấu ({order.discountType === "PROMOTION" ? "Khuyến mãi" : "Giảm đơn"}):</span>
+                    <span className="tabular-nums">
+                      -{formatVND(order.discountValue)}
+                    </span>
+                  </div>
+                  {order.discountType === "PROMOTION" && order.appliedPromotions && order.appliedPromotions.length > 0 && (
+                    <div className="pl-3 space-y-0.5 text-[11px] text-muted-foreground border-l border-primary/20">
+                      {order.appliedPromotions.map((p, idx) => (
+                        <div key={p._id || idx} className="flex justify-between">
+                          <span>• {p.promoName}:</span>
+                          <span className="tabular-nums">-{formatVND(p.discountAmount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null}
+
               <div className="flex justify-between font-bold text-sm border-t border-dashed pt-2 mt-2">
                 <span>Khách cần trả:</span>
                 <span className="tabular-nums text-primary">
@@ -295,7 +324,7 @@ export function ReceiptDialog({
           <Button
             type="button"
             variant="outline"
-            className="cursor-pointer flex-1 sm:flex-none"
+            className="cursor-pointer flex-1 sm:flex-none mr-2"
             onClick={() => onOpenChange(false)}
           >
             Đóng

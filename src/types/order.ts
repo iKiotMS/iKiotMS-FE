@@ -18,6 +18,13 @@ export interface OrderCreatePayload {
   grandTotal: number;
   customerPay?: number;
   note?: string;
+  discountType?: "ORDER" | "PROMOTION" | null;
+  discountValue?: number;
+  appliedPromotions?: {
+    promotionId: string;
+    promoName: string;
+    discountAmount: number;
+  }[] | null;
 }
 
 export interface OrderItem {
@@ -44,6 +51,14 @@ export interface Order {
   change?: number;
   note?: string;
   items: OrderItem[];
+  discountType?: "ORDER" | "PROMOTION" | null;
+  discountValue?: number;
+  appliedPromotions?: {
+    promotionId: string;
+    promoName: string;
+    discountAmount: number;
+    _id?: string;
+  }[] | null;
   createdAt: string;
   updatedAt: string;
 }

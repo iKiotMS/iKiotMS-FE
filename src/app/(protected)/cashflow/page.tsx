@@ -177,7 +177,7 @@ export default function CashflowPage() {
                 <TableHead>Loại</TableHead>
                 <TableHead>Nội dung</TableHead>
                 <TableHead>Mã tham chiếu</TableHead>
-                <TableHead>Chi nhánh</TableHead>
+                <TableHead>Địa điểm</TableHead>
                 <TableHead>Phương thức</TableHead>
                 <TableHead className="text-right">Số tiền</TableHead>
               </TableRow>
@@ -214,7 +214,20 @@ export default function CashflowPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {tx.paymentReference || '—'}
                       </TableCell>
-                      <TableCell className="text-sm">{tx.branchName || '—'}</TableCell>
+                      <TableCell className="text-sm">
+                        {tx.locationName ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            {tx.locationName}
+                            {tx.locationType === 'warehouse' && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                Kho
+                              </Badge>
+                            )}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm">
                         {tx.paymentMethod
                           ? PAYMENT_METHOD_LABELS[tx.paymentMethod] || tx.paymentMethod
