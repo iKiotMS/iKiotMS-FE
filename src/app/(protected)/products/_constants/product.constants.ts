@@ -40,6 +40,32 @@ export const STATUS_MAP: Record<ProductStatus, { label: string; className: strin
   },
 }
 
+// Thứ tự hiển thị mặc định: Đang kinh doanh -> Ngừng kinh doanh -> Ngừng sản xuất
+export const STATUS_ORDER: Record<ProductStatus, number> = {
+  ACTIVE: 0,
+  INACTIVE: 1,
+  DISCONTINUED: 2,
+}
+
+// BE (ProductService.softDeleteProduct) chặn xóa hàng hóa nếu còn tồn kho,
+// đang có phiếu chuyển kho dang dở, hoặc đang nằm trong đơn hàng chờ xử lý.
+export function getDeleteProductErrorMessage(beMessage?: string): string {
+  if (!beMessage) return 'Xóa hàng hóa thất bại'
+  if (beMessage.includes('still items in stock')) {
+    return 'Không thể xóa: hàng hóa vẫn còn tồn kho tại một số vị trí'
+  }
+  if (beMessage.includes('pending stock movements')) {
+    return 'Không thể xóa: hàng hóa đang có phiếu chuyển/nhập/xuất kho chưa hoàn tất'
+  }
+  if (beMessage.includes('pending customer orders')) {
+    return 'Không thể xóa: hàng hóa đang nằm trong đơn hàng chờ xử lý'
+  }
+  if (beMessage.includes('not found')) {
+    return 'Hàng hóa không tồn tại hoặc đã bị xóa'
+  }
+  return beMessage
+}
+
 export const COLUMN_LABELS: Record<string, string> = {
   image: '',
   productCode: 'Mã hàng',

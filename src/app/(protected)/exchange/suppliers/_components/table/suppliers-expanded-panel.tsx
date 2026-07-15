@@ -9,6 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Supplier } from "@/types/supplier";
 import { useSuppliers } from "../../_context/suppliers-provider";
+import { getCachedUser } from "@/lib/auth";
+import {
+  canDeleteSupplier,
+  canUpdateSupplier,
+} from "@/components/sidebar/constants/role-permissions";
 
 type SuppliersExpandedPanelProps = {
   supplier: Supplier;
@@ -28,6 +33,9 @@ export function SuppliersExpandedPanel({
   const { setOpen, setCurrentRow } = useSuppliers();
   const [loading, setLoading] = useState(false);
   const wasExpandedRef = useRef(false);
+  const role = getCachedUser()?.role;
+  const canEdit = canUpdateSupplier(role);
+  const canDelete = canDeleteSupplier(role);
 
   useLayoutEffect(() => {
     if (isExpanded && !wasExpandedRef.current) {
@@ -153,34 +161,44 @@ export function SuppliersExpandedPanel({
         )}
       </div>
 
-      <Separator className="mt-4" />
-      <div className="flex items-center justify-between mt-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(supplier);
-            setOpen("delete");
-          }}
-        >
-          <Trash2 className="mr-2 size-4" />
-          Xóa
-        </Button>
-        <Button
-          size="sm"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentRow(supplier);
-            setOpen("edit");
-          }}
-        >
-          <Pencil className="mr-2 size-4" />
-          Chỉnh sửa
-        </Button>
-      </div>
+      {(canDelete || canEdit) && (
+        <>
+          <Separator className="mt-4" />
+          <div className="flex items-center justify-between mt-3">
+            {canDelete ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentRow(supplier);
+                  setOpen("delete");
+                }}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Xóa
+              </Button>
+            ) : (
+              <span />
+            )}
+            {canEdit && (
+              <Button
+                size="sm"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentRow(supplier);
+                  setOpen("edit");
+                }}
+              >
+                <Pencil className="mr-2 size-4" />
+                Chỉnh sửa
+              </Button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ export interface ProductDetail {
 }
 
 export interface StockDetail {
+  inventoryId: string;
   locationId: string;
   locationType: LocationType;
   stock: number;

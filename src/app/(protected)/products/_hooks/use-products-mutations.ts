@@ -6,8 +6,12 @@ import { toast } from 'sonner'
 import type { Product } from '@/types/product'
 import type { ProductFormValues } from '../_types/product.types'
 import { productApi } from '@/lib/api/product'
-import { parsePriceAmount } from '../_constants/product.constants'
+import { parsePriceAmount, getDeleteProductErrorMessage } from '../_constants/product.constants'
 import { useAuthStore } from '@/store/auth-store'
+
+function extractErrorMessage(err: unknown): string | undefined {
+  return (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+}
 
 export function useProductsMutations() {
   const [products, setProducts] = useState<Product[]>([])
@@ -92,11 +96,13 @@ export function useProductsMutations() {
     setIsLoading(true)
     try {
       await productApi.remove(id)
-      setProducts((prev) => prev.filter((p) => p.id !== id))
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: 'DISCONTINUED' } : p)),
+      )
       toast.success('Xóa hàng hóa thành công')
       return true
-    } catch {
-      toast.error('Xóa hàng hóa thất bại')
+    } catch (err) {
+      toast.error(getDeleteProductErrorMessage(extractErrorMessage(err)))
       return false
     } finally {
       setIsLoading(false)
@@ -104,15 +110,58 @@ export function useProductsMutations() {
   }
 
   async function handleDeleteMany(ids: string[]): Promise<boolean> {
+    // Khớp với logic xóa đơn lẻ: hàng hóa đã DISCONTINUED thì không xóa lại được.
+    const eligibleIds = ids.filter((id) => {
+      const product = products.find((p) => p.id === id)
+      return product ? product.status !== 'DISCONTINUED' : true
+    })
+    const skippedCount = ids.length - eligibleIds.length
+
+    if (eligibleIds.length === 0) {
+      toast.error('Các hàng hóa đã chọn đều đang ngừng sản xuất, không thể xóa lại')
+      return false
+    }
+
     setIsLoading(true)
     try {
-      await Promise.all(ids.map((id) => productApi.remove(id)))
-      setProducts((prev) => prev.filter((p) => !ids.includes(p.id)))
-      toast.success(`Xóa ${ids.length} hàng hóa thành công`)
-      return true
-    } catch {
-      toast.error('Xóa hàng hóa thất bại')
-      return false
+      // allSettled: mỗi hàng hóa giờ được BE kiểm tra riêng (tồn kho / phiếu
+      // chuyển kho / đơn hàng chờ xử lý), nên một mục thất bại không được phép
+      // làm rollback các mục còn lại đã xóa thành công.
+      const results = await Promise.allSettled(
+        eligibleIds.map((id) => productApi.remove(id)),
+      )
+
+      const succeededIds: string[] = []
+      const failures: string[] = []
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          succeededIds.push(eligibleIds[idx])
+        } else {
+          failures.push(getDeleteProductErrorMessage(extractErrorMessage(result.reason)))
+        }
+      })
+
+      if (succeededIds.length > 0) {
+        setProducts((prev) =>
+          prev.map((p) => (succeededIds.includes(p.id) ? { ...p, status: 'DISCONTINUED' } : p)),
+        )
+      }
+
+      if (failures.length === 0) {
+        toast.success(
+          skippedCount > 0
+            ? `Xóa ${succeededIds.length} hàng hóa thành công (bỏ qua ${skippedCount} hàng hóa đã ngừng sản xuất)`
+            : `Xóa ${succeededIds.length} hàng hóa thành công`,
+        )
+      } else if (succeededIds.length > 0) {
+        toast.warning(
+          `Xóa thành công ${succeededIds.length} hàng hóa. ${failures.length} hàng hóa không thể xóa: ${failures[0]}${failures.length > 1 ? ` (và ${failures.length - 1} lỗi khác)` : ''}`,
+        )
+      } else {
+        toast.error(failures[0])
+      }
+
+      return succeededIds.length > 0
     } finally {
       setIsLoading(false)
     }
