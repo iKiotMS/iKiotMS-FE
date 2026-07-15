@@ -10,6 +10,13 @@ export const rolePermissions = {
   categories: {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
   },
+  suppliers: {
+    write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
+  },
+  inventoryLocation: {
+    // Matches BE DELETE /inventory/:id role check exactly (see inventory/index.js).
+    remove: new Set(["TENANT_OWNER", "WAREHOUSE_MANAGER"]),
+  },
   staff: {
     write: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
     delete: new Set(["TENANT_OWNER", "BRANCH_MANAGER"]),
@@ -40,7 +47,7 @@ export const rolePermissions = {
     editProfile: new Set(["TENANT_OWNER"]),
   },
   exchange: {
-    // Blocklist (not allowlist): imports page redirects BRANCH_MANAGER to /exchange/exports.
+    // Danh sách chặn (không phải danh sách cho phép): trang nhập khẩu chuyển hướng BRANCH_MANAGER đến /exchange/exports.
     importsBlocked: new Set(["BRANCH_MANAGER"]),
   },
   promotions: {
@@ -93,6 +100,23 @@ export function canUpdateCategory(role?: string | null): boolean {
 }
 export function canDeleteCategory(role?: string | null): boolean {
   return canViewCategories(role);
+}
+
+// Suppliers
+export function canCreateSupplier(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.suppliers.write.has(role);
+}
+export function canUpdateSupplier(role?: string | null): boolean {
+  return canCreateSupplier(role);
+}
+export function canDeleteSupplier(role?: string | null): boolean {
+  return canCreateSupplier(role);
+}
+
+export function canRemoveInventoryLocation(role?: string | null): boolean {
+  if (!role) return false;
+  return rolePermissions.inventoryLocation.remove.has(role);
 }
 
 // Staff

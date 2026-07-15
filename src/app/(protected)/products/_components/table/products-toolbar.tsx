@@ -35,8 +35,9 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
   const statusFilter = table.getColumn('status')?.getFilterValue() as string | undefined
 
   const categoryItems = useMemo(
-    () =>
-      categories.map((c) => ({
+    () => [
+      { id: 'all', label: 'Tất cả danh mục', parentId: null },
+      ...categories.map((c) => ({
         id: c.id,
         label: c.name,
         parentId: !c.parentId
@@ -45,6 +46,7 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
             ? c.parentId
             : (c.parentId as { _id: string })._id,
       })),
+    ],
     [categories],
   )
 
@@ -82,9 +84,9 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
 
         <CascadeSelect
           items={categoryItems}
-          value={categoryFilter ?? null}
+          value={categoryFilter || null}
           onValueChange={(val) =>
-            table.getColumn('categoryId')?.setFilterValue(val ?? '')
+            table.getColumn('categoryId')?.setFilterValue(val && val !== 'all' ? val : '')
           }
           placeholder="Danh mục"
           className="w-36 h-9 text-sm cursor-pointer"
