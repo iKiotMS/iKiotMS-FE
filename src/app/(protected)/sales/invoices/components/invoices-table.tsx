@@ -387,7 +387,7 @@ export function InvoicesTable() {
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row, index, rows) => (
                 <Fragment key={row.id}>
                   {/* Master Data Row */}
                   <TableRow
@@ -395,6 +395,7 @@ export function InvoicesTable() {
                     onClick={() => row.toggleExpanded()}
                     className={cn(
                       "cursor-pointer transition-colors duration-200",
+                      index === rows.length - 1 && "border-b-0",
                       row.getIsExpanded() &&
                         "bg-primary/5 hover:bg-primary/10 shadow-[inset_0_1px_0_hsl(var(--primary)/0.2),inset_1px_0_0_hsl(var(--primary)/0.2),inset_-1px_0_0_hsl(var(--primary)/0.2)]",
                     )}
@@ -440,6 +441,7 @@ export function InvoicesTable() {
                           <InvoicesExpandedPanel
                             invoice={row.original}
                             isExpanded={row.getIsExpanded()}
+                            isLastRow={index === rows.length - 1}
                           />
                         </div>
                       </div>

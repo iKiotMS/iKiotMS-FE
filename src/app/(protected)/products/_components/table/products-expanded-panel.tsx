@@ -35,11 +35,13 @@ import {
 type ProductsExpandedPanelProps = {
   product: Product;
   isExpanded: boolean;
+  isLastRow?: boolean;
 };
 
 export function ProductsExpandedPanel({
   product,
   isExpanded,
+  isLastRow,
 }: ProductsExpandedPanelProps) {
   const {
     setOpen,
@@ -139,7 +141,7 @@ export function ProductsExpandedPanel({
 
   if (loading || (isExpanded && !detail)) {
     return (
-      <div className="bg-background border-b px-6 py-4 space-y-4">
+      <div className={cn("bg-background px-6 py-4 space-y-4", !isLastRow && "border-b")}>
         <div className="flex gap-6">
           <Skeleton className="size-20 rounded-lg shrink-0" />
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
@@ -162,7 +164,12 @@ export function ProductsExpandedPanel({
 
   return (
     <>
-      <div className="bg-background px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        "bg-background px-6 py-4 animate-in fade-in-0 duration-200",
+        !isLastRow && "border-b",
+      )}
+    >
         {detail?.items?.length ? (
           <div className="space-y-3">
             {detail.items.map((item) => (
