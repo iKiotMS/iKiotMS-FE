@@ -31,6 +31,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
         sidebarItems.adminSystemNotifications,
         sidebarItems.adminUsers,
         sidebarItems.subscriptions,
+        sidebarItems.adminSepay,
         sidebarItems.adminGiaoDich,
         sidebarItems.adminAuditLog,
         sidebarItems.adminNotifications,
@@ -69,7 +70,6 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     },
     quanLyBanHangGroup([
       sidebarItems.hangHoa,
-      sidebarItems.giaoDich,
       sidebarItems.giaoDichBranch,
       sidebarItems.donHang,
     ]),
@@ -79,11 +79,19 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   ],
 
   WAREHOUSE_MANAGER: [
+    {
+      label: "Quản lý",
+      items: [sidebarItems.nhanVien],
+    },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich]),
     salaryGroup,
   ],
 
   STAFF: [
+    {
+      label: "Quản lý",
+      items: [sidebarItems.nhanVien],
+    },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.donHang]),
     crmGroup,
     cskhGroup,

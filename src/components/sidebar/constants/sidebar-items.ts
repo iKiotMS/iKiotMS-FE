@@ -120,6 +120,11 @@ export const sidebarItems = {
     url: "/admin/subscriptions",
     icon: CreditCard,
   },
+  adminSepay: {
+    title: "Liên kết SePay",
+    url: "/admin/sepay",
+    icon: Landmark,
+  },
   adminGiaoDich: {
     title: "Giao dịch",
     url: "/admin/transactions",

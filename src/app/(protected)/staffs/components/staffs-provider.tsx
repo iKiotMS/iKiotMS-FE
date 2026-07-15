@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { staffApi } from "@/lib/api/staff";
 import { branchApi } from "@/lib/api/branch";
 import { warehouseApi } from "@/lib/api/warehouse";
+import { paySheetApi } from "@/lib/api/paysheet";
 import { getSessionRole } from "@/lib/auth";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -153,6 +154,7 @@ export function StaffsProvider({
     string | undefined
   >();
   const locationKey = useAuthStore((state) => state.locationKey);
+  const paySheetNameByIdRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     // if (!canFetch) {
@@ -204,6 +206,34 @@ export function StaffsProvider({
     loadFilterOptions();
   }, [canFetch]);
 
+  useEffect(() => {
+    if (!canFetch) return;
+    let cancelled = false;
+    void paySheetApi
+      .getAllForOptions()
+      .then((options) => {
+        if (cancelled) return;
+        paySheetNameByIdRef.current = new Map(
+          options.map((option) => [option.value, option.label]),
+        );
+        // Refresh labels nếu staff list đã load trước.
+        setStaffs((prev) =>
+          prev.map((staff) => {
+            if (!staff.paySheetId) return staff;
+            const name = paySheetNameByIdRef.current.get(staff.paySheetId);
+            if (!name || staff.paySheetName === name) return staff;
+            return { ...staff, paySheetName: name };
+          }),
+        );
+      })
+      .catch(() => {
+        // Không chặn list nhân viên nếu thiếu quyền paysheets.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canFetch]);
+
   const fetchStaffs = useCallback(async () => {
     if (!canFetch) return;
 
@@ -235,7 +265,13 @@ export function StaffsProvider({
         branchId,
         warehouseId,
       });
-      setStaffs(response.data);
+      const withPaySheetNames = response.data.map((staff) => {
+        if (!staff.paySheetId) return staff;
+        if (staff.paySheetName) return staff;
+        const name = paySheetNameByIdRef.current.get(staff.paySheetId);
+        return name ? { ...staff, paySheetName: name } : staff;
+      });
+      setStaffs(withPaySheetNames);
       setTotal(response.total);
       setTotalPages(response.totalPages);
     } catch (error) {

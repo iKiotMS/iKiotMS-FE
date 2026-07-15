@@ -3,6 +3,7 @@
 import { useProducts } from '../../_context/products-provider'
 import { ProductsMutateDialog } from './products-mutate-dialog'
 import { ProductsDeleteDialog } from './products-delete-dialog'
+import { ProductsCrossBranchSearchDialog } from './products-cross-branch-search-dialog'
 
 export function ProductsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow, selectedIds } = useProducts()
@@ -40,6 +41,12 @@ export function ProductsDialogs() {
         }}
         currentRow={currentRow}
         selectedIds={selectedIds}
+      />
+      <ProductsCrossBranchSearchDialog
+        open={open === 'crossBranchSearch'}
+        onOpenChange={(v) => {
+          if (!v) setOpen(null)
+        }}
       />
     </>
   )

@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDateTime } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 import { getCachedUser } from '@/lib/auth'
 import {
   canUpdatePromotion,
@@ -36,11 +36,13 @@ const formatVND = (value: number) =>
 type PromotionsExpandedPanelProps = {
   promotion: Promotion
   isExpanded: boolean
+  isLastRow?: boolean
 }
 
 export function PromotionsExpandedPanel({
   promotion,
   isExpanded,
+  isLastRow,
 }: PromotionsExpandedPanelProps) {
   const { setOpen, setCurrentRow } = usePromotions()
   const role = getCachedUser()?.role
@@ -60,7 +62,12 @@ export function PromotionsExpandedPanel({
   }, [isExpanded, logs, promotion.id])
 
   return (
-    <div className="bg-background border-b px-6 py-4 animate-in fade-in-0 duration-200">
+    <div
+      className={cn(
+        'bg-background px-6 py-4 animate-in fade-in-0 duration-200',
+        !isLastRow && 'border-b',
+      )}
+    >
       <Tabs defaultValue="info">
         <TabsList className="mb-4">
           <TabsTrigger value="info" className="cursor-pointer">
@@ -195,7 +202,7 @@ export function PromotionsExpandedPanel({
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow className="bg-muted">
-                    <TableHead className="text-xs">Đơn hàng</TableHead>
+                    <TableHead className="text-xs">Mã hóa đơn</TableHead>
                     <TableHead className="text-xs">Thời gian</TableHead>
                     <TableHead className="text-xs text-right">Số tiền giảm</TableHead>
                   </TableRow>
@@ -203,7 +210,7 @@ export function PromotionsExpandedPanel({
                 <TableBody>
                   {(logs ?? []).map((log) => (
                     <TableRow key={log.id} className="text-sm">
-                      <TableCell className="font-mono text-xs">{log.orderId ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-xs">{log.paymentReference ?? '—'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDateTime(log.createdAt)}
                       </TableCell>

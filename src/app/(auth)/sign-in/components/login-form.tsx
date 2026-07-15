@@ -45,7 +45,15 @@ export function LoginForm2({
         const role = useAuthStore.getState().user?.role;
 
         toast.success("Đăng nhập thành công!");
-        router.push(role === "STAFF" ? "/check-out" : "/dashboard");
+        if (role === "STAFF") {
+          router.push("/check-out");
+        } else if (role === "SUPER_ADMIN") {
+          router.push("/admin/dashboard");
+        } else if (role === "WAREHOUSE_MANAGER") {
+          router.push("/products");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       } else {
         throw new Error("Không nhận được mã xác thực từ hệ thống.");

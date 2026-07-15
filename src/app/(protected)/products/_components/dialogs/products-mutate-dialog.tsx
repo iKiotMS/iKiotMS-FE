@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, ChevronsUpDown, Pencil, Plus, ShoppingBag, X } from 'lucide-react'
+import { Pencil, Plus, ShoppingBag, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { uploadImage } from '@/lib/api/upload'
 import { toast } from 'sonner'
 import {
@@ -34,143 +33,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product'
 import { productFormSchema, type ProductFormValues } from '../../_types/product.types'
 import { useProducts } from '../../_context/products-provider'
 import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
 import { CascadeSelect } from '@/components/ui/cascade-select'
-
-type LocationOption = { value: string; label: string }
-type StockLocation = { locationId: string; locationType: 'branch' | 'warehouse' }
-
-function InitialStockMultiSelect({
-  branchOptions,
-  warehouseOptions,
-  value,
-  onChange,
-}: {
-  branchOptions: LocationOption[]
-  warehouseOptions: LocationOption[]
-  value: StockLocation[]
-  onChange: (v: StockLocation[]) => void
-}) {
-  const [open, setOpen] = useState(false)
-
-  const selectedKeys = new Set(value.map((s) => `${s.locationType}:${s.locationId}`))
-
-  function toggle(locationType: 'branch' | 'warehouse', locationId: string) {
-    const key = `${locationType}:${locationId}`
-    if (selectedKeys.has(key)) {
-      onChange(value.filter((s) => `${s.locationType}:${s.locationId}` !== key))
-    } else {
-      onChange([...value, { locationId, locationType }])
-    }
-  }
-
-  function remove(key: string) {
-    onChange(value.filter((s) => `${s.locationType}:${s.locationId}` !== key))
-  }
-
-  function getLabel(locationType: 'branch' | 'warehouse', locationId: string) {
-    const opts = locationType === 'branch' ? branchOptions : warehouseOptions
-    return opts.find((o) => o.value === locationId)?.label ?? locationId
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          className={cn(
-            'w-full min-h-9 h-auto justify-start gap-1.5 flex-wrap font-normal px-3 py-2',
-            value.length === 0 && 'text-muted-foreground',
-          )}
-        >
-          {value.length === 0 ? (
-            <span>Chọn chi nhánh / kho...</span>
-          ) : (
-            value.map((s) => {
-              const key = `${s.locationType}:${s.locationId}`
-              return (
-                <Badge
-                  key={key}
-                  variant="secondary"
-                  className="gap-1 pr-1 text-xs"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    remove(key)
-                  }}
-                >
-                  {getLabel(s.locationType, s.locationId)}
-                  <X className="size-3" />
-                </Badge>
-              )
-            })
-          )}
-          <ChevronsUpDown className="ml-auto size-3.5 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Tìm kiếm địa điểm..." />
-          <CommandList>
-            <CommandEmpty>Không tìm thấy địa điểm.</CommandEmpty>
-            {branchOptions.length > 0 && (
-              <CommandGroup heading="Chi nhánh">
-                {branchOptions.map((b) => (
-                  <CommandItem
-                    key={`branch:${b.value}`}
-                    value={b.label}
-                    onSelect={() => toggle('branch', b.value)}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 size-4',
-                        selectedKeys.has(`branch:${b.value}`) ? 'opacity-100' : 'opacity-0',
-                      )}
-                    />
-                    {b.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {warehouseOptions.length > 0 && (
-              <CommandGroup heading="Kho">
-                {warehouseOptions.map((w) => (
-                  <CommandItem
-                    key={`warehouse:${w.value}`}
-                    value={w.label}
-                    onSelect={() => toggle('warehouse', w.value)}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 size-4',
-                        selectedKeys.has(`warehouse:${w.value}`) ? 'opacity-100' : 'opacity-0',
-                      )}
-                    />
-                    {w.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-}
+import { InitialStockSection, type StockLocation } from '../initial-stock-section'
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
@@ -179,6 +47,8 @@ const EMPTY_VALUES: ProductFormValues = {
   status: 'ACTIVE',
   images: [],
   itemImages: [],
+  useParentNameForItem: true,
+  itemProductName: '',
   productCode: '',
   sku: '',
   barcode: '',
@@ -199,7 +69,15 @@ type ProductsMutateDialogProps = {
 
 export function ProductsMutateDialog({ open, onOpenChange, currentRow }: ProductsMutateDialogProps) {
   const isEdit = !!currentRow
-  const { handleAdd, handleEdit, brands, categories, branchOptions, warehouseOptions } = useProducts()
+  const {
+    handleAdd,
+    handleEdit,
+    brands,
+    categories,
+    branchOptions,
+    warehouseOptions,
+    ensureLocationOptionsLoaded,
+  } = useProducts()
   const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductFormValues>({
@@ -212,8 +90,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
     name: 'productDetails',
   })
 
-  const hasLocations = branchOptions.length > 0 || warehouseOptions.length > 0
-
   useEffect(() => {
     if (!open) return
     if (isEdit && currentRow) {
@@ -223,11 +99,22 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
         categoryId: currentRow.categoryId ?? null,
         status: currentRow.status,
         images: currentRow.images ?? [],
+        // Not used in edit mode (BE doesn't allow editing productName here),
+        // but the schema requires a value.
+        useParentNameForItem: true,
       })
     } else {
       form.reset(EMPTY_VALUES)
     }
   }, [open, isEdit, currentRow, form])
+
+  // Branch/warehouse options are only needed once this dialog is open —
+  // fetched lazily here instead of eagerly on the products page mount.
+  useEffect(() => {
+    if (!open) return
+    ensureLocationOptionsLoaded()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -278,6 +165,10 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
       }
       if (!data.costPrice?.trim()) {
         form.setError('costPrice', { message: 'Giá vốn là bắt buộc' })
+        hasErrors = true
+      }
+      if (!data.useParentNameForItem && !data.itemProductName?.trim()) {
+        form.setError('itemProductName', { message: 'Tên phiên bản là bắt buộc' })
         hasErrors = true
       }
       if (hasErrors) return
@@ -460,6 +351,50 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                 <p className="text-xs text-muted-foreground -mt-2">
                   Mỗi hàng hóa cần ít nhất một phiên bản. Bạn có thể thêm nhiều phiên bản sau.
                 </p>
+
+                {/* Tên phiên bản: dùng tên hàng hóa hoặc đặt tên riêng */}
+                <FormField
+                  control={form.control}
+                  name="useParentNameForItem"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tên phiên bản</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === 'parent')}
+                        value={field.value ? 'parent' : 'custom'}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="cursor-pointer w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="parent">Dùng tên hàng hóa</SelectItem>
+                          <SelectItem value="custom">Đặt tên riêng cho phiên bản</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {!form.watch('useParentNameForItem') && (
+                  <FormField
+                    control={form.control}
+                    name="itemProductName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Tên riêng phiên bản <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nhập tên riêng cho phiên bản" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Ảnh riêng cho phiên bản */}
                 <div className="space-y-2">
@@ -715,26 +650,12 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                   </div>
                 </div>
 
-                {/* === Tồn kho ban đầu === */}
-                <Separator />
-                <div className="space-y-2">
-                  <div>
-                    <FormLabel>Tồn kho ban đầu</FormLabel>
-                    <p className="text-xs text-muted-foreground mt-0.5">Tùy chọn</p>
-                  </div>
-                  {!hasLocations ? (
-                    <p className="text-xs text-muted-foreground">
-                      Chưa có chi nhánh hoặc kho. Vui lòng tạo trước để nhập tồn kho.
-                    </p>
-                  ) : (
-                    <InitialStockMultiSelect
-                      branchOptions={branchOptions}
-                      warehouseOptions={warehouseOptions}
-                      value={(form.watch('initialStock') ?? []) as StockLocation[]}
-                      onChange={(v) => form.setValue('initialStock', v)}
-                    />
-                  )}
-                </div>
+                <InitialStockSection
+                  branchOptions={branchOptions}
+                  warehouseOptions={warehouseOptions}
+                  value={(form.watch('initialStock') ?? []) as StockLocation[]}
+                  onChange={(v) => form.setValue('initialStock', v)}
+                />
               </>
             )}
 

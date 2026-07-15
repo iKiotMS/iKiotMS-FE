@@ -96,19 +96,20 @@ export function ProductsTable() {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row, index, rows) => (
                 <Fragment key={row.id}>
                   <TableRow
                     data-state={row.getIsSelected() ? 'selected' : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
+                      'cursor-pointer',
+                      index === rows.length - 1 && 'border-b-0',
                       row.getIsExpanded() &&
-                        'bg-primary/5 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
+                        'bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]',
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
-                      className='border-t'
                         key={cell.id}
                         onClick={
                           cell.column.id === 'select' ? (e) => e.stopPropagation() : undefined
@@ -136,6 +137,7 @@ export function ProductsTable() {
                           <ProductsExpandedPanel
                             product={row.original}
                             isExpanded={row.getIsExpanded()}
+                            isLastRow={index === rows.length - 1}
                           />
                         </div>
                       </div>

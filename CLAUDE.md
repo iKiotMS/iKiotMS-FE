@@ -60,8 +60,12 @@ One file per resource (e.g. `brand.ts`, `staff.ts`, `order.ts`). Each exports a 
 |---|---|---|
 | `order:<orderId>` | `order:paid` | Customer's bank transfer for an order cleared |
 | `tenant:<tenantId>` | `subscription:activated` | Tenant's plan payment cleared |
+| `tenant:<tenantId>` | `ticket-update` | SUPER_ADMIN replied to or closed this tenant's support ticket |
+| `user:<userId>` | `notification` | New in-app notification for this user (`NotificationService.notify`) |
+| `admin` | `ticket-update` | A tenant created/replied to a support ticket (SUPER_ADMIN console) |
+| `admin` | `system-notification` | New system-level notification for the admin console |
 
-A checkout or plan-upgrade screen must `joinRoom(...)` and wait for the event — polling the REST API for payment status is the wrong pattern here.
+A checkout or plan-upgrade screen must `joinRoom(...)` and wait for the event — polling the REST API for payment status is the wrong pattern here. `AuthGuard` (`src/components/auth-guard.tsx`) joins `tenant:<tenantId>`, `user:<userId>`, and — for SUPER_ADMIN — `admin` automatically on mount, so most feature code only needs to attach listeners, not call `joinRoom` itself.
 
 ### Feature module pattern
 

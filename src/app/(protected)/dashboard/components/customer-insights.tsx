@@ -20,7 +20,24 @@ const LOCATION_TYPE_LABELS: Record<string, string> = {
 
 export function CashflowInventory() {
   const [activeTab, setActiveTab] = useState("cashflow")
-  const { cashflow, inventory, isLoading, lowStockThreshold, setLowStockThreshold } = useDashboard()
+  const {
+    cashflow,
+    inventory,
+    isLoading,
+    lowStockThreshold,
+    setLowStockThreshold,
+    branchOptions,
+    warehouseOptions,
+  } = useDashboard()
+
+  const getLocationName = (locationId: string, locationType: string): string => {
+    const options = locationType === 'warehouse' ? warehouseOptions : branchOptions
+    return (
+      options.find((o) => o.value === locationId)?.label ??
+      LOCATION_TYPE_LABELS[locationType] ??
+      locationType
+    )
+  }
 
   const incomeCount = cashflow?.byType.find((t) => t.flowType === "INCOME")?.count ?? 0
   const expenseCount = cashflow?.byType.find((t) => t.flowType === "EXPENSE")?.count ?? 0
@@ -146,13 +163,13 @@ export function CashflowInventory() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        inventory!.lowStock.slice(0, 5).map((item) => (
+                        inventory!.lowStock.slice(0, 10).map((item) => (
                           <TableRow key={`${item.productItemId}-${item.locationId}`} className="hover:bg-muted/30 transition-colors">
                             <TableCell className="font-medium py-4 px-6">{item.productName}</TableCell>
                             <TableCell className="py-4 px-6 text-muted-foreground">{item.sku}</TableCell>
                             <TableCell className="py-4 px-6">
                               <Badge variant="outline">
-                                {LOCATION_TYPE_LABELS[item.locationType] ?? item.locationType}
+                                {getLocationName(item.locationId, item.locationType)}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right py-4 px-6">

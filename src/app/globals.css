@@ -204,3 +204,16 @@ html {
 .animate-logo-scroll:hover {
   animation-play-state: paused;
 }
+
+/* Custom Border Thickness overrides */
+.border-thick .border,
+.border-thick [data-slot="sidebar"] {
+  border-width: 2px !important;
+}
+.border-thick .border-t { border-top-width: 2px !important; }
+.border-thick .border-b { border-bottom-width: 2px !important; }
+.border-thick .border-l { border-left-width: 2px !important; }
+.border-thick .border-r { border-right-width: 2px !important; }
+.border-thick .border-x { border-left-width: 2px !important; border-right-width: 2px !important; }
+.border-thick .border-y { border-top-width: 2px !important; border-bottom-width: 2px !important; }
+

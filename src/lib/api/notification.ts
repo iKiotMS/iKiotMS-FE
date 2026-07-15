@@ -16,7 +16,7 @@ export interface SystemNotification {
   _id: string;
   title: string;
   description: string;
-  type: "SYSTEM_TRANSACTION" | "SYSTEM_TENANT_CREATED" | "SYSTEM_TICKET_CREATED";
+  type: "SYSTEM_TRANSACTION" | "SYSTEM_TENANT_CREATED" | "SYSTEM_TICKET_CREATED" | "SYSTEM_TENANT_BANK_UPDATED";
   referenceId?: string;
   isRead: boolean;
   createdAt: string;
@@ -75,7 +75,7 @@ export type NotificationType =
   | "INVENTORY_LOW_STOCK" | "ORDER_PAID"
   | "SUBSCRIPTION_ACTIVATED" | "SUBSCRIPTION_EXPIRING" | "SUBSCRIPTION_EXPIRED"
   | "SCHEDULE_ASSIGNED" | "PAYSLIP_APPROVED" | "PAYSLIP_PAID"
-  | "STAFF_ACCOUNT_CREATED" | "TICKET_REPLIED";
+  | "STAFF_ACCOUNT_CREATED" | "TICKET_REPLIED" | "SEPAY_LINKED";
 
 /** Payload socket event "notification" chính là document này. */
 export interface AppNotification {

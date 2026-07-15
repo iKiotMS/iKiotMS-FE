@@ -48,7 +48,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   // Fetch initial active products for quick purchase on mount or location changes
   useEffect(() => {
     productApi
-      .getList({ limit: 10, status: "ACTIVE" })
+      .search({ limit: 10, status: "ACTIVE" })
       .then((res) => {
         const flattened = res.data.flatMap((product) =>
           (product.items || []).map((item) => ({

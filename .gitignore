@@ -46,3 +46,5 @@ iKiotMS-FE/.claude/
 
 # Cursor (personal IDE config)
 .cursor/
+
+package-lock.json

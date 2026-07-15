@@ -34,9 +34,29 @@ export function ThemeTab({
   selectedRadius,
   setSelectedRadius,
 }: ThemeTabProps) {
-  const { isDarkMode, applyTheme, applyRadius } = useThemeManager();
-
+  const { isDarkMode, applyTheme, applyRadius, applyBorder } = useThemeManager();
   const { toggleTheme } = useCircularTransition();
+
+  const [selectedBorder, setSelectedBorder] = React.useState("thick");
+
+  React.useEffect(() => {
+    try {
+      const savedBorder = localStorage.getItem("theme-border") || "thick";
+      setSelectedBorder(savedBorder);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const handleBorderSelect = (border: string, themeVal = selectedTheme) => {
+    setSelectedBorder(border);
+    applyBorder(border, themeVal, isDarkMode);
+    try {
+      localStorage.setItem("theme-border", border);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleRandomTheme = () => {
     // Apply a random theme from all presets
@@ -76,7 +96,7 @@ export function ThemeTab({
       {/* Theme Presets */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Chủ đề Giao diện</Label>
+          <Label className="text-sm font-medium">Chủ đề</Label>
           <Button
             variant="outline"
             size="sm"
@@ -197,7 +217,7 @@ export function ThemeTab({
 
       {/* Radius Selection */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Bo góc (Radius)</Label>
+        <Label className="text-sm font-medium">Bo góc</Label>
         <div className="grid grid-cols-5 gap-2">
           {radiusOptions.map((option) => (
             <div
@@ -208,6 +228,34 @@ export function ThemeTab({
                   : "border-border hover:border-border/60"
               }`}
               onClick={() => handleRadiusSelect(option.value)}
+            >
+              <div className="text-center">
+                <div className="text-xs font-medium">{option.name}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Border Selection */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Đường viền</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { name: "Không viền", value: "none" },
+            { name: "Mặc định", value: "thin" },
+            { name: "Viền dày", value: "thick" },
+          ].map((option) => (
+            <div
+              key={option.value}
+              className={`relative cursor-pointer rounded-md p-3 border transition-colors ${
+                selectedBorder === option.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-border/60"
+              }`}
+              onClick={() => handleBorderSelect(option.value)}
             >
               <div className="text-center">
                 <div className="text-xs font-medium">{option.name}</div>
@@ -230,7 +278,7 @@ export function ThemeTab({
             className="cursor-pointer"
           >
             <Sun className="h-4 w-4 mr-1" />
-            Sáng (Light)
+            Sáng
           </Button>
           <Button
             variant={isDarkMode ? "secondary" : "outline"}
@@ -239,7 +287,7 @@ export function ThemeTab({
             className="cursor-pointer"
           >
             <Moon className="h-4 w-4 mr-1" />
-            Tối (Dark)
+            Tối
           </Button>
         </div>
       </div>

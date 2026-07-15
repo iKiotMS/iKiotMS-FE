@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   type ExpandedState,
   type VisibilityState,
@@ -43,8 +44,9 @@ import { useLeaveRequests } from "./leave-requests-provider";
 
 const COLUMN_LABELS: Record<string, string> = {
   staffName: "Nhân viên",
-  type: "Loại nghỉ",
+  kind: "Phân loại",
   duration: "Khoảng thời gian",
+  createdAt: "Ngày tạo",
   reason: "Lý do",
   status: "Trạng thái",
 };
@@ -58,15 +60,26 @@ export function LeaveRequestsTable() {
     totalPages,
     listQuery,
     updateStatusFilter,
-    updateLeaveTypeFilter,
     updateKeywordFilter,
     updatePage,
     updatePageSize,
   } = useLeaveRequests();
 
+  const params = useParams();
+  const targetId = params.id as string | undefined;
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [keywordInput, setKeywordInput] = useState(listQuery.keyword);
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    if (targetId) {
+      setExpanded({ [targetId]: true });
+    } else {
+      setExpanded({});
+    }
+  }, [targetId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -80,15 +93,19 @@ export function LeaveRequestsTable() {
   const table = useReactTable({
     data: leaveRequests,
     columns,
+    getRowId: (row) => row._id,
     pageCount: totalPages,
     manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onExpandedChange: setExpanded,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     state: {
       columnVisibility,
       expanded,
+      rowSelection,
       pagination: {
         pageIndex: listQuery.page - 1,
         pageSize: listQuery.recordPerPage,
@@ -96,11 +113,7 @@ export function LeaveRequestsTable() {
     },
   });
 
-  const isLoading = useMemo(
-    () => isInitialLoading || isFetching,
-    [isInitialLoading, isFetching],
-  );
-
+  const isLoading = isInitialLoading || isFetching;
   const rangeStart =
     total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
   const rangeEnd = Math.min(
@@ -122,23 +135,6 @@ export function LeaveRequestsTable() {
             />
           </div>
           <Select
-            value={listQuery.leaveType}
-            onValueChange={(value) =>
-              updateLeaveTypeFilter(value as typeof listQuery.leaveType)
-            }
-          >
-            <SelectTrigger className="cursor-pointer w-40 h-9 text-sm">
-              <SelectValue placeholder="Loại nghỉ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả loại</SelectItem>
-              <SelectItem value="SICK">Ốm đau</SelectItem>
-              <SelectItem value="UNPAID">Nghỉ không lương</SelectItem>
-              <SelectItem value="ANNUAL">Nghỉ phép năm</SelectItem>
-              <SelectItem value="OTHER">Khác</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
             value={listQuery.status}
             onValueChange={(value) =>
               updateStatusFilter(value as typeof listQuery.status)
@@ -153,6 +149,7 @@ export function LeaveRequestsTable() {
               <SelectItem value="APPROVED">Đã duyệt</SelectItem>
               <SelectItem value="REJECTED">Từ chối</SelectItem>
               <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+              <SelectItem value="EXPIRED">Hết hạn</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -210,13 +207,14 @@ export function LeaveRequestsTable() {
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row, index, rows) => (
                 <Fragment key={row.id}>
                   <TableRow
                     data-state={row.getIsSelected() ? "selected" : undefined}
                     onClick={() => row.toggleExpanded()}
                     className={cn(
                       "cursor-pointer",
+                      index === rows.length - 1 && "border-b-0",
                       row.getIsExpanded() &&
                         "bg-primary/15 shadow-[inset_0_1px_0_hsl(var(--primary)/0.7),inset_1px_0_0_hsl(var(--primary)/0.7),inset_-1px_0_0_hsl(var(--primary)/0.7)]",
                     )}
@@ -257,10 +255,12 @@ export function LeaveRequestsTable() {
                         )}
                       >
                         <div className="overflow-hidden">
-                          <LeaveRequestsExpandedPanel
-                            request={row.original}
-                            isExpanded={row.getIsExpanded()}
-                          />
+                          {row.getIsExpanded() && (
+                            <LeaveRequestsExpandedPanel
+                              request={row.original}
+                              isLastRow={index === rows.length - 1}
+                            />
+                          )}
                         </div>
                       </div>
                     </TableCell>

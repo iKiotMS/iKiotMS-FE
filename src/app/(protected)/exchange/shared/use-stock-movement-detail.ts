@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { stockMovementApi } from "@/lib/api/stock-movement";
 import {
+  buildRetailPriceByItemId,
   getOpeningRowFieldErrors,
   type OpeningRowFieldErrors,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
@@ -166,6 +167,30 @@ export function useOpeningEditor({
     detail.toLocationType,
   ]);
 
+  // Khi catalog có retailPrice → re-validate (khớp BE importPrice ≤ retailPrice)
+  useEffect(() => {
+    if (!isExpanded || !enabled || !requireImportPrice) return;
+    if (openingDetails.length === 0 || openingProducts.length === 0) return;
+    setOpeningRowErrors(
+      getOpeningRowFieldErrors(openingDetails, {
+        requireImportPrice: true,
+        retailPriceByItemId: buildRetailPriceByItemId(openingProducts),
+      }),
+    );
+    // Chỉ re-chạy khi products load / đổi — không phụ thuộc mỗi lần edit row
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [isExpanded, enabled, requireImportPrice, openingProducts]);
+
+  const getValidateOptions = useCallback(
+    (products: StockMovementProductItemOption[] = openingProducts) => ({
+      requireImportPrice,
+      retailPriceByItemId: requireImportPrice
+        ? buildRetailPriceByItemId(products)
+        : undefined,
+    }),
+    [openingProducts, requireImportPrice],
+  );
+
   const updateOpeningRow = (
     idx: number,
     patch: Partial<OpeningDetailRow>,
@@ -174,9 +199,7 @@ export function useOpeningEditor({
       const next = prev.map((row, rowIdx) =>
         rowIdx === idx ? { ...row, ...patch } : row,
       );
-      setOpeningRowErrors(
-        getOpeningRowFieldErrors(next, { requireImportPrice }),
-      );
+      setOpeningRowErrors(getOpeningRowFieldErrors(next, getValidateOptions()));
       return next;
     });
   };
@@ -193,9 +216,7 @@ export function useOpeningEditor({
     setOpeningDetails((prev) => {
       if (prev.length <= 1) return prev;
       const next = prev.filter((_, rowIdx) => rowIdx !== idx);
-      setOpeningRowErrors(
-        getOpeningRowFieldErrors(next, { requireImportPrice }),
-      );
+      setOpeningRowErrors(getOpeningRowFieldErrors(next, getValidateOptions()));
       return next;
     });
   };
@@ -213,9 +234,7 @@ export function useOpeningEditor({
 
   const validateOpening = () => {
     const payload = buildOpeningPayload();
-    const rowErrors = getOpeningRowFieldErrors(payload, {
-      requireImportPrice,
-    });
+    const rowErrors = getOpeningRowFieldErrors(payload, getValidateOptions());
     setOpeningRowErrors(rowErrors);
     return {
       payload,

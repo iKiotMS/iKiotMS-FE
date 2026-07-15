@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { Funnel, Search } from 'lucide-react'
+import { Building2, Funnel, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CascadeSelect } from '@/components/ui/cascade-select'
 import {
@@ -28,7 +28,7 @@ type ProductsToolbarProps = {
 }
 
 export function ProductsToolbar({ table }: ProductsToolbarProps) {
-  const { brands, categories } = useProducts()
+  const { brands, categories, setOpen } = useProducts()
 
   const brandFilter = table.getColumn('brandId')?.getFilterValue() as string | undefined
   const categoryFilter = table.getColumn('categoryId')?.getFilterValue() as string | undefined
@@ -125,28 +125,40 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
         </Select>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="cursor-pointer h-9">
-            <Funnel />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {table
-            .getAllColumns()
-            .filter((col) => col.getCanHide())
-            .map((col) => (
-              <DropdownMenuCheckboxItem
-                key={col.id}
-                className="capitalize"
-                checked={col.getIsVisible()}
-                onCheckedChange={(value) => col.toggleVisibility(!!value)}
-              >
-                {COLUMN_LABELS[col.id] ?? col.id}
-              </DropdownMenuCheckboxItem>
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="cursor-pointer h-9"
+          onClick={() => setOpen('crossBranchSearch')}
+        >
+          <Building2 className="mr-1.5 size-4" />
+          Tìm ở chi nhánh khác
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="cursor-pointer h-9">
+              <Funnel />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((col) => col.getCanHide())
+              .map((col) => (
+                <DropdownMenuCheckboxItem
+                  key={col.id}
+                  className="capitalize"
+                  checked={col.getIsVisible()}
+                  onCheckedChange={(value) => col.toggleVisibility(!!value)}
+                >
+                  {COLUMN_LABELS[col.id] ?? col.id}
+                </DropdownMenuCheckboxItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   )
 }

@@ -10,7 +10,7 @@ export function useCheckoutProducts(searchQuery: string) {
   const locationKey = useAuthStore((state) => state.locationKey)
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
       setProducts([])
       return
     }
@@ -18,7 +18,7 @@ export function useCheckoutProducts(searchQuery: string) {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await productApi.getList({ search: searchQuery, limit: 20, status: 'ACTIVE' })
+        const res = await productApi.search({ q: searchQuery, limit: 20, status: 'ACTIVE' })
         setProducts(res.data)
       } catch (error) {
         console.error('Search products failed:', error)

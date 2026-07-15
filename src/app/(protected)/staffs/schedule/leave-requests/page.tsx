@@ -11,6 +11,21 @@ import { LeaveRequestsDialogs } from "./components/leave-requests-dialogs";
 import { LeaveRequestsProvider } from "./components/leave-requests-provider";
 import { LeaveRequestsTable } from "./components/leave-requests-table";
 
+function getRoleDescription(role?: string | null): string {
+  switch (role) {
+    case "TENANT_OWNER":
+      return "Duyệt đơn nghỉ của quản lý chi nhánh / kho / nhân viên. Có thể tạo đơn khẩn thay họ.";
+    case "BRANCH_MANAGER":
+      return "Xin nghỉ phép (Tenant duyệt, cần bàn giao staff nếu có lịch). Duyệt đơn staff; tạo đơn khẩn và duyệt ngay khi staff báo nghỉ.";
+    case "WAREHOUSE_MANAGER":
+      return "Xin nghỉ phép gửi Tenant duyệt. Nếu có lịch quản lý trong khoảng nghỉ, chọn nhân viên cùng kho nhận bàn giao.";
+    case "STAFF":
+      return "Tạo và theo dõi đơn nghỉ phép của bạn. Đơn được quản lý chi nhánh duyệt.";
+    default:
+      return "Tạo, theo dõi và duyệt yêu cầu nghỉ phép theo quyền của bạn.";
+  }
+}
+
 export default function LeaveRequestsPage() {
   const { user } = useAuth();
   const role = user?.role ?? getCachedUser()?.role;
@@ -48,8 +63,8 @@ export default function LeaveRequestsPage() {
                 Đơn nghỉ phép
               </h1>
             </div>
-            <p className="text-muted-foreground text-sm">
-              Tạo, theo dõi và duyệt/từ chối yêu cầu nghỉ phép của nhân viên
+            <p className="text-muted-foreground text-sm max-w-2xl">
+              {getRoleDescription(role)}
             </p>
           </div>
           <LeaveRequestsButtonGroup />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -98,12 +98,24 @@ export function ProductsItemDetailSheet({
   isSubDialogOpen,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const { branchOptions, warehouseOptions } = useProducts();
+  const { branchOptions, warehouseOptions, ensureLocationOptionsLoaded } =
+    useProducts();
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
   const canDelete = canDeleteProduct(role);
 
+  useEffect(() => {
+    if (!open) return;
+    ensureLocationOptionsLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   if (!item) return null;
+
+  const supplierNames =
+    item.suppliers && item.suppliers.length > 0
+      ? item.suppliers.map((s) => s.supplierName).join(", ")
+      : "—";
 
   function resolveLocationName(
     locationType: string,
@@ -193,6 +205,9 @@ export function ProductsItemDetailSheet({
                       <InfoRow label="Bảo hành">{item.warrantyPeriod}</InfoRow>
                     </div>
                   )}
+                  <div className="px-3">
+                    <InfoRow label="Nhà cung cấp">{supplierNames}</InfoRow>
+                  </div>
                 </div>
               </div>
             </div>
@@ -203,9 +218,7 @@ export function ProductsItemDetailSheet({
               <Section title="Tên phiên bản">
                 <div className="px-4 py-3">
                   <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                    {item.productDetails?.length
-                      ? `${item.productName} - ${item.productDetails.map((d) => d.value).join(" / ")}`
-                      : item.productName}
+                    {item.productName}
                   </p>
                 </div>
               </Section>
@@ -289,7 +302,7 @@ export function ProductsItemDetailSheet({
             {item.description && (
               <Section title="Mô tả">
                 <div className="px-4 py-3">
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words leading-relaxed">
+                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                     {item.description}
                   </p>
                 </div>

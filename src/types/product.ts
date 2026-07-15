@@ -19,6 +19,15 @@ export interface StockDetail {
   stock: number;
 }
 
+// Populated subset of Supplier as returned on ProductItem.suppliers
+// (BE populates only these fields — see ProductService.getProductById/addSupplierToItem).
+export interface ProductItemSupplier {
+  id: string;
+  supplierName: string;
+  email?: string;
+  phoneNumber?: string;
+}
+
 export interface ProductItem {
   id: string;
   tenantId: string;
@@ -34,6 +43,7 @@ export interface ProductItem {
   warrantyPeriod?: string;
   images?: ProductImage[];
   productDetails?: ProductDetail[];
+  suppliers?: ProductItemSupplier[];
   stock?: number;
   stockDetails?: StockDetail[];
   createdAt?: string;
@@ -45,7 +55,6 @@ export interface Product {
   tenantId: string;
   brandId?: string;
   categoryId?: string;
-  supplierId?: string;
   name: string;
   status: ProductStatus;
   categoryName?: string;
@@ -62,8 +71,10 @@ export interface ProductDetailResponse extends Product {
 
 export interface ProductQueryParams {
   search?: string;
+  q?: string;
   status?: ProductStatus;
   categoryId?: string;
+  supplierId?: string;
   locationId?: string;
   locationType?: LocationType;
   page?: number;
@@ -82,13 +93,24 @@ export interface ProductListResponse {
   pagination: PaginationResponse;
 }
 
+export interface ProductSearchParams {
+  q?: string;
+  status?: ProductStatus;
+  categoryId?: string;
+  supplierId?: string;
+  locationId?: string;
+  locationType?: LocationType;
+  page?: number;
+  limit?: number;
+}
+
 export interface InitialStock {
   locationId: string;
   locationType: LocationType;
-  stock?: number;
 }
 
 export interface ProductItemCreatePayload {
+  productName: string;
   productCode: string;
   sku: string;
   barcode?: string;
@@ -103,6 +125,7 @@ export interface ProductItemCreatePayload {
 }
 
 export interface ProductItemUpdatePayload {
+  productName?: string;
   productCode?: string;
   sku?: string;
   barcode?: string;
