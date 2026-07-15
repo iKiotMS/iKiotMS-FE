@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   type ExpandedState,
   type VisibilityState,
@@ -64,10 +65,21 @@ export function LeaveRequestsTable() {
     updatePageSize,
   } = useLeaveRequests();
 
+  const params = useParams();
+  const targetId = params.id as string | undefined;
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [keywordInput, setKeywordInput] = useState(listQuery.keyword);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    if (targetId) {
+      setExpanded({ [targetId]: true });
+    } else {
+      setExpanded({});
+    }
+  }, [targetId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
