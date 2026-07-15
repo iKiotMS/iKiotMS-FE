@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,8 +33,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { leaveRequestApi } from "@/lib/api/leave-request";
 import {
   combineLeaveDateTime,
+  getScheduleWarningData,
   todayIsoDate,
 } from "@/lib/api/leave-request-mapper";
+import { workingScheduleApi } from "@/lib/api/schedule";
+import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useLeaveRequests } from "./leave-requests-provider";
 
@@ -80,6 +83,9 @@ export function LeaveRequestsPersonalDialog({
   const [scheduleHandoverRequired, setScheduleHandoverRequired] = useState(false);
   const [handoverCount, setHandoverCount] = useState(0);
   const [checkingHandover, setCheckingHandover] = useState(false);
+  const [checkingSchedule, setCheckingSchedule] = useState(false);
+  const [missingScheduleDates, setMissingScheduleDates] = useState<Date[]>([]);
+  const [totalDaysInRange, setTotalDaysInRange] = useState(0);
 
   const requiresHandover = isBranchManager || scheduleHandoverRequired;
   const staffHandoverOptions = handoverOptions;
@@ -113,6 +119,7 @@ export function LeaveRequestsPersonalDialog({
       });
       setScheduleHandoverRequired(false);
       setHandoverCount(0);
+      setMissingScheduleDates([]);
     }
   }, [open, form]);
 
@@ -161,6 +168,54 @@ export function LeaveRequestsPersonalDialog({
     endTime,
     form,
   ]);
+
+  // --- Schedule check: warn if no working schedule in selected range ---
+  useEffect(() => {
+    if (!open || !startDate || !endDate) return;
+    const startIso = combineLeaveDateTime(
+      startDate,
+      startTime || DEFAULT_START_TIME,
+    );
+    const endIso = combineLeaveDateTime(endDate, endTime || DEFAULT_END_TIME);
+    if (new Date(startIso) > new Date(endIso)) {
+      setMissingScheduleDates([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setCheckingSchedule(true);
+      try {
+        const result = await workingScheduleApi.getList(
+          { startDate: startDate, endDate: endDate, recordPerPage: 500 },
+        );
+        if (cancelled) return;
+
+        // Compute which dates in range have no schedule
+        const scheduledDates = new Set(
+          result.data.map((s) => s.workDate.slice(0, 10)),
+        );
+        const allDates = eachDayOfInterval({
+          start: parseISO(startDate),
+          end: parseISO(endDate),
+        });
+        const missing = allDates.filter(
+          (d) => !scheduledDates.has(format(d, "yyyy-MM-dd"))
+        );
+        setMissingScheduleDates(missing);
+        setTotalDaysInRange(allDates.length);
+      } catch {
+        if (!cancelled) setMissingScheduleDates([]);
+      } finally {
+        if (!cancelled) setCheckingSchedule(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [open, startDate, endDate, startTime, endTime]);
 
   async function onSubmit(values: PersonalLeaveFormValues) {
     if (requiresHandover && !values.handoverToUserId) {
@@ -258,6 +313,31 @@ export function LeaveRequestsPersonalDialog({
                 )}
               />
             </div>
+
+            {missingScheduleDates.length > 0 && !checkingSchedule && (() => {
+              const warningData = getScheduleWarningData(missingScheduleDates, totalDaysInRange);
+              if (warningData.type === "none") return null;
+              
+              return (
+                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-400">
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                  <p>
+                    {warningData.type === "all" && "Bạn không có lịch làm việc trong toàn bộ khoảng ngày này."}
+                    {warningData.type === "summary" && (
+                      <>
+                        Có <span className="font-medium">{warningData.missingCount}/{warningData.totalCount}</span> ngày không có lịch làm việc trong khoảng này.
+                      </>
+                    )}
+                    {warningData.type === "detailed" && (
+                      <>
+                        Bạn không có lịch làm việc vào:{" "}
+                        <span className="font-medium">{warningData.formattedRanges}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              );
+            })()}
 
             <FormField
               control={form.control}
