@@ -12,6 +12,8 @@ pnpm dev                        # Start dev server (localhost:3000)
 
 `NEXT_PUBLIC_API_URL` is the only required environment variable (defaults to `http://localhost:3800` in `.env`). Ensure the backend is running before testing API calls.
 
+`.env` also has `NEXT_PUBLIC_FIREBASE_*` vars (web config) and `NEXT_PUBLIC_OTP_BYPASS` — these back sign-up phone OTP and browser push notifications (see "Push notifications (FCM)" below) and aren't required for the rest of the app to run. Set `NEXT_PUBLIC_OTP_BYPASS=true` locally to skip real Firebase phone OTP at sign-up.
+
 No test suite exists in this repo. The backend lives in the sibling directory `../iKiotMS-BE/`.
 
 ## Commands
@@ -66,6 +68,15 @@ One file per resource (e.g. `brand.ts`, `staff.ts`, `order.ts`). Each exports a 
 | `admin` | `system-notification` | New system-level notification for the admin console |
 
 A checkout or plan-upgrade screen must `joinRoom(...)` and wait for the event — polling the REST API for payment status is the wrong pattern here. `AuthGuard` (`src/components/auth-guard.tsx`) joins `tenant:<tenantId>`, `user:<userId>`, and — for SUPER_ADMIN — `admin` automatically on mount, so most feature code only needs to attach listeners, not call `joinRoom` itself.
+
+### Push notifications (FCM)
+
+`src/lib/firebase.ts` initializes the Firebase web app; `src/lib/fcm.ts` wraps Firebase Cloud Messaging on top of it. This is a *second*, independent notification channel from the Socket.io `notification` event above — Socket.io only delivers while a tab is open and connected, FCM delivers OS-level browser push even when no tab is open. `useNotificationSocket` (`src/hooks/use-notification-socket.ts`) listens to both and shows the same toast either way.
+
+- `enablePushNotifications()` must be called from a real user click (e.g. a "Bật thông báo" button in `settings/notifications`), never on mount — browsers permanently penalize/block permission prompts that fire without interaction. It registers `/firebase-messaging-sw.js`, calls `getToken()`, and POSTs the token to the backend (`notificationApi.registerDevice`) so `User.fcmTokens` can be pushed to later.
+- `disablePushNotifications()` un-registers the current token from the backend — call on logout, or the next user on the same browser inherits the previous user's push notifications.
+- `onForegroundMessage()` is required because the service worker does **not** auto-show a popup while the tab is focused (the browser intentionally leaves that decision to the app) — without wiring this, a user with the tab open would see nothing.
+- Everything under `enablePushNotifications`/`onForegroundMessage` no-ops (with a console warning) rather than throwing if `NEXT_PUBLIC_FIREBASE_VAPID_KEY` is missing or the browser doesn't support Push API (`isPushSupported()` — notably unsupported on iOS Safari unless the site was added to the home screen).
 
 ### Feature module pattern
 
