@@ -5,6 +5,7 @@ export interface StatsDateRangeParams {
   fromDate?: string;
   toDate?: string;
   branchId?: string;
+  warehouseId?: string;
 }
 
 export interface StatsOverview {
@@ -76,6 +77,9 @@ export interface CashflowTransaction {
   description: string | null;
   paymentReference: string | null;
   branchName: string | null;
+  warehouseName: string | null;
+  locationName: string | null;
+  locationType: 'branch' | 'warehouse' | null;
   supplierName: string | null;
   createdByName: string | null;
   orderId: string | null;
@@ -213,7 +217,7 @@ export const statsApi = {
   getTopProducts: (params?: StatsDateRangeParams & { sortBy?: 'quantity' | 'revenue'; limit?: number }) =>
     getStats<TopProducts>('/stats/top-products', params),
 
-  getInventory: (params?: { branchId?: string; lowStockThreshold?: number }) =>
+  getInventory: (params?: { branchId?: string; warehouseId?: string; lowStockThreshold?: number }) =>
     getStats<InventoryStats>('/stats/inventory', params),
 
   getAdminOverview: (params?: { fromDate?: string; toDate?: string; groupBy?: 'day' | 'month' }) =>

@@ -23,15 +23,21 @@ function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
 
-function getBranchIdFromLocationKey(locationKey: string): string | undefined {
-  if (!locationKey || locationKey === 'all') return undefined
+function parseLocationKey(locationKey: string): {
+  branchId?: string
+  warehouseId?: string
+} {
+  if (!locationKey || locationKey === 'all') return {}
   const [type, id] = locationKey.split('-')
-  return type === 'branch' && id ? id : undefined
+  if (!id) return {}
+  if (type === 'branch') return { branchId: id }
+  if (type === 'warehouse') return { warehouseId: id }
+  return {}
 }
 
 export function useCashflow() {
   const locationKey = useAuthStore((state) => state.locationKey)
-  const branchId = getBranchIdFromLocationKey(locationKey)
+  const { branchId, warehouseId } = parseLocationKey(locationKey)
 
   const [range, setRangeState] = useState<CashflowRange>('30d')
   const [flowType, setFlowTypeState] = useState<FlowTypeFilter>('ALL')
@@ -43,7 +49,8 @@ export function useCashflow() {
   const [isLoading, setIsLoading] = useState(false)
 
   // Changing any filter resets back to the first page. Reset in the setters
-  // (rather than an effect) to avoid a cascading re-render.
+  // (rather than an effect) to avoid a cascading re-render. The active
+  // branch/warehouse from the sidebar switcher scopes the ledger too.
   const setRange = useCallback((value: CashflowRange) => {
     setRangeState(value)
     setPage(1)
@@ -66,6 +73,7 @@ export function useCashflow() {
         fromDate: toDateOnly(fromDate),
         toDate: toDateOnly(toDate),
         branchId,
+        warehouseId,
       }
       const flowTypeParam = flowType === 'ALL' ? undefined : flowType
       const flowParam = flow === 'ALL' ? undefined : flow
@@ -89,7 +97,7 @@ export function useCashflow() {
     } finally {
       setIsLoading(false)
     }
-  }, [range, flowType, flow, branchId, page])
+  }, [range, flowType, flow, branchId, warehouseId, page])
 
   useEffect(() => {
     fetchAll()
