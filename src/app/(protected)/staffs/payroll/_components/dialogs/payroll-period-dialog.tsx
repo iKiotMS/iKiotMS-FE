@@ -220,12 +220,12 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                     </TableHeader>
                     <TableBody>
                       {previewData.payslips.map((slip, idx) => {
-                         const staffId = typeof slip.userId === 'string' ? slip.userId : slip.userId?._id
-                         const staff = staffs.find((s) => s._id === staffId)
-                        
+                        const staffId = typeof slip.userId === 'string' ? slip.userId : slip.userId?._id
+                        const staff = staffs.find((s) => s._id === staffId)
+
                         let name = 'Nhân viên'
                         let email = staff?.email || ''
-                        
+
                         if (slip.user) {
                           if (slip.user.profile) {
                             name = `${slip.user.profile.lastName || ''} ${slip.user.profile.firstName || ''}`.trim()
@@ -241,9 +241,9 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                         }
 
                         if (!name) name = 'Nhân viên'
-                        
+
                         const rowKey = slip._id || (typeof slip.userId === 'string' ? slip.userId : slip.userId?._id) || `preview-slip-${idx}`
-                        
+
                         return (
                           <TableRow
                             key={rowKey}
@@ -287,7 +287,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                     <div className="bg-destructive/10 text-destructive text-xs rounded-lg p-2.5 space-y-1">
                       {previewData.skipped.map((skipItem: { userId: string; reason: string }, idx) => {
                         const skipStaff = staffs.find((s) => s._id === skipItem.userId)
-                        
+
                         let skipName = ''
                         if (skipStaff) {
                           const last = skipStaff.lastName || ''
@@ -297,7 +297,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                         if (!skipName) {
                           skipName = skipStaff?.email || skipStaff?.phoneNumber || 'Nhân viên'
                         }
-                        
+
                         return (
                           <div key={idx} className="flex justify-between">
                             <span className="font-semibold">{skipName}</span>

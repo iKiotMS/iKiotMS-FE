@@ -11,6 +11,7 @@ const HR_NAV_ROLES = {
   ],
   holidays: ["TENANT_OWNER"],
   payroll: ["TENANT_OWNER"],
+  myPayroll: ["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF"],
 } as const;
 
 export type HrNavItemKey = keyof typeof HR_NAV_ROLES;
@@ -33,6 +34,7 @@ export function filterHrNavItems<
     "/staffs/schedule/leave-requests": "leaveRequests",
     "/staffs/holidays": "holidays",
     "/staffs/payroll": "payroll",
+    "/staffs/payroll/my-payslips": "myPayroll",
   };
 
   return items.filter((item) => {
