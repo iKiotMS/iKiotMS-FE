@@ -99,6 +99,8 @@ export default function CheckOutPage() {
 
   // Resolve the active branch the same way for the promotion preview and the final order payload
   const resolveBranchId = (): string => {
+    const cachedUser = getCachedUser() as any;
+    if (cachedUser?.branchId) return cachedUser.branchId;
     if (typeof window !== "undefined") {
       const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
       const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
@@ -106,8 +108,6 @@ export default function CheckOutPage() {
         return activeSwitcherItemId;
       }
     }
-    const cachedUser = getCachedUser() as any;
-    if (cachedUser?.branchId) return cachedUser.branchId;
     if (branches.length > 0) return branches[0]._id;
     return "";
   };
@@ -362,6 +362,26 @@ export default function CheckOutPage() {
           }
         : null;
 
+    let discountType: "ORDER" | "PROMOTION" | null = null;
+    let discountValue = 0;
+    let appliedPromotions = null;
+
+    if (hasAutoPromotion && activePromotionResult) {
+      discountType = "PROMOTION";
+      discountValue = promotionDiscount;
+      appliedPromotions = activePromotionResult.appliedPromotions.map((p) => ({
+        promotionId: p.promotionId,
+        promoName: p.promoName,
+        discountAmount: p.discountAmount,
+      }));
+    } else if (activeInvoice.discount > 0) {
+      discountType = "ORDER";
+      discountValue =
+        activeInvoice.discountType === "cash"
+          ? activeInvoice.discount
+          : (subtotal * activeInvoice.discount) / 100;
+    }
+
     const payload = {
       customerId: activeInvoice.selectedCustomer?.id,
       branchId: resolvedBranchId,
@@ -376,6 +396,9 @@ export default function CheckOutPage() {
       grandTotal,
       customerPay: activeInvoice.customerPay,
       note: activeInvoice.note,
+      discountType,
+      discountValue,
+      appliedPromotions,
     };
 
     const buildReceipt = (createdOrder: any, orderId: string) => ({
@@ -398,6 +421,9 @@ export default function CheckOutPage() {
         : 0,
       paymentMethod: activeInvoice.paymentMethod,
       note: activeInvoice.note,
+      discountType,
+      discountValue,
+      appliedPromotions,
     });
 
     const checkoutPromise = orderApi.create(payload);

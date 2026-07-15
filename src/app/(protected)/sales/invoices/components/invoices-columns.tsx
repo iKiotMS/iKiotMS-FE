@@ -43,6 +43,14 @@ export interface Invoice {
   change: number;
   note: string;
   items: InvoiceItem[];
+  discountType?: "ORDER" | "PROMOTION" | null;
+  discountValue?: number;
+  appliedPromotions?: {
+    promotionId: string;
+    promoName: string;
+    discountAmount: number;
+    _id?: string;
+  }[] | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -155,9 +155,52 @@ export function InvoicesExpandedPanel({
                   </TableCell>
                   <TableCell colSpan={2} />
                   <TableCell className="text-right font-bold tabular-nums text-primary text-sm">
-                    {formatVND(invoice.grandTotal)}
+                    {formatVND(invoice.discountValue && invoice.discountValue > 0 ? invoice.grandTotal + invoice.discountValue : invoice.grandTotal)}
                   </TableCell>
                 </TableRow>
+                {/* Discount Rows */}
+                {invoice.discountType && invoice.discountValue && invoice.discountValue > 0 && (
+                  <>
+                    <TableRow className="bg-red-50/50 dark:bg-red-950/10 hover:bg-red-50/50 dark:hover:bg-red-950/10">
+                      <TableCell
+                        colSpan={5}
+                        className="text-left text-sm font-medium text-red-600 dark:text-red-400"
+                      >
+                        Chiết khấu ({invoice.discountType === "PROMOTION" ? "Khuyến mãi" : "Giảm giá theo đơn"})
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-red-500 text-sm">
+                        -{formatVND(invoice.discountValue)}
+                      </TableCell>
+                    </TableRow>
+                    {invoice.discountType === "PROMOTION" && invoice.appliedPromotions && invoice.appliedPromotions.length > 0 && (
+                      invoice.appliedPromotions.map((p, idx) => (
+                        <TableRow key={p._id || idx} className="bg-red-50/30 dark:bg-red-950/5 hover:bg-red-50/30 dark:hover:bg-red-950/5">
+                          <TableCell />
+                          <TableCell
+                            colSpan={4}
+                            className="text-left text-xs text-muted-foreground pl-4"
+                          >
+                            • {p.promoName}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-red-400 text-xs">
+                            -{formatVND(p.discountAmount)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                    <TableRow className="bg-muted/30 font-medium hover:bg-muted/30">
+                      <TableCell
+                        colSpan={5}
+                        className="text-left font-bold text-sm text-primary"
+                      >
+                        Khách cần trả
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums text-primary text-sm">
+                        {formatVND(invoice.grandTotal)}
+                      </TableCell>
+                    </TableRow>
+                  </>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -263,6 +306,33 @@ export function InvoicesExpandedPanel({
                     {PAYMENT_METHOD_MAP[invoice.paymentMethod]}
                   </span>
                 </div>
+                {invoice.discountValue && invoice.discountValue > 0 ? (
+                  <>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Tổng tiền hàng (tạm tính):</span>
+                      <span className="text-foreground font-semibold tabular-nums">
+                        {formatVND(invoice.grandTotal + invoice.discountValue)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Chiết khấu ({invoice.discountType === "PROMOTION" ? "Khuyến mãi" : "Giảm giá theo đơn"}):</span>
+                      <span className="text-red-500 font-semibold tabular-nums">
+                        -{formatVND(invoice.discountValue)}
+                      </span>
+                    </div>
+                    {invoice.discountType === "PROMOTION" && invoice.appliedPromotions && invoice.appliedPromotions.length > 0 && (
+                      <div className="pl-3 py-1 space-y-1 border-l-2 border-primary/20 text-[11px] text-muted-foreground bg-muted/40 rounded-r-md">
+                        <div className="font-semibold text-primary/70">Khuyến mãi đã áp dụng:</div>
+                        {invoice.appliedPromotions.map((p, idx) => (
+                          <div key={p._id || idx} className="flex justify-between">
+                            <span>• {p.promoName}</span>
+                            <span className="tabular-nums">-{formatVND(p.discountAmount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : null}
                 <div className="flex justify-between text-muted-foreground">
                   <span>Cần thanh toán:</span>
                   <span className="text-foreground font-bold tabular-nums">
