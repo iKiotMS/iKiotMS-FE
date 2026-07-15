@@ -1,20 +1,12 @@
 'use client'
 
-<<<<<<< Updated upstream
 import React, { useState } from 'react'
-=======
-import { useState } from 'react'
->>>>>>> Stashed changes
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Edit3, CheckCircle2, ArrowUpRight, Ban, DollarSign,
-<<<<<<< Updated upstream
   Lock, AlertCircle, Info, ChevronDown, CalendarDays, Coins, PenTool,
-=======
-  Lock, AlertCircle, Info, ChevronDown,
->>>>>>> Stashed changes
 } from 'lucide-react'
 import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
@@ -289,25 +281,16 @@ export function PayslipsTable() {
               const workedDays = slip.totalWorkedDays ?? slip.actualWorkingDays ?? 0
               const standardDays = slip.standardWorkingDays ?? 26
               const overtimePay = slip.overtimePay ?? 0
-<<<<<<< Updated upstream
-=======
-              const workedHours = slip.totalWorkedHours ?? slip.actualWorkingHours ?? 0
-              const overtimeHours = slip.overtimeHours ?? 0
->>>>>>> Stashed changes
               const paidLeaveDays = slip.paidLeaveDays ?? 0
               const unpaidLeaveDays = slip.unpaidLeaveDays ?? 0
               const paidLeavePay = slip.paidLeavePay ?? 0
               const unpaidLeaveDeduction = slip.unpaidLeaveDeduction ?? 0
-<<<<<<< Updated upstream
               const workedHours = slip.totalWorkedHours ?? slip.actualWorkingHours ?? 0
               const overtimeHours = slip.overtimeHours ?? 0
-=======
->>>>>>> Stashed changes
               const lateMinutes = slip.lateMinutes ?? 0
               const allowanceLines = slip.allowanceLines || []
               const deductionLines = slip.deductionLines || []
 
-<<<<<<< Updated upstream
               const workedBasePay = Math.round((basePay / standardDays) * workedDays)
               const earningsFromWork = workedBasePay + paidLeavePay
 
@@ -333,23 +316,11 @@ export function PayslipsTable() {
                   <TableRow
                     className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/10 align-middle cursor-pointer transition-colors border-b ${isExpanded ? 'bg-slate-50/60 dark:bg-slate-900/20' : ''
                       }`}
-=======
-              const isExpanded = expandedSlipId === slip._id
-
-              return (
-                <>
-                  <TableRow
-                    key={slip._id}
-                    className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/10 align-middle cursor-pointer transition-colors ${
-                      isExpanded ? 'bg-slate-50/60 dark:bg-slate-900/20' : ''
-                    }`}
->>>>>>> Stashed changes
                     onClick={() => handleToggleExpand(slip._id)}
                   >
                     <TableCell>
                       <div className="font-semibold text-slate-800 dark:text-slate-100">{name}</div>
                       <div className="text-xs text-muted-foreground">{phone}</div>
-<<<<<<< Updated upstream
                       <div className="text-[10px] text-slate-400 font-medium mt-0.5">
                         Làm {workedDays}/{standardDays} ngày (Phép: {paidLeaveDays})
                       </div>
@@ -373,37 +344,6 @@ export function PayslipsTable() {
                       {formatVND(slip.netSalary)}
                     </TableCell>
                     <TableCell className="text-right pr-4">
-=======
-                      {slip.note && (
-                        <div className="text-[11px] text-orange-600 bg-orange-50/50 border border-orange-100 rounded px-1.5 py-0.5 mt-1 inline-block dark:bg-orange-950/10 dark:border-orange-900/10">
-                          {slip.note}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatVND(basePay)}</TableCell>
-                    <TableCell className="text-center tabular-nums text-sm">
-                      {workedDays}/{standardDays} ngày
-                    </TableCell>
-                    <TableCell className="text-right text-red-600 dark:text-red-400 tabular-nums">
-                      {latePenalty > 0 ? `-${formatVND(latePenalty)}` : '—'}
-                    </TableCell>
-                    <TableCell className="text-right text-green-600 dark:text-green-400 tabular-nums">
-                      {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '—'}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {diffAdjust > 0 ? (
-                        <span className="text-green-600 font-medium">+{formatVND(diffAdjust)}</span>
-                      ) : diffAdjust < 0 ? (
-                        <span className="text-red-600 font-medium">-{formatVND(Math.abs(diffAdjust))}</span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-green-600 dark:text-green-400 tabular-nums">
-                      {formatVND(slip.netSalary)}
-                    </TableCell>
-                    <TableCell className="text-right">
->>>>>>> Stashed changes
                       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                         {/* Edit only in DRAFT */}
                         {isDraft && (
@@ -444,20 +384,12 @@ export function PayslipsTable() {
                       <TableCell colSpan={8} className="p-0 border-t-0">
                         <div className="px-6 py-5 border-y border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/10 animate-in slide-in-from-top-2 duration-300">
                           {/* Inner container */}
-<<<<<<< Updated upstream
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-[13px] text-slate-700 dark:text-slate-300">
                             {/* Col 1: Time & Work Details */}
                             <div className="space-y-2 border-r border-slate-200/60 dark:border-slate-800/60 pr-4">
                               <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                 <CalendarDays className="size-3.5 text-primary" />
                                 Ngày công & Giờ làm
-=======
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-xs text-slate-700 dark:text-slate-300">
-                            {/* Col 1: Time & Work Details */}
-                            <div className="space-y-2 border-r border-slate-200/60 dark:border-slate-800/60 pr-4">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                                📊 Ngày công & Giờ làm
->>>>>>> Stashed changes
                               </span>
                               <div className="space-y-1.5 pt-1">
                                 <div className="flex justify-between">
@@ -485,14 +417,9 @@ export function PayslipsTable() {
 
                             {/* Col 2: Allowances Break-down */}
                             <div className="space-y-2 border-r border-slate-200/60 dark:border-slate-800/60 pr-4">
-<<<<<<< Updated upstream
                               <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                 <Coins className="size-3.5 text-blue-500" />
                                 Lương & Phụ cấp
-=======
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                                💰 Lương & Phụ cấp
->>>>>>> Stashed changes
                               </span>
                               <div className="space-y-1.5 pt-1">
                                 <div className="flex justify-between">
@@ -520,25 +447,16 @@ export function PayslipsTable() {
                                   </div>
                                 ))}
                                 {allowanceLines.length === 0 && !overtimePay && !paidLeavePay && (
-<<<<<<< Updated upstream
                                   <span className="text-slate-400 italic block pt-1 text-[12px]">Không có phụ cấp phụ thêm.</span>
-=======
-                                  <span className="text-slate-400 italic block pt-1 text-[11px]">Không có phụ cấp phụ thêm.</span>
->>>>>>> Stashed changes
                                 )}
                               </div>
                             </div>
 
                             {/* Col 3: Deductions & Penalties */}
                             <div className="space-y-2 border-r border-slate-200/60 dark:border-slate-800/60 pr-4">
-<<<<<<< Updated upstream
                               <span className="text-[12px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1.5">
                                 <Ban className="size-3.5 text-red-500" />
                                 Khấu trừ & Phạt
-=======
-                              <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest block">
-                                🛑 Khấu trừ & Phạt
->>>>>>> Stashed changes
                               </span>
                               <div className="space-y-1.5 pt-1">
                                 {latePenalty > 0 && (
@@ -562,11 +480,7 @@ export function PayslipsTable() {
                                     </div>
                                   ))}
                                 {latePenalty === 0 && unpaidLeaveDays === 0 && deductionLines.filter(d => d.deductionType !== 'LATE').length === 0 && (
-<<<<<<< Updated upstream
                                   <span className="text-slate-400 italic block pt-1 text-[12px]">Không có khoản khấu trừ nào.</span>
-=======
-                                  <span className="text-slate-400 italic block pt-1 text-[11px]">Không có khoản khấu trừ nào.</span>
->>>>>>> Stashed changes
                                 )}
                               </div>
                             </div>
@@ -574,25 +488,16 @@ export function PayslipsTable() {
                             {/* Col 4: Manual Adjustments & Notes */}
                             <div className="space-y-2">
                               <div className="flex justify-between items-center">
-<<<<<<< Updated upstream
                                 <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                   <PenTool className="size-3.5 text-violet-500" />
                                   Điều chỉnh & Ghi chú
-=======
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                                  ✍️ Điều chỉnh & Ghi chú
->>>>>>> Stashed changes
                                 </span>
                                 {isDraft && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={(e) => handleAdjust(slip, e)}
-<<<<<<< Updated upstream
                                     className="cursor-pointer h-5 text-[12px] px-1.5 text-primary hover:bg-primary/10 flex items-center gap-1"
-=======
-                                    className="cursor-pointer h-5 text-[10px] px-1.5 text-primary hover:bg-primary/10 flex items-center gap-1"
->>>>>>> Stashed changes
                                   >
                                     <Edit3 className="size-3" />
                                     Chỉnh sửa
@@ -603,11 +508,7 @@ export function PayslipsTable() {
                                 {(slip.manualAdjustments || []).map((line, idx) => {
                                   const isPos = line.amount >= 0
                                   return (
-<<<<<<< Updated upstream
                                     <div key={idx} className="flex justify-between text-[13px]">
-=======
-                                    <div key={idx} className="flex justify-between text-[11px]">
->>>>>>> Stashed changes
                                       <span className="text-muted-foreground truncate max-w-[120px]" title={line.name}>
                                         {line.name}:
                                       </span>
@@ -618,19 +519,11 @@ export function PayslipsTable() {
                                   )
                                 })}
                                 {(slip.manualAdjustments || []).length === 0 && (
-<<<<<<< Updated upstream
                                   <span className="text-slate-400 italic block text-[12px]">Không có điều chỉnh thủ công.</span>
                                 )}
                                 {slip.note && (
                                   <div className="mt-2.5 p-2 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 rounded text-[13px] text-amber-800 dark:text-amber-400">
                                     <strong className="block text-[12px] uppercase tracking-wider text-amber-600 dark:text-amber-500 mb-0.5">
-=======
-                                  <span className="text-slate-400 italic block text-[11px]">Không có điều chỉnh thủ công.</span>
-                                )}
-                                {slip.note && (
-                                  <div className="mt-2.5 p-2 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 rounded text-[11px] text-amber-800 dark:text-amber-400">
-                                    <strong className="block text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-500 mb-0.5">
->>>>>>> Stashed changes
                                       Lời nhắn:
                                     </strong>
                                     {slip.note}
@@ -643,11 +536,7 @@ export function PayslipsTable() {
                       </TableCell>
                     </TableRow>
                   )}
-<<<<<<< Updated upstream
                 </React.Fragment>
-=======
-                </>
->>>>>>> Stashed changes
               )
             })}
 

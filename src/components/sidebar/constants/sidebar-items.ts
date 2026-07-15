@@ -43,15 +43,6 @@ export const sidebarItems = {
     ],
   },
   luong: {
-    title: "Lương",
-    url: "#",
-    icon: CreditCard,
-    items: [
-      { title: "Bảng lương", url: "/staffs/payroll" },
-      { title: "Lương của tôi", url: "/staffs/payroll/my-payslips" },
-    ],
-  },
-  luong: {
     title: "Lương của tôi",
     url: "/staffs/payroll/my-payslips",
     icon: Wallet,
