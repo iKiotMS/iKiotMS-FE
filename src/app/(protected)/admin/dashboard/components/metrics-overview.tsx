@@ -1,90 +1,100 @@
-"use client"
+"use client";
 
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Users, 
-  ShoppingCart, 
-  BarChart3 
-} from "lucide-react"
-import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-
-const metrics = [
-  {
-    title: "Total Revenue",
-    value: "$54,230",
-    description: "Monthly revenue",
-    change: "+12%",
-    trend: "up",
-    icon: DollarSign,
-    footer: "Trending up this month",
-    subfooter: "Revenue for the last 6 months"
-  },
-  {
-    title: "Active Customers",
-    value: "2,350",
-    description: "Total active users",
-    change: "+5.2%", 
-    trend: "up",
-    icon: Users,
-    footer: "Strong user retention",
-    subfooter: "Engagement exceeds targets"
-  },
-  {
-    title: "Total Orders",
-    value: "1,247",
-    description: "Orders this month",
-    change: "-2.1%",
-    trend: "down", 
-    icon: ShoppingCart,
-    footer: "Down 2% this period",
-    subfooter: "Order volume needs attention"
-  },
-  {
-    title: "Conversion Rate",
-    value: "3.24%",
-    description: "Average conversion",
-    change: "+8.3%",
-    trend: "up",
-    icon: BarChart3,
-    footer: "Steady performance increase",
-    subfooter: "Meets conversion projections"
-  },
-]
+import { TrendingUp, TrendingDown, DollarSign, Store, Landmark, UserPlus } from "lucide-react";
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAdminDashboard } from "./admin-dashboard-provider";
+import { formatCompactVND, formatNumber, formatPercent } from "../../../dashboard/shared/format";
 
 export function MetricsOverview() {
+  const { data, isLoading } = useAdminDashboard();
+
+  if (isLoading && !data) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const metrics = [
+    {
+      title: "Doanh thu trong kỳ",
+      value: formatCompactVND(data.revenue.inPeriod),
+      change: data.revenue.changePct,
+      icon: DollarSign,
+      footer: `${formatNumber(data.revenue.invoiceCountInPeriod)} hoá đơn đã thanh toán`,
+      subfooter: `Tổng luỹ kế: ${formatCompactVND(data.revenue.total)}`,
+    },
+    {
+      title: "Tổng cửa hàng",
+      value: formatNumber(data.tenants.total),
+      change: null,
+      icon: Store,
+      footer: `${formatNumber(data.tenants.active)} đang hoạt động · ${formatNumber(data.tenants.suspended)} tạm khoá`,
+      subfooter: `${formatNumber(data.subscriptions.byStatus.TRIAL)} đang dùng thử`,
+    },
+    {
+      title: "Cửa hàng mới",
+      value: formatNumber(data.tenants.newInPeriod),
+      change: data.tenants.changePct,
+      icon: UserPlus,
+      footer: "Đăng ký mới trong kỳ",
+      subfooter: `Tỷ lệ trial→trả phí: ${data.subscriptions.conversionRate === null ? "—" : data.subscriptions.conversionRate + "%"}`,
+    },
+    {
+      title: "Đã liên kết SePay",
+      value: `${formatNumber(data.sepay.linked)}/${formatNumber(data.sepay.total)}`,
+      change: null,
+      icon: Landmark,
+      footer: `${formatNumber(data.tickets.open)} ticket đang mở`,
+      subfooter: `${formatNumber(data.tickets.resolved)} ticket đã xử lý`,
+    },
+  ];
+
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 @5xl:grid-cols-4">
       {metrics.map((metric) => {
-        const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown
-        
+        const up = (metric.change ?? 0) >= 0;
+        const TrendIcon = up ? TrendingUp : TrendingDown;
+        const Icon = metric.icon;
         return (
-          <Card key={metric.title} className=" cursor-pointer">
+          <Card key={metric.title}>
             <CardHeader>
-              <CardDescription>{metric.title}</CardDescription>
+              <CardDescription className="flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5" />
+                {metric.title}
+              </CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                 {metric.value}
               </CardTitle>
-              <CardAction>
-                <Badge variant="outline">
-                  <TrendIcon className="h-4 w-4" />
-                  {metric.change}
-                </Badge>
-              </CardAction>
+              {metric.change !== null && (
+                <CardAction>
+                  <Badge variant="outline" className={up ? "text-green-600" : "text-red-600"}>
+                    <TrendIcon className="h-4 w-4" />
+                    {formatPercent(metric.change)}
+                  </Badge>
+                </CardAction>
+              )}
             </CardHeader>
             <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                {metric.footer} <TrendIcon className="size-4" />
-              </div>
-              <div className="text-muted-foreground">
-                {metric.subfooter}
-              </div>
+              <div className="line-clamp-1 font-medium">{metric.footer}</div>
+              <div className="text-muted-foreground line-clamp-1">{metric.subfooter}</div>
             </CardFooter>
           </Card>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

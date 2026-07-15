@@ -13,10 +13,6 @@ import {
 export function QuickActions() {
   return (
     <div className="flex items-center space-x-2">
-      <Button className="cursor-pointer">
-        <Plus />
-        New Sale
-      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="cursor-pointer">

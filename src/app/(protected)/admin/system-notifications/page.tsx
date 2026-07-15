@@ -17,7 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getSocket } from "@/lib/socket";
 import { toast } from "sonner";
-import { Bell, CreditCard, UserPlus, LifeBuoy, X, Trash2 } from "lucide-react";
+import { Bell, CreditCard, UserPlus, LifeBuoy, X, Trash2, Landmark } from "lucide-react";
 
 export default function SystemNotificationsPage() {
   const router = useRouter();
@@ -100,6 +100,8 @@ export default function SystemNotificationsPage() {
       router.push(`/admin/users?tenantId=${notif.referenceId}`);
     } else if (notif.type === "SYSTEM_TRANSACTION") {
       router.push(`/admin/transactions`);
+    } else if (notif.type === "SYSTEM_TENANT_BANK_UPDATED") {
+      router.push(`/admin/sepay`);
     }
   };
 
@@ -170,6 +172,12 @@ export default function SystemNotificationsPage() {
         return (
           <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 shrink-0">
             <LifeBuoy className="h-5 w-5" />
+          </div>
+        );
+      case "SYSTEM_TENANT_BANK_UPDATED":
+        return (
+          <div className="p-2 bg-violet-500/10 rounded-lg text-violet-500 shrink-0">
+            <Landmark className="h-5 w-5" />
           </div>
         );
       default:

@@ -26,6 +26,8 @@ import {
   Info,
   Pencil,
   Trash2,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -852,6 +854,8 @@ export default function SettingsPage() {
     accountName: "",
   });
   const [isSavingStore, setIsSavingStore] = React.useState(false);
+  // Whether SUPER_ADMIN has linked this tenant's bank account with SePay.
+  const [sepayLinked, setSepayLinked] = React.useState(false);
 
   // Branches state
   const [branches, setBranches] = React.useState<Branch[]>([]);
@@ -938,6 +942,7 @@ export default function SettingsPage() {
           accountNumber: me.tenant?.banking?.accountNumber || "",
           accountName: me.tenant?.banking?.accountName || "",
         });
+        setSepayLinked(Boolean(me.tenant?.hasSepayKey));
       }
 
       const branchRes = await branchApi.getList();
@@ -1461,10 +1466,34 @@ export default function SettingsPage() {
 
                     <div className="space-y-2 md:col-span-2">
                       <Separator className="my-2" />
-                      <h4 className="text-sm font-semibold text-foreground/80">
-                        Cấu hình thanh toán ngân hàng (Để nhận thanh toán đơn
-                        hàng)
-                      </h4>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="text-sm font-semibold text-foreground/80">
+                          Cấu hình thanh toán ngân hàng (Để nhận thanh toán đơn
+                          hàng)
+                        </h4>
+                        {sepayLinked ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 bg-green-500/10 text-green-500 border-green-500/20"
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            Đã liên kết SePay
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          >
+                            <Clock className="h-3 w-3" />
+                            Chờ quản trị viên liên kết
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {sepayLinked
+                          ? "Tài khoản đã được liên kết với cổng SePay — bạn có thể nhận thanh toán đơn hàng qua mã QR."
+                          : "Sau khi lưu thông tin ngân hàng, quản trị viên sẽ liên kết tài khoản của bạn với cổng SePay. Bạn sẽ nhận được thông báo khi hoàn tất."}
+                      </p>
                     </div>
 
                     <div className="space-y-2">

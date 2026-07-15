@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   Bell,
   MessageSquarePlus,
+  Landmark,
 } from "lucide-react";
 import { type NavItem } from "./types";
 
@@ -112,6 +113,11 @@ export const sidebarItems = {
     title: "Subscription",
     url: "/admin/subscriptions",
     icon: CreditCard,
+  },
+  adminSepay: {
+    title: "Liên kết SePay",
+    url: "/admin/sepay",
+    icon: Landmark,
   },
   adminGiaoDich: {
     title: "Giao dịch",
