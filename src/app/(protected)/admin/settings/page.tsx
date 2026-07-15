@@ -19,8 +19,8 @@ export default function AdminSettingsPage() {
   const { updateConfig: updateSidebarConfig } = useSidebarConfig();
 
   // Theme states
-  const [selectedTheme, setSelectedTheme] = React.useState("default");
-  const [selectedRadius, setSelectedRadius] = React.useState("0.5rem");
+  const [selectedTheme, setSelectedTheme] = React.useState("twitter");
+  const [selectedRadius, setSelectedRadius] = React.useState("1rem");
 
   // Load Theme variables from local storage on mount
   React.useEffect(() => {
@@ -46,18 +46,19 @@ export default function AdminSettingsPage() {
   }, [isDarkMode, selectedTheme, applyTheme]);
 
   const handleResetTheme = () => {
-    setSelectedTheme("default");
-    setSelectedRadius("0.5rem");
+    setSelectedTheme("twitter");
+    setSelectedRadius("1rem");
     resetTheme();
-    applyRadius("0.5rem");
+    applyRadius("1rem");
     updateSidebarConfig({
       variant: "inset",
       collapsible: "offcanvas",
       side: "left",
     });
     try {
-      localStorage.setItem("theme-preset", "default");
-      localStorage.setItem("theme-radius", "0.5rem");
+      localStorage.setItem("theme-preset", "twitter");
+      localStorage.setItem("theme-radius", "1rem");
+      localStorage.setItem("theme-border", "thick");
       toast.success("Đã khôi phục thiết kế giao diện mặc định!");
     } catch (e) {
       console.error(e);

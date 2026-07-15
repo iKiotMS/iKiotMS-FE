@@ -71,6 +71,7 @@ export interface ProductDetailResponse extends Product {
 
 export interface ProductQueryParams {
   search?: string;
+  q?: string;
   status?: ProductStatus;
   categoryId?: string;
   supplierId?: string;

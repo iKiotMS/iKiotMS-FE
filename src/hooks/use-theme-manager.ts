@@ -61,6 +61,36 @@ export function useThemeManager() {
     }
   }, [])
 
+  const applyBorder = React.useCallback((borderStyle: string, themeValue: string, darkMode: boolean) => {
+    const theme = colorThemes.find(t => t.value === themeValue) || tweakcnThemes.find(t => t.value === themeValue)
+    const styles = theme ? (darkMode ? theme.preset.styles.dark : theme.preset.styles.light) : null
+    const root = document.documentElement
+    const fallbackBorder = darkMode ? 'oklch(1 0 0 / 10%)' : 'oklch(0.922 0 0)'
+
+    // Remove thick border class from root
+    root.classList.remove('border-thick')
+
+    if (borderStyle === 'none' || !styles) {
+      // Clear borders
+      root.style.setProperty('--border', 'transparent')
+      root.style.setProperty('--sidebar-border', 'transparent')
+      root.style.setProperty('--input', 'transparent')
+    } else if (borderStyle === 'thin') {
+      // Thin / Default borders
+      root.style.setProperty('--border', styles.border || fallbackBorder)
+      root.style.setProperty('--sidebar-border', styles['sidebar-border'] || styles.border || fallbackBorder)
+      root.style.setProperty('--input', styles.input || styles.border || fallbackBorder)
+    } else if (borderStyle === 'thick') {
+      // Thick borders (2px)
+      root.style.setProperty('--border', styles.border || fallbackBorder)
+      root.style.setProperty('--sidebar-border', styles['sidebar-border'] || styles.border || fallbackBorder)
+      root.style.setProperty('--input', styles.input || styles.border || fallbackBorder)
+      
+      // Add thick border class to root
+      root.classList.add('border-thick')
+    }
+  }, [])
+
   const applyTheme = React.useCallback((themeValue: string, darkMode: boolean) => {
     const theme = colorThemes.find(t => t.value === themeValue) || tweakcnThemes.find(t => t.value === themeValue)
     if (!theme) return
@@ -73,7 +103,25 @@ export function useThemeManager() {
     Object.entries(styles).forEach(([key, value]) => {
       root.style.setProperty(`--${key}`, value)
     })
-  }, [resetTheme])
+
+    // Retrieve active radius style from localStorage (default to '1rem') and apply it
+    let radiusStyle = '1rem'
+    try {
+      radiusStyle = localStorage.getItem("theme-radius") || "1rem"
+    } catch (e) {
+      console.error(e)
+    }
+    root.style.setProperty('--radius', radiusStyle)
+
+    // Retrieve active border style from localStorage (default to 'thick') and apply it
+    let borderStyle = 'thick'
+    try {
+      borderStyle = localStorage.getItem("theme-border") || "thick"
+    } catch (e) {
+      console.error(e)
+    }
+    applyBorder(borderStyle, themeValue, darkMode)
+  }, [resetTheme, applyBorder])
 
   const applyRadius = (radius: string) => {
     document.documentElement.style.setProperty('--radius', radius)
@@ -86,5 +134,6 @@ export function useThemeManager() {
     resetTheme,
     applyTheme,
     applyRadius,
+    applyBorder,
   }
 }

@@ -22,8 +22,8 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
   const { config: sidebarConfig, updateConfig: updateSidebarConfig } = useSidebarConfig()
 
   const [activeTab, setActiveTab] = React.useState("theme")
-  const [selectedTheme, setSelectedTheme] = React.useState("default")
-  const [selectedRadius, setSelectedRadius] = React.useState("0.5rem")
+  const [selectedTheme, setSelectedTheme] = React.useState("twitter")
+  const [selectedRadius, setSelectedRadius] = React.useState("1rem")
 
   // Load from local storage on mount
   React.useEffect(() => {
@@ -41,21 +41,22 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
     // Complete reset to application defaults
 
     // 1. Reset all state variables to initial values
-    setSelectedTheme("default")
-    setSelectedRadius("0.5rem")
+    setSelectedTheme("twitter")
+    setSelectedRadius("1rem")
 
     // 2. Completely remove all custom CSS variables
     resetTheme()
 
     // 3. Reset the radius to default
-    applyRadius("0.5rem")
+    applyRadius("1rem")
 
     // 4. Reset sidebar to defaults
     updateSidebarConfig({ variant: "inset", collapsible: "offcanvas", side: "left" })
 
     try {
-      localStorage.setItem("theme-preset", "default")
-      localStorage.setItem("theme-radius", "0.5rem")
+      localStorage.setItem("theme-preset", "twitter")
+      localStorage.setItem("theme-radius", "1rem")
+      localStorage.setItem("theme-border", "thick")
     } catch (e) {
       console.error(e)
     }

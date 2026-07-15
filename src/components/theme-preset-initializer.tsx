@@ -8,8 +8,8 @@ export function ThemePresetInitializer() {
 
   React.useEffect(() => {
     try {
-      const savedTheme = localStorage.getItem("theme-preset") || "default"
-      const savedRadius = localStorage.getItem("theme-radius") || "0.5rem"
+      const savedTheme = localStorage.getItem("theme-preset") || "twitter"
+      const savedRadius = localStorage.getItem("theme-radius") || "1rem"
       
       applyTheme(savedTheme, isDarkMode)
       applyRadius(savedRadius)
