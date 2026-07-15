@@ -52,7 +52,7 @@ export const rolePermissions = {
   },
   promotions: {
     view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "STAFF", "SUPER_ADMIN"]),
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "BRANCH_MANAGER"]),
   },
 };
 
