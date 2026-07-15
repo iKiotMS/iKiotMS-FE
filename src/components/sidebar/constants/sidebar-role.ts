@@ -8,7 +8,10 @@ const quanLyBanHangGroup = (
   label: "Quản lý bán hàng",
   items,
 });
-
+const salaryGroup = {
+  label: "Lương",
+  items: [sidebarItems.luong],
+}
 const crmGroup = {
   label: "CRM",
   items: [sidebarItems.khachHang, sidebarItems.khuyenMai],
@@ -57,6 +60,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     ]),
     crmGroup,
     cskhGroup,
+    salaryGroup,
   ],
 
   BRANCH_MANAGER: [
@@ -70,6 +74,8 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       sidebarItems.donHang,
     ]),
     crmGroup,
+    cskhGroup,
+    salaryGroup,
   ],
 
   WAREHOUSE_MANAGER: [
@@ -78,6 +84,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       items: [sidebarItems.nhanVien],
     },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich]),
+    salaryGroup,
   ],
 
   STAFF: [
@@ -87,6 +94,8 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     },
     quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.donHang]),
     crmGroup,
+    cskhGroup,
+    salaryGroup
   ],
 
   CUSTOMER: [],
