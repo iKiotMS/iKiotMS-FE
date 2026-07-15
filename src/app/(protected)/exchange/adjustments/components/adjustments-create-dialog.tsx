@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -194,9 +194,6 @@ export function AdjustmentsCreateDialog({
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Điều chỉnh tồn kho</DialogTitle>
-          <DialogDescription>
-            Nhập tồn thực tế sau kiểm kê. Phiếu sẽ chờ duyệt trước khi cập nhật tồn kho.
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -269,12 +266,6 @@ export function AdjustmentsCreateDialog({
                   Thêm dòng
                 </Button>
               </div>
-
-              {!locationId && (
-                <p className="text-xs text-muted-foreground">
-                  Chọn kho / chi nhánh để tải danh sách hàng hóa.
-                </p>
-              )}
 
               {fields.map((f, idx) => {
                 const selected = products.find((p) => p._id === form.watch(`details.${idx}.productItemId`))

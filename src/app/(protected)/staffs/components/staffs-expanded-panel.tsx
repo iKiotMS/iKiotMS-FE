@@ -198,11 +198,7 @@ export function StaffsExpandedPanel({
                 </p>
                 {paySheetSummary ? (
                   <p className="text-sm text-foreground/80">{paySheetSummary}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Đã gán bảng lương cho nhân viên này.
-                  </p>
-                )}
+                ) : null}
               </>
             ) : (
               <p className="text-sm font-medium text-muted-foreground">

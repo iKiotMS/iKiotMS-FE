@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -18,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -623,11 +621,6 @@ export function StaffsMutateDialog({
           <DialogTitle>
             {isEdit ? "Cập nhật nhân viên" : "Thêm nhân viên mới"}
           </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Thông tin hiện tại đã được điền sẵn. Chỉ sửa các trường cần thay đổi."
-              : "Tạo hồ sơ nhân viên và tài khoản đăng nhập trên hệ thống."}
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -676,9 +669,6 @@ export function StaffsMutateDialog({
               <FormItem>
                 <FormLabel>Số điện thoại</FormLabel>
                 <Input value={currentRow.phoneNumber} disabled readOnly />
-                <p className="text-xs text-muted-foreground">
-                  Không đổi số điện thoại qua form này.
-                </p>
               </FormItem>
             )}
 
@@ -688,7 +678,7 @@ export function StaffsMutateDialog({
                 name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Số điện thoại (dùng để đăng nhập)</FormLabel>
+                    <FormLabel>Số điện thoại</FormLabel>
                     <FormControl>
                       <Input placeholder="0901234567" {...field} />
                     </FormControl>
@@ -749,15 +739,7 @@ export function StaffsMutateDialog({
                   name="branchId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Chi nhánh
-                        {selectedRole === "STAFF" && canAssignWarehouse && (
-                          <span className="text-muted-foreground font-normal">
-                            {" "}
-                            (hoặc chọn kho)
-                          </span>
-                        )}
-                      </FormLabel>
+                      <FormLabel>Chi nhánh</FormLabel>
                       {branchOptions.length > 0 ? (
                         <Select
                           onValueChange={(value) => {
@@ -793,12 +775,6 @@ export function StaffsMutateDialog({
                           Hiện chưa có chi nhánh nào trong hệ thống.
                         </p>
                       )}
-                      {lockBranchOnCreate && !isEdit && (
-                        <p className="text-xs text-muted-foreground">
-                          Chi nhánh được gán theo chi nhánh của bạn. Nhân viên
-                          mới chỉ thuộc chi nhánh này.
-                        </p>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -814,15 +790,7 @@ export function StaffsMutateDialog({
                 name="warehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Kho hàng
-                      {selectedRole === "STAFF" && (
-                        <span className="text-muted-foreground font-normal">
-                          {" "}
-                          (hoặc chọn chi nhánh)
-                        </span>
-                      )}
-                    </FormLabel>
+                    <FormLabel>Kho hàng</FormLabel>
                     {warehouseOptions.length > 0 ? (
                       <Select
                         onValueChange={(value) => {
@@ -850,7 +818,7 @@ export function StaffsMutateDialog({
                     ) : (
                       <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
                         {warehouseOptionsFailed
-                          ? "Không tải được danh sách kho. Bạn vẫn có thể chọn chi nhánh cho nhân viên."
+                          ? "Không tải được danh sách kho."
                           : "Hiện chưa có kho hàng nào trong hệ thống."}
                       </p>
                     )}
@@ -913,11 +881,6 @@ export function StaffsMutateDialog({
                       </SelectContent>
                     </Select>
                   )}
-                  <FormDescription>
-                    {userRole === "BRANCH_MANAGER"
-                      ? "Gán bảng lương cho nhân viên. Chi nhánh chỉ thấy bảng lương do mình tạo."
-                      : "Gán bảng lương cho nhân viên (có thể bỏ trống)."}
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

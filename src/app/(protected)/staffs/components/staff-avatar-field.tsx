@@ -26,7 +26,6 @@ type StaffAvatarFieldProps = {
 
 export function StaffAvatarField({
   previewUrl,
-  hasPendingFile = false,
   onSelectFile,
   onRemove,
   fullName,
@@ -94,12 +93,6 @@ export function StaffAvatarField({
             </Button>
           ) : null}
         </div>
-        {hasPendingFile ? (
-          <p className="text-xs text-muted-foreground">
-            Ảnh sẽ được tải lên khi lưu. Nếu upload không khả dụng, nhân viên vẫn
-            được lưu (không có ảnh).
-          </p>
-        ) : null}
       </div>
     </div>
   );

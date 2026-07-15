@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CalendarClock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { canViewLeaveRequests } from "@/components/sidebar/constants/role-permissions";
 import { getCachedUser } from "@/lib/auth";
@@ -12,21 +12,6 @@ import { LeaveRequestsProvider } from "./components/leave-requests-provider";
 import { LeaveRequestsTable } from "./components/leave-requests-table";
 
 import { PageHeader } from "@/components/page-header";
-
-function getRoleDescription(role?: string | null): string {
-  switch (role) {
-    case "TENANT_OWNER":
-      return "Duyệt đơn nghỉ của quản lý chi nhánh / kho / nhân viên. Có thể tạo đơn khẩn thay họ.";
-    case "BRANCH_MANAGER":
-      return "Xin nghỉ phép (Tenant duyệt, cần bàn giao staff nếu có lịch). Duyệt đơn staff; tạo đơn khẩn và duyệt ngay khi staff báo nghỉ.";
-    case "WAREHOUSE_MANAGER":
-      return "Xin nghỉ phép gửi Tenant duyệt. Nếu có lịch quản lý trong khoảng nghỉ, chọn nhân viên cùng kho nhận bàn giao.";
-    case "STAFF":
-      return "Tạo và theo dõi đơn nghỉ phép của bạn. Đơn được quản lý chi nhánh duyệt.";
-    default:
-      return "Tạo, theo dõi và duyệt yêu cầu nghỉ phép theo quyền của bạn.";
-  }
-}
 
 export default function LeaveRequestsPage() {
   const { user } = useAuth();
@@ -58,7 +43,6 @@ export default function LeaveRequestsPage() {
             { label: "Nghỉ phép" },
           ]}
           title="Đơn nghỉ phép"
-          description={getRoleDescription(role)}
           actions={<LeaveRequestsButtonGroup />}
         />
 

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -17,7 +16,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -187,18 +185,11 @@ export function LeaveRequestsPersonalDialog({
     }
   }
 
-  const description = isWarehouseManager
-    ? "Tạo đơn nghỉ gửi Tenant Owner duyệt. Nếu có lịch quản lý trong khoảng nghỉ, phải chọn nhân viên cùng kho nhận bàn giao."
-    : isBranchManager
-      ? "Tạo đơn nghỉ gửi Tenant Owner duyệt. Bắt buộc chọn một Staff cùng chi nhánh để gán tạm quyền trong thời gian nghỉ."
-      : "Tạo đơn nghỉ phép của bạn và gửi quản lý chi nhánh duyệt.";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Xin nghỉ phép</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {balance && (
@@ -335,19 +326,6 @@ export function LeaveRequestsPersonalDialog({
                         )}
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      {isBranchManager
-                        ? checkingHandover
-                          ? "Đang kiểm tra lịch cần bàn giao..."
-                          : handoverCount > 0
-                            ? `Bắt buộc chọn Staff thay thế tạm. Có ${handoverCount} lịch sẽ được bàn giao sang nhân viên này.`
-                            : "Bắt buộc chọn một Staff cùng chi nhánh để thay thế tạm quyền khi bạn nghỉ."
-                        : checkingHandover
-                          ? "Đang kiểm tra lịch cần bàn giao..."
-                          : requiresHandover
-                            ? `Có ${handoverCount} lịch cần bàn giao trong khoảng nghỉ.`
-                            : "Không có lịch quản lý trong khoảng này — không bắt buộc bàn giao."}
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -116,8 +115,6 @@ export function ScheduleMutateDialog({
     }
   }
 
-  const multiAssignee = (currentRow?.assignees.length ?? 0) > 1;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
@@ -125,23 +122,6 @@ export function ScheduleMutateDialog({
           <DialogTitle>
             {isEdit ? "Sửa ca làm việc" : "Phân ca làm việc"}
           </DialogTitle>
-          <DialogDescription>
-            {isEdit ? (
-              <>
-                Cập nhật ca bằng cách xóa lịch cũ và tạo lại theo thông tin mới.
-                {multiAssignee && (
-                  <>
-                    {" "}
-                    Ca này đang gán cho {currentRow?.assignees.length} nhân viên.
-                  </>
-                )}
-              </>
-            ) : isTenantOwner ? (
-              "Chọn chi nhánh và nhân viên để phân ca."
-            ) : (
-              "Tạo lịch làm theo ca cho nhân viên đang hoạt động."
-            )}
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

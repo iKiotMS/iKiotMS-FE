@@ -21,7 +21,6 @@ export default function HolidaysPage() {
             { label: "Ngày lễ" },
           ]}
           title="Ngày lễ"
-          description="Quản lý lịch nghỉ lễ áp dụng cho doanh nghiệp"
           actions={canManage ? <HolidaysButtonGroup /> : undefined}
         />
 
