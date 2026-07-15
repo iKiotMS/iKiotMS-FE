@@ -59,6 +59,7 @@ function RuleTargetsMultiSelect({
   placeholder,
   searchPlaceholder,
   emptyLabel,
+  allowSelectAll = false,
 }: {
   options: Option[]
   value: string[]
@@ -66,9 +67,11 @@ function RuleTargetsMultiSelect({
   placeholder: string
   searchPlaceholder: string
   emptyLabel: string
+  allowSelectAll?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const selected = new Set(value)
+  const allSelected = options.length > 0 && value.length === options.length
 
   function toggle(id: string) {
     if (selected.has(id)) {
@@ -76,6 +79,10 @@ function RuleTargetsMultiSelect({
     } else {
       onChange([...value, id])
     }
+  }
+
+  function toggleSelectAll() {
+    onChange(allSelected ? [] : options.map((o) => o.value))
   }
 
   function getLabel(id: string) {
@@ -120,6 +127,16 @@ function RuleTargetsMultiSelect({
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyLabel}</CommandEmpty>
+            {allowSelectAll && options.length > 0 && (
+              <CommandGroup>
+                <CommandItem onSelect={toggleSelectAll}>
+                  <Check
+                    className={cn('mr-2 size-4', allSelected ? 'opacity-100' : 'opacity-0')}
+                  />
+                  {allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                </CommandItem>
+              </CommandGroup>
+            )}
             <CommandGroup>
               {options.map((o) => (
                 <CommandItem key={o.value} value={o.label} onSelect={() => toggle(o.value)}>
@@ -140,12 +157,12 @@ function RuleTargetsMultiSelect({
 const EMPTY_VALUES: PromotionFormValues = {
   promoName: '',
   description: '',
-  branchId: null,
+  branchIds: [],
   discountType: 'PERCENT',
   discountValue: 0,
   maxDiscountAmount: null,
   minOrderValue: 0,
-  applicableRuleType: 'all',
+  applicableRuleType: 'category',
   categoryIds: [],
   productItemIds: [],
   startDate: '',
@@ -156,8 +173,6 @@ const EMPTY_VALUES: PromotionFormValues = {
   usageLimitPerCustomer: null,
   status: 'ACTIVE',
 }
-
-const ALL_BRANCHES = '__all__'
 
 type PromotionsMutateDialogProps = {
   open: boolean
@@ -180,6 +195,9 @@ export function PromotionsMutateDialog({
   const [branchOptions, setBranchOptions] = useState<Option[]>([])
   const [categoryOptions, setCategoryOptions] = useState<Option[]>([])
   const [productItemOptions, setProductItemOptions] = useState<Option[]>([])
+  // Decoupled from `branchIds` itself: turning this switch off with zero branches
+  // picked yet must still show the multi-select (not silently mean "whole system").
+  const [applyToAllBranches, setApplyToAllBranches] = useState(true)
 
   const form = useForm<PromotionFormValues>({
     resolver: zodResolver(promotionFormSchema),
@@ -196,29 +214,17 @@ export function PromotionsMutateDialog({
       .getList({ limit: 200 })
       .then((res) => setCategoryOptions(res.data.map((c) => ({ value: c.id, label: c.name }))))
       .catch(() => setCategoryOptions([]))
-    productApi
-      .getList({ limit: 200 })
-      .then((res) =>
-        setProductItemOptions(
-          res.data.flatMap(
-            (p) =>
-              p.items?.map((item) => ({
-                value: item.id,
-                label: `${p.name} — ${item.sku}`,
-              })) ?? [],
-          ),
-        ),
-      )
-      .catch(() => setProductItemOptions([]))
   }, [open])
 
   useEffect(() => {
     if (!open) return
     if (isEdit && currentRow) {
+      const branchIds = currentRow.branchIds ?? []
+      setApplyToAllBranches(branchIds.length === 0)
       form.reset({
         promoName: currentRow.promoName,
         description: currentRow.description || '',
-        branchId: currentRow.branchId ?? null,
+        branchIds,
         discountType: currentRow.discountType,
         discountValue: currentRow.discountValue,
         maxDiscountAmount: currentRow.maxDiscountAmount ?? null,
@@ -235,12 +241,40 @@ export function PromotionsMutateDialog({
         status: currentRow.status,
       })
     } else {
+      setApplyToAllBranches(true)
       form.reset(EMPTY_VALUES)
     }
   }, [open, isEdit, currentRow, form])
 
   const discountType = form.watch('discountType')
   const applicableRuleType = form.watch('applicableRuleType')
+  const branchIds = form.watch('branchIds')
+  const branchIdsKey = branchIds.join(',')
+
+  // Toàn hệ thống -> toàn bộ sản phẩm trong cửa hàng (theo tenant); chọn chi nhánh cụ thể
+  // -> chỉ sản phẩm thuộc (các) chi nhánh đó. Không có API lấy toàn bộ sản phẩm ngoài scope tenant.
+  useEffect(() => {
+    if (!open) return
+    if (!applyToAllBranches && branchIds.length === 0) {
+      setProductItemOptions([])
+      return
+    }
+    productApi
+      .listItems({
+        limit: 300,
+        ...(applyToAllBranches ? {} : { branchIds: branchIdsKey }),
+      })
+      .then((items) =>
+        setProductItemOptions(
+          items.map((item) => ({
+            value: item.id,
+            label: `${item.productName} — ${item.sku}`,
+          })),
+        ),
+      )
+      .catch(() => setProductItemOptions([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, applyToAllBranches, branchIdsKey])
 
   async function onSubmit(data: PromotionFormValues) {
     const success =
@@ -392,35 +426,43 @@ export function PromotionsMutateDialog({
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>Áp dụng cho chi nhánh</FormLabel>
+                <div className="flex items-center justify-between rounded-md border px-3 py-2 h-9">
+                  <span className="text-sm font-normal">Toàn hệ thống</span>
+                  <Switch
+                    checked={applyToAllBranches}
+                    onCheckedChange={(checked) => {
+                      setApplyToAllBranches(checked)
+                      if (checked) form.setValue('branchIds', [])
+                    }}
+                  />
+                </div>
+              </FormItem>
+            </div>
+
+            {!applyToAllBranches && (
               <FormField
                 control={form.control}
-                name="branchId"
+                name="branchIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Áp dụng cho chi nhánh</FormLabel>
-                    <Select
-                      onValueChange={(v) => field.onChange(v === ALL_BRANCHES ? null : v)}
-                      value={field.value ?? ALL_BRANCHES}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full cursor-pointer">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={ALL_BRANCHES}>Toàn hệ thống</SelectItem>
-                        {branchOptions.map((b) => (
-                          <SelectItem key={b.value} value={b.value}>
-                            {b.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Chi nhánh áp dụng</FormLabel>
+                    <FormControl>
+                      <RuleTargetsMultiSelect
+                        options={branchOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Chọn chi nhánh..."
+                        searchPlaceholder="Tìm chi nhánh..."
+                        emptyLabel="Không tìm thấy chi nhánh."
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
+            )}
 
             <FormField
               control={form.control}
@@ -435,7 +477,6 @@ export function PromotionsMutateDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="all">Toàn bộ sản phẩm</SelectItem>
                       <SelectItem value="category">Theo danh mục</SelectItem>
                       <SelectItem value="product">Theo sản phẩm</SelectItem>
                     </SelectContent>
@@ -460,6 +501,7 @@ export function PromotionsMutateDialog({
                         placeholder="Chọn danh mục..."
                         searchPlaceholder="Tìm danh mục..."
                         emptyLabel="Không tìm thấy danh mục."
+                        allowSelectAll
                       />
                     </FormControl>
                     <FormMessage />
@@ -483,6 +525,7 @@ export function PromotionsMutateDialog({
                         placeholder="Chọn sản phẩm..."
                         searchPlaceholder="Tìm sản phẩm..."
                         emptyLabel="Không tìm thấy sản phẩm."
+                        allowSelectAll
                       />
                     </FormControl>
                     <FormMessage />

@@ -21,7 +21,7 @@ function toPayload(data: PromotionFormValues) {
   return {
     promoName: data.promoName,
     description: data.description || undefined,
-    branchId: data.branchId,
+    branchIds: data.branchIds,
     discountType: data.discountType,
     discountValue: data.discountValue,
     maxDiscountAmount: data.maxDiscountAmount,
