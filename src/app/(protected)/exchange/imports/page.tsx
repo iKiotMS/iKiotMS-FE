@@ -9,6 +9,8 @@ import { ImportsButtonGroup } from './components/imports-button-group'
 import { ImportsTable } from './components/imports-table'
 import { ImportsDialogs } from './components/imports-dialogs'
 
+import { PageHeader } from "@/components/page-header"
+
 export default function ImportsPage() {
   const router = useRouter()
   const role = getAuthScope().role
@@ -26,16 +28,17 @@ export default function ImportsPage() {
 
   return (
     <ImportsProvider>
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Nhập hàng</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Quản lý đơn nhập hàng từ nhà cung cấp vào kho / chi nhánh
-            </p>
-          </div>
-          <ImportsButtonGroup />
-        </div>
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: "Trang chủ", href: "/dashboard" },
+            { label: "Giao dịch" },
+            { label: "Nhập hàng" },
+          ]}
+          title="Nhập hàng"
+          description="Quản lý đơn nhập hàng từ nhà cung cấp vào kho / chi nhánh"
+          actions={<ImportsButtonGroup />}
+        />
         <ImportsTable />
       </div>
       <ImportsDialogs />

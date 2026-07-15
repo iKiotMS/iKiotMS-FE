@@ -271,3 +271,12 @@ export function canDeletePromotion(role?: string | null): boolean {
   return canCreatePromotion(role);
 }
 
+// Cash drawers
+export function canManageCashDrawer(role?: string | null): boolean {
+  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER";
+}
+
+export function canReportShift(role?: string | null): boolean {
+  return role === "TENANT_OWNER" || role === "BRANCH_MANAGER" || role === "STAFF";
+}
+

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -42,6 +43,27 @@ export function NavMain({
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const openTicketsCount = useNotificationStore((state) => state.openTicketsCount);
 
+  const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem("sidebar-expanded-groups");
+    if (saved) {
+      try {
+        setOpenStates(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const handleOpenChange = (title: string, open: boolean) => {
+    const next = { ...openStates, [title]: open };
+    setOpenStates(next);
+    localStorage.setItem("sidebar-expanded-groups", JSON.stringify(next));
+  };
+
   // Check if any subitem is active to determine if parent should be open
   const shouldBeOpen = (item: typeof items[0]) => {
     if (item.isActive) return true;
@@ -57,6 +79,15 @@ export function NavMain({
             key={item.title}
             asChild
             defaultOpen={shouldBeOpen(item)}
+            {...(isMounted
+              ? {
+                  open:
+                    openStates[item.title] !== undefined
+                      ? openStates[item.title]
+                      : shouldBeOpen(item),
+                  onOpenChange: (open) => handleOpenChange(item.title, open),
+                }
+              : {})}
             className="group/collapsible"
           >
             <SidebarMenuItem>

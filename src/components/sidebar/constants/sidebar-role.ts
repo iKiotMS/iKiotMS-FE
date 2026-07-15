@@ -22,6 +22,7 @@ const cskhGroup = {
   items: [sidebarItems.tenantPhanAnh],
 };
 
+
 export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
   SUPER_ADMIN: [
     {
@@ -57,6 +58,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       sidebarItems.hangHoa,
       sidebarItems.giaoDich,
       sidebarItems.donHang,
+      sidebarItems.ketTien,
     ]),
     crmGroup,
     cskhGroup,
@@ -72,6 +74,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       sidebarItems.hangHoa,
       sidebarItems.giaoDichBranch,
       sidebarItems.donHang,
+      sidebarItems.ketTien,
     ]),
     crmGroup,
     cskhGroup,
@@ -92,7 +95,11 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
       label: "Quản lý",
       items: [sidebarItems.nhanVien],
     },
-    quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.donHang]),
+    quanLyBanHangGroup([
+      sidebarItems.hangHoa,
+      sidebarItems.donHang,
+      sidebarItems.ketTien,
+    ]),
     crmGroup,
     cskhGroup,
     salaryGroup

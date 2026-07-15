@@ -15,6 +15,7 @@ import {
   MessageSquarePlus,
   Wallet,
   Landmark,
+  Vault,
 } from "lucide-react";
 import { type NavItem } from "./types";
 
@@ -88,8 +89,6 @@ export const sidebarItems = {
     icon: ShoppingCart,
     items: [
       { title: "Hoá đơn", url: "/sales/invoices" },
-      { title: "Trả hàng", url: "/sales/returns" },
-      { title: "Yêu cầu bảo hành", url: "/sales/warranty-requests" },
     ],
   },
 
@@ -164,5 +163,14 @@ export const sidebarItems = {
     title: "Phản ánh",
     url: "/tickets",
     icon: MessageSquarePlus,
+  },
+  ketTien: {
+    title: "Két tiền",
+    url: "/cash-drawers",
+    icon: Vault,
+    items: [
+      { title: "Hôm nay", url: "/cash-drawers/today" },
+      { title: "Lịch sử", url: "/cash-drawers/history" },
+    ],
   },
 } as const satisfies Record<string, NavItem>;

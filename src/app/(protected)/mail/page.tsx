@@ -4,10 +4,11 @@ import { accounts, mails } from "./data"
 
 export default function MailPage() {
   return (
-    <div className="@container/main flex flex-1 flex-col gap-4 px-4 py-6 md:px-6">
+    <div className="@container/main flex flex-1 flex-col gap-4 px-4 md:px-6">
       <PageHeader
         breadcrumbs={[
           { label: 'Trang chủ', href: '/dashboard' },
+          { label: 'Quản lý' },
           { label: 'Thư' },
         ]}
         title="Thư"
