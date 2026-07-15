@@ -28,7 +28,7 @@ export default function PayrollPage() {
 
   if (!canView) {
     return (
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-16 text-center bg-white dark:bg-slate-900/10">
           <h2 className="text-lg font-semibold">Không có quyền truy cập</h2>
           <p className="text-muted-foreground mt-2 max-w-md text-sm">
@@ -83,12 +83,12 @@ export default function PayrollPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+    <div className="flex flex-col gap-6 px-4 lg:px-6">
       <PageHeader
         breadcrumbs={[
           { label: 'Trang chủ', href: '/dashboard' },
-          { label: 'Quản lý nhân sự', href: '/staffs' },
-          { label: 'Tính lương & Chi trả' },
+          { label: 'Nhân viên', href: '/staffs' },
+          { label: 'Bảng lương' },
         ]}
         title="Tính lương & Chi trả"
         description="Quản lý cấu hình kỳ lương, mức thu nhập cơ bản, tính toán ngày công và chi trả lương."

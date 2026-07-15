@@ -11,7 +11,7 @@ export default function CategoriesPage() {
 
   if (!canView) {
     return (
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-16 text-center">
           <h2 className="text-lg font-semibold">Không có quyền truy cập</h2>
           <p className="text-muted-foreground mt-2 max-w-md text-sm">
@@ -23,10 +23,11 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+    <div className="flex flex-col gap-6 px-4 lg:px-6">
       <PageHeader
         breadcrumbs={[
           { label: 'Trang chủ', href: '/dashboard' },
+          { label: 'Quản lý bán hàng' },
           { label: 'Danh mục' },
         ]}
         title="Danh mục"

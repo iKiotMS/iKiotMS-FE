@@ -7,6 +7,8 @@ import { StaffsDialogs } from "./components/staffs-dialogs";
 import { StaffsProvider } from "./components/staffs-provider";
 import { StaffsTable } from "./components/staffs-table";
 
+import { PageHeader } from "@/components/page-header";
+
 function StaffsPageContent() {
   const canView = canViewStaff(getSessionRole());
 
@@ -24,15 +26,16 @@ function StaffsPageContent() {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nhân viên</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Quản lý danh sách nhân viên, vai trò và trạng thái làm việc
-          </p>
-        </div>
-        <StaffsButtonGroup />
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Trang chủ", href: "/dashboard" },
+          { label: "Nhân viên" },
+          { label: "Danh sách" },
+        ]}
+        title="Nhân viên"
+        description="Quản lý danh sách nhân viên, vai trò và trạng thái làm việc"
+        actions={<StaffsButtonGroup />}
+      />
       <StaffsTable />
     </>
   );
@@ -43,7 +46,7 @@ export default function StaffsPage() {
 
   return (
     <StaffsProvider enabled={canView}>
-      <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <StaffsPageContent />
       </div>
       {canView && <StaffsDialogs />}
