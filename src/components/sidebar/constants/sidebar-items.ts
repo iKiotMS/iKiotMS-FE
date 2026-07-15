@@ -15,7 +15,6 @@ import {
   MessageSquarePlus,
   Wallet,
   Landmark,
-  Wallet,
   Vault,
 } from "lucide-react";
 import { type NavItem } from "./types";
