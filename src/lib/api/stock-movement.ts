@@ -653,6 +653,7 @@ export const stockMovementApi = {
    */
   createAndShipReverseReturn: async (
     source: StockMovement,
+    options?: { reason?: string },
   ): Promise<StockMovement> => {
     if (!source.fromLocationId || !source.fromLocationType) {
       throw new Error("Phiếu không có nơi gửi để trả về");
@@ -692,13 +693,18 @@ export const stockMovementApi = {
         ? ("RETURN" as const)
         : ("EXPORT" as const);
 
+    const reason = options?.reason?.trim();
+    const note = reason
+      ? `${reason} (từ phiếu ${source._id})`
+      : `Trả hàng từ phiếu ${source._id}`;
+
     const createResponse = await client.post("/stock-movements", {
       movementType,
       fromLocationId,
       fromLocationType,
       toLocationId,
       toLocationType,
-      note: `Trả hàng từ phiếu ${source._id}`,
+      note,
       details,
     });
     const created = await safeEnrichMovement(

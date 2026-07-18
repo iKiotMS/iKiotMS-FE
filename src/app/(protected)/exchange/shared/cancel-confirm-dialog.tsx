@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type CancelConfirmDialogProps = {
   open: boolean;
@@ -19,6 +21,14 @@ type CancelConfirmDialogProps = {
   loadingLabel?: string;
   isLoading?: boolean;
   onConfirm: () => void | Promise<void>;
+  /** Optional reason input (e.g. return goods). */
+  reason?: {
+    value: string;
+    onChange: (value: string) => void;
+    label?: string;
+    placeholder?: string;
+    required?: boolean;
+  };
 };
 
 export function CancelConfirmDialog({
@@ -30,7 +40,10 @@ export function CancelConfirmDialog({
   loadingLabel,
   isLoading = false,
   onConfirm,
+  reason,
 }: CancelConfirmDialogProps) {
+  const reasonMissing = Boolean(reason?.required && !reason.value.trim());
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -42,6 +55,27 @@ export function CancelConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+
+        {reason ? (
+          <div className="space-y-2">
+            <Label htmlFor="confirm-reason">
+              {reason.label ?? "Lý do"}
+              {reason.required ? (
+                <span className="text-destructive"> *</span>
+              ) : null}
+            </Label>
+            <Textarea
+              id="confirm-reason"
+              value={reason.value}
+              onChange={(e) => reason.onChange(e.target.value)}
+              placeholder={reason.placeholder ?? "Nhập lý do..."}
+              disabled={isLoading}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+        ) : null}
+
         <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <Button
             type="button"
@@ -56,7 +90,7 @@ export function CancelConfirmDialog({
             type="button"
             variant="destructive"
             className="cursor-pointer"
-            disabled={isLoading}
+            disabled={isLoading || reasonMissing}
             onClick={() => void onConfirm()}
           >
             {isLoading ? (loadingLabel ?? `Đang ${confirmLabel.toLowerCase()}...`) : confirmLabel}

@@ -366,9 +366,22 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
             <FormField control={form.control} name="note" render={({ field }) => (
               <FormItem>
-                  <FormLabel>Ghi chú đơn</FormLabel>
+                  <FormLabel>
+                    {isBranchActor && branchRequestKind === 'return'
+                      ? 'Lý do trả hàng'
+                      : 'Ghi chú đơn'}
+                  </FormLabel>
                   <FormControl>
-                    <Textarea placeholder={labels.orderNotePlaceholder} rows={2} className="resize-none" {...field} />
+                    <Textarea
+                      placeholder={
+                        isBranchActor && branchRequestKind === 'return'
+                          ? 'VD: Hàng lỗi, sai mẫu, thừa tồn...'
+                          : labels.orderNotePlaceholder
+                      }
+                      rows={2}
+                      className="resize-none"
+                      {...field}
+                    />
                   </FormControl>
               </FormItem>
             )} />
@@ -474,11 +487,6 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                                 onChange={field.onChange}
                               />
                             </FormControl>
-                            {typeof stockMax === 'number' && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Tồn: {stockMax.toLocaleString('vi-VN')}
-                              </p>
-                            )}
                             <FormMessage />
                           </FormItem>
                           )

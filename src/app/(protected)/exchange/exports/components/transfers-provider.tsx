@@ -36,7 +36,7 @@ interface TransfersContextType {
   handleShip: (id: string) => Promise<void>
   handleReceive: (id: string, receivedDetails: { productItemId: string; receivedQuantity: number }[]) => Promise<void>
   handleCancel: (id: string) => Promise<void>
-  handleReturnGoods: (source: StockMovement) => Promise<void>
+  handleReturnGoods: (source: StockMovement, reason?: string) => Promise<void>
   labels: ReturnType<typeof getTransferUiLabels>
 }
 
@@ -178,9 +178,9 @@ export function TransfersProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const handleReturnGoods = async (source: StockMovement) => {
+  const handleReturnGoods = async (source: StockMovement, reason?: string) => {
     try {
-      await stockMovementApi.createAndShipReverseReturn(source)
+      await stockMovementApi.createAndShipReverseReturn(source, { reason })
       toast.success('Đã tạo phiếu trả hàng')
       await fetchTransfers()
     } catch (error) {

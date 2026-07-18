@@ -87,7 +87,7 @@ export type MovementTransferActions = {
   ) => Promise<void>;
   handleCancel: (id: string) => Promise<void>;
   /** Tạo phiếu trả ngược từ phiếu hiện tại và xuất đi (chờ nơi gửi gốc nhận). */
-  handleReturnGoods: (source: StockMovement) => Promise<void>;
+  handleReturnGoods: (source: StockMovement, reason?: string) => Promise<void>;
   labels: TransferUiLabels;
 };
 
@@ -140,6 +140,7 @@ export function MovementExpandedPanel({
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [returnConfirmOpen, setReturnConfirmOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState("");
   const locationKey = useAuthStore((s) => s.locationKey);
   const effectiveScope = useMemo(
     () => getEffectiveLocationScope(locationKey),
@@ -343,6 +344,12 @@ export function MovementExpandedPanel({
   const confirmReturnGoods = async () => {
     if (!transferActions?.handleReturnGoods || !canReturnGoods) return;
 
+    const reason = returnReason.trim();
+    if (!reason) {
+      toast.error("Vui lòng nhập lý do trả hàng");
+      return;
+    }
+
     await withRefresh(async () => {
       let source: StockMovement = detail;
 
@@ -376,9 +383,10 @@ export function MovementExpandedPanel({
         };
       }
 
-      await transferActions.handleReturnGoods(source);
+      await transferActions.handleReturnGoods(source, reason);
       setShowReceiveForm(false);
       setReceivedQtys({});
+      setReturnReason("");
       setReturnConfirmOpen(false);
     });
   };
@@ -612,13 +620,23 @@ export function MovementExpandedPanel({
 
       <CancelConfirmDialog
         open={returnConfirmOpen}
-        onOpenChange={setReturnConfirmOpen}
+        onOpenChange={(open) => {
+          setReturnConfirmOpen(open);
+          if (!open) setReturnReason("");
+        }}
         title="Xác nhận trả hàng"
         description={returnDescription}
         confirmLabel="Trả hàng"
         loadingLabel="Đang trả hàng..."
         isLoading={isActionLoading}
         onConfirm={confirmReturnGoods}
+        reason={{
+          value: returnReason,
+          onChange: setReturnReason,
+          label: "Lý do trả hàng",
+          placeholder: "VD: Hàng lỗi, sai mẫu, thừa tồn...",
+          required: true,
+        }}
       />
 
       <Separator className="mt-4" />
