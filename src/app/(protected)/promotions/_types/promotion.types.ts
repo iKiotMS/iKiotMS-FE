@@ -17,7 +17,6 @@ export const promotionFormSchema = z
     productItemIds: z.array(z.string()),
     startDate: z.string().min(1, 'Ngày bắt đầu là bắt buộc'),
     endDate: z.string().min(1, 'Ngày kết thúc là bắt buộc'),
-    priority: z.number().int('Độ ưu tiên phải là số nguyên').min(0, 'Độ ưu tiên không được âm'),
     stackable: z.boolean(),
     usageLimit: z.number().int().min(1).nullable(),
     usageLimitPerCustomer: z.number().int().min(1).nullable(),

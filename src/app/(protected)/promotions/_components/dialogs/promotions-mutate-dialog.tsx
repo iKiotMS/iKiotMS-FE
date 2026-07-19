@@ -49,6 +49,8 @@ import { usePromotions } from '../../_context/promotions-provider'
 import { branchApi } from '@/lib/api/branch'
 import { categoryApi } from '@/lib/api/category'
 import { productApi } from '@/lib/api/product'
+import { getSessionRole, getSessionBranchId } from '@/lib/auth'
+import { isoToVNDateInput } from '../../_shared/promotion-date'
 
 type Option = { value: string; label: string }
 
@@ -167,7 +169,6 @@ const EMPTY_VALUES: PromotionFormValues = {
   productItemIds: [],
   startDate: '',
   endDate: '',
-  priority: 0,
   stackable: false,
   usageLimit: null,
   usageLimitPerCustomer: null,
@@ -181,8 +182,7 @@ type PromotionsMutateDialogProps = {
 }
 
 function toDateInputValue(iso?: string) {
-  if (!iso) return ''
-  return iso.slice(0, 10)
+  return isoToVNDateInput(iso)
 }
 
 export function PromotionsMutateDialog({
@@ -198,6 +198,13 @@ export function PromotionsMutateDialog({
   // Decoupled from `branchIds` itself: turning this switch off with zero branches
   // picked yet must still show the multi-select (not silently mean "whole system").
   const [applyToAllBranches, setApplyToAllBranches] = useState(true)
+
+  // BRANCH_MANAGER may only ever scope a promotion to their own branch. The BE now
+  // also enforces this server-side (force-overrides branchIds on create/update), so
+  // this is UI convenience/defense-in-depth, not the sole guard.
+  const isBranchManager = getSessionRole() === 'BRANCH_MANAGER'
+  const ownBranchId = getSessionBranchId()
+  const ownBranchLabel = branchOptions.find((b) => b.value === ownBranchId)?.label
 
   const form = useForm<PromotionFormValues>({
     resolver: zodResolver(promotionFormSchema),
@@ -220,11 +227,11 @@ export function PromotionsMutateDialog({
     if (!open) return
     if (isEdit && currentRow) {
       const branchIds = currentRow.branchIds ?? []
-      setApplyToAllBranches(branchIds.length === 0)
+      setApplyToAllBranches(isBranchManager ? false : branchIds.length === 0)
       form.reset({
         promoName: currentRow.promoName,
         description: currentRow.description || '',
-        branchIds,
+        branchIds: isBranchManager && ownBranchId ? [ownBranchId] : branchIds,
         discountType: currentRow.discountType,
         discountValue: currentRow.discountValue,
         maxDiscountAmount: currentRow.maxDiscountAmount ?? null,
@@ -234,17 +241,19 @@ export function PromotionsMutateDialog({
         productItemIds: currentRow.applicableRule.productItemIds ?? [],
         startDate: toDateInputValue(currentRow.startDate),
         endDate: toDateInputValue(currentRow.endDate),
-        priority: currentRow.priority,
         stackable: currentRow.stackable,
         usageLimit: currentRow.usageLimit ?? null,
         usageLimitPerCustomer: currentRow.usageLimitPerCustomer ?? null,
         status: currentRow.status,
       })
     } else {
-      setApplyToAllBranches(true)
-      form.reset(EMPTY_VALUES)
+      setApplyToAllBranches(!isBranchManager)
+      form.reset({
+        ...EMPTY_VALUES,
+        branchIds: isBranchManager && ownBranchId ? [ownBranchId] : [],
+      })
     }
-  }, [open, isEdit, currentRow, form])
+  }, [open, isEdit, currentRow, form, isBranchManager, ownBranchId])
 
   const discountType = form.watch('discountType')
   const applicableRuleType = form.watch('applicableRuleType')
@@ -428,20 +437,28 @@ export function PromotionsMutateDialog({
               />
               <FormItem>
                 <FormLabel>Áp dụng cho chi nhánh</FormLabel>
-                <div className="flex items-center justify-between rounded-md border px-3 py-2 h-9">
-                  <span className="text-sm font-normal">Toàn hệ thống</span>
-                  <Switch
-                    checked={applyToAllBranches}
-                    onCheckedChange={(checked) => {
-                      setApplyToAllBranches(checked)
-                      if (checked) form.setValue('branchIds', [])
-                    }}
-                  />
-                </div>
+                {isBranchManager ? (
+                  <div className="flex items-center rounded-md border px-3 py-2 h-9">
+                    <span className="text-sm font-normal text-muted-foreground">
+                      Chi nhánh của bạn{ownBranchLabel ? `: ${ownBranchLabel}` : ''}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between rounded-md border px-3 py-2 h-9">
+                    <span className="text-sm font-normal">Toàn hệ thống</span>
+                    <Switch
+                      checked={applyToAllBranches}
+                      onCheckedChange={(checked) => {
+                        setApplyToAllBranches(checked)
+                        if (checked) form.setValue('branchIds', [])
+                      }}
+                    />
+                  </div>
+                )}
               </FormItem>
             </div>
 
-            {!applyToAllBranches && (
+            {!applyToAllBranches && !isBranchManager && (
               <FormField
                 control={form.control}
                 name="branchIds"
@@ -563,41 +580,18 @@ export function PromotionsMutateDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 items-end">
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Độ ưu tiên</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        {...field}
-                        onChange={(e) => {
-                          const val = e.target.valueAsNumber
-                          field.onChange(isNaN(val) ? 0 : val)
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="stackable"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-md border px-3 py-2">
-                    <FormLabel className="mb-0">Cho phép cộng dồn</FormLabel>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="stackable"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <FormLabel className="mb-0">Cho phép cộng dồn</FormLabel>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

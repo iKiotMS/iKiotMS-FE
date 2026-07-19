@@ -10,6 +10,7 @@ import { warehouseApi } from '@/lib/api/warehouse'
 import { brandApi } from '@/lib/api/brand'
 import { categoryApi } from '@/lib/api/category'
 import { supplierApi } from '@/lib/api/supplier'
+import { productApi } from '@/lib/api/product'
 import type { Brand } from '@/types/brand'
 import type { Category } from '@/types/category'
 import type { Supplier } from '@/types/supplier'
@@ -37,6 +38,9 @@ type ProductsContextType = {
   categories: Category[]
   suppliers: Supplier[]
   ensureSuppliersLoaded: () => void
+  // productId -> lowercased "sku productCode" text, for the toolbar search box
+  // (GET /products doesn't include item-level fields on each product; see products-table.tsx).
+  skuSearchIndex: Map<string, string>
 }
 
 const ProductsContext = React.createContext<ProductsContextType | null>(null)
@@ -53,6 +57,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [skuSearchIndex, setSkuSearchIndex] = useState<Map<string, string>>(new Map())
   const locationOptionsLoadedRef = useRef(false)
   const suppliersLoadedRef = useRef(false)
 
@@ -64,6 +69,24 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       setBrands(brandRes.status === 'fulfilled' ? brandRes.value.data : [])
       setCategories(categoryRes.status === 'fulfilled' ? categoryRes.value.data : [])
     })
+  }, [])
+
+  // Powers the toolbar search box's SKU/product-code matching (see products-table.tsx) —
+  // GET /products doesn't attach item-level fields per product, so build the index from
+  // the flat item list instead.
+  useEffect(() => {
+    productApi
+      .listItems({ limit: 500 })
+      .then((items) => {
+        const index = new Map<string, string>()
+        for (const item of items) {
+          const text = `${item.sku} ${item.productCode}`.toLowerCase()
+          const existing = index.get(item.productId)
+          index.set(item.productId, existing ? `${existing} ${text}` : text)
+        }
+        setSkuSearchIndex(index)
+      })
+      .catch(() => setSkuSearchIndex(new Map()))
   }, [])
 
   // Only needed inside stock-location pickers/labels (mutate dialog, item dialogs,
@@ -123,6 +146,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         categories,
         suppliers,
         ensureSuppliersLoaded,
+        skuSearchIndex,
       }}
     >
       {children}
