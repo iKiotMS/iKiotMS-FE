@@ -454,11 +454,8 @@ export function StaffsMutateDialog({
     if (selectedRole === "WAREHOUSE_MANAGER") {
       form.setValue("branchId", "");
     }
-    if (selectedRole === "BRANCH_MANAGER") {
+    if (selectedRole === "BRANCH_MANAGER" || selectedRole === "STAFF") {
       form.setValue("warehouseId", "");
-    }
-    if (selectedRole === "STAFF") {
-      // keep one workplace — user clears the other manually when switching
     }
   }, [selectedRole, open, form]);
 
@@ -576,7 +573,9 @@ export function StaffsMutateDialog({
               editData.role,
               editData.branchId,
             );
-            if (canAssignWarehouse) {
+            if (editData.role === "STAFF") {
+              profilePayload.warehouseId = null;
+            } else if (canAssignWarehouse) {
               profilePayload.warehouseId = resolveWarehouseIdForRole(
                 editData.role,
                 editData.warehouseId,
@@ -595,9 +594,15 @@ export function StaffsMutateDialog({
           email: createData.email || undefined,
           role: createData.role,
           branchId: resolveBranchIdForRole(createData.role, createData.branchId),
-          warehouseId: canAssignWarehouse
-            ? resolveWarehouseIdForRole(createData.role, createData.warehouseId)
-            : undefined,
+          warehouseId:
+            createData.role === "STAFF"
+              ? null
+              : canAssignWarehouse
+                ? resolveWarehouseIdForRole(
+                    createData.role,
+                    createData.warehouseId,
+                  )
+                : undefined,
           hireDate: normalizeDateInput(createData.hireDate),
           paySheetId: resolvePaySheetIdForApi(createData.paySheetId),
           profile: buildProfilePayload({
@@ -742,12 +747,7 @@ export function StaffsMutateDialog({
                       <FormLabel>Chi nhánh</FormLabel>
                       {branchOptions.length > 0 ? (
                         <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            if (selectedRole === "STAFF" && value) {
-                              form.setValue("warehouseId", "");
-                            }
-                          }}
+                          onValueChange={field.onChange}
                           value={field.value || ""}
                           disabled={
                             Boolean(isEditingManager) ||
@@ -782,9 +782,7 @@ export function StaffsMutateDialog({
               )}
             </div>
 
-            {canAssignWarehouse &&
-              (selectedRole === "WAREHOUSE_MANAGER" ||
-                selectedRole === "STAFF") && (
+            {canAssignWarehouse && selectedRole === "WAREHOUSE_MANAGER" && (
               <FormField
                 control={form.control}
                 name="warehouseId"
@@ -793,12 +791,7 @@ export function StaffsMutateDialog({
                     <FormLabel>Kho hàng</FormLabel>
                     {warehouseOptions.length > 0 ? (
                       <Select
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          if (selectedRole === "STAFF" && value) {
-                            form.setValue("branchId", "");
-                          }
-                        }}
+                        onValueChange={field.onChange}
                         value={field.value || ""}
                         disabled={Boolean(isEditingManager)}
                       >

@@ -1,14 +1,14 @@
 import type { StaffRole } from "@/types/staff";
 
-/** STAFF must have branch or warehouse — matches BE validateSingleWorkplaceAssignment. */
+/** STAFF must be assigned to a branch (sales staff — not warehouse). */
 export function validateStaffWorkplace(
   role: StaffRole,
   branchId?: string,
-  warehouseId?: string,
+  _warehouseId?: string,
 ): string | null {
   if (role !== "STAFF") return null;
-  if (branchId?.trim() || warehouseId?.trim()) return null;
-  return "Nhân viên cần chọn chi nhánh hoặc kho hàng";
+  if (branchId?.trim()) return null;
+  return "Nhân viên cần chọn chi nhánh";
 }
 
 export function resolveBranchIdForRole(
@@ -23,6 +23,7 @@ export function resolveWarehouseIdForRole(
   role: StaffRole,
   warehouseId?: string,
 ): string | null | undefined {
-  if (role === "BRANCH_MANAGER") return null;
+  // STAFF / BRANCH_MANAGER never attach to a warehouse.
+  if (role === "BRANCH_MANAGER" || role === "STAFF") return null;
   return warehouseId || undefined;
 }
