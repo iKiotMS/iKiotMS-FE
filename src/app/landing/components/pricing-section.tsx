@@ -1,73 +1,52 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  listPlans,
+  groupPlansByTier,
+  type Plan,
+  type PlanTierGroup,
+} from "@/lib/api/subscription";
 
-const plans = [
-  {
-    name: "Dùng Thử",
-    planCode: "TRIAL",
-    description: "Khám phá toàn bộ tính năng iKiot miễn phí trong 7 ngày.",
-    monthlyPrice: "Miễn phí",
-    yearlyPrice: "Miễn phí",
-    features: [
-      "Dùng thử 7 ngày miễn phí",
-      "Tối đa 2 chi nhánh",
-      "Tối đa 100 sản phẩm",
-      "Tối đa 2 nhân viên",
-      "Bán hàng POS & báo cáo cơ bản",
-    ],
-    cta: "Bắt đầu dùng thử",
-    popular: false,
-  },
-  {
-    name: "Plus",
-    planCode: "PLUS",
-    description:
-      "Phù hợp cho chuỗi cửa hàng vừa và nhỏ có nhu cầu đồng bộ đa chi nhánh.",
-    monthlyPrice: "99.000đ",
-    yearlyPrice: "79.000đ",
-    features: [
-      "Tối đa 3 chi nhánh",
-      "Tối đa 1.000 sản phẩm",
-      "Tối đa 5 nhân viên",
-      "Quản lý kho & chuyển kho chi nhánh",
-      "Quản lý nhân sự & bảng lương",
-    ],
-    cta: "Đăng ký gói Plus",
-    popular: true,
-    includesPrevious: "Bao gồm gói Dùng Thử và",
-  },
-  {
-    name: "Pro",
-    planCode: "PRO",
-    description: "Giải pháp toàn diện không giới hạn cho chuỗi cửa hàng lớn.",
-    monthlyPrice: "299.000đ",
-    yearlyPrice: "239.000đ",
-    features: [
-      "Không giới hạn chi nhánh",
-      "Không giới hạn sản phẩm",
-      "Không giới hạn nhân viên",
-      "Tất cả tính năng gói Plus",
-      "Hỗ trợ ưu tiên",
-    ],
-    cta: "Đăng ký gói Pro",
-    popular: false,
-    includesPrevious: "Bao gồm gói Plus và",
-  },
-];
+const formatVnd = (amount: number) =>
+  amount === 0 ? "Miễn phí" : `${amount.toLocaleString("vi-VN")}đ`;
 
 export function PricingSection() {
   const [isYearly, setIsYearly] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const signUpHref = (planCode: string) => {
-    if (planCode === 'TRIAL') return '/sign-up'
-    return `/sign-up?plan=${isYearly ? `${planCode}_YEARLY` : planCode}`
-  }
+  useEffect(() => {
+    let active = true;
+    listPlans()
+      .then((data) => active && setPlans(data))
+      .catch(() => active && setPlans([]))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const tiers = useMemo(() => groupPlansByTier(plans), [plans]);
+  const hasAnyYearly = useMemo(
+    () => plans.some((p) => p.billingCycle === "YEARLY"),
+    [plans],
+  );
+
+  const signUpHref = (plan: Plan) => {
+    if (plan.price === 0) return "/sign-up";
+    const yearly = isYearly && plan.billingCycle !== "YEARLY";
+    return `/sign-up?plan=${yearly ? `${plan.planCode}_YEARLY` : plan.planCode}`;
+  };
+
+  // Pick the plan to show for a tier based on the monthly/yearly toggle.
+  const selectedOf = (group: PlanTierGroup): Plan | undefined =>
+    isYearly && group.yearly ? group.yearly : group.monthly;
 
   return (
     <section id="pricing" className="py-24 sm:py-32 bg-muted/70">
@@ -86,113 +65,155 @@ export function PricingSection() {
           </p>
 
           {/* Billing Toggle */}
-          <div className="flex items-center justify-center mb-2">
-            <ToggleGroup
-              type="single"
-              value={isYearly ? "yearly" : "monthly"}
-              onValueChange={(value) => setIsYearly(value === "yearly")}
-              className="bg-secondary text-secondary-foreground border-none rounded-full p-1 cursor-pointer shadow-none"
-            >
-              <ToggleGroupItem
-                value="monthly"
-                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
-              >
-                Hàng tháng
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="yearly"
-                className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
-              >
-                Hàng năm
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          {hasAnyYearly && (
+            <>
+              <div className="flex items-center justify-center mb-2">
+                <ToggleGroup
+                  type="single"
+                  value={isYearly ? "yearly" : "monthly"}
+                  onValueChange={(value) => setIsYearly(value === "yearly")}
+                  className="bg-secondary text-secondary-foreground border-none rounded-full p-1 cursor-pointer shadow-none"
+                >
+                  <ToggleGroupItem
+                    value="monthly"
+                    className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
+                  >
+                    Hàng tháng
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="yearly"
+                    className="data-[state=on]:bg-background data-[state=on]:border-border border-transparent border px-6 !rounded-full data-[state=on]:text-foreground hover:bg-transparent cursor-pointer transition-colors"
+                  >
+                    Hàng năm
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
 
-          <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">
-              Tiết kiệm hơn 20%
-            </span>{" "}
-            khi đăng ký thanh toán hàng năm
-          </p>
+              <p className="text-sm text-muted-foreground">
+                <span className="text-primary font-semibold">
+                  Tiết kiệm hơn 20%
+                </span>{" "}
+                khi đăng ký thanh toán hàng năm
+              </p>
+            </>
+          )}
         </div>
 
         {/* Pricing Cards */}
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-xl border">
-            <div className="grid lg:grid-cols-3">
-              {plans.map((plan, index) => (
-                <div
-                  key={index}
-                  className={`p-8 grid grid-rows-subgrid row-span-4 gap-6 ${
-                    plan.popular
-                      ? "my-2 mx-4 rounded-xl bg-card border-transparent shadow-xl ring-1 ring-foreground/10 backdrop-blur"
-                      : ""
-                  }`}
-                >
-                  {/* Plan Header */}
-                  <div>
-                    <div className="text-lg font-medium tracking-tight mb-2">
-                      {plan.name}
-                    </div>
-                    <div className="text-muted-foreground text-balance text-sm">
-                      {plan.description}
-                    </div>
-                  </div>
+        {loading ? (
+          <div className="mx-auto flex max-w-6xl items-center justify-center rounded-xl border py-24 text-muted-foreground">
+            <Loader2 className="mr-2 size-5 animate-spin" />
+            Đang tải bảng giá...
+          </div>
+        ) : tiers.length === 0 ? (
+          <div className="mx-auto max-w-6xl rounded-xl border py-16 text-center text-muted-foreground">
+            Hiện chưa có gói dịch vụ nào.
+          </div>
+        ) : (
+          <div className="mx-auto max-w-6xl">
+            <div className="rounded-xl border">
+              <div className="grid lg:grid-cols-3">
+                {tiers.map((group, index) => {
+                  const plan = selectedOf(group);
+                  if (!plan) return null;
 
-                  {/* Pricing */}
-                  <div>
-                    <div className="text-4xl font-bold mb-1">
-                      {isYearly ? plan.yearlyPrice : plan.monthlyPrice}
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      {plan.planCode === "TRIAL"
-                        ? "7 ngày dùng thử"
-                        : `Mỗi tháng (Thanh toán ${isYearly ? "hàng năm" : "hàng tháng"})`}
-                    </div>
-                  </div>
+                  const isTrial = plan.price === 0;
+                  const prevGroup = tiers[index - 1];
+                  const prevName =
+                    prevGroup && selectedOf(prevGroup)?.planName;
+                  const includesPrevious =
+                    !isTrial && prevName ? `Bao gồm gói ${prevName} và` : null;
 
-                  {/* CTA Button */}
-                  <div>
-                    <Button
-                      className={`w-full cursor-pointer my-2 ${
-                        plan.popular
-                          ? "shadow-md border-[0.5px] border-white/25 shadow-black/20 bg-primary ring-1 ring-primary/15 text-primary-foreground hover:bg-primary/90"
-                          : "shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50"
+                  return (
+                    <div
+                      key={group.tier}
+                      className={`p-8 grid grid-rows-subgrid row-span-4 gap-6 ${
+                        plan.isPopular
+                          ? "my-2 mx-4 rounded-xl bg-card border-transparent shadow-xl ring-1 ring-foreground/10 backdrop-blur"
+                          : ""
                       }`}
-                      variant={plan.popular ? "default" : "secondary"}
-                      asChild
                     >
-                      <Link href={signUpHref(plan.planCode)}>{plan.cta}</Link>
-                    </Button>
-                  </div>
+                      {/* Plan Header */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg font-medium tracking-tight">
+                            {plan.planName}
+                          </span>
+                          {plan.isPopular && (
+                            <Badge variant="secondary" className="text-xs">
+                              Phổ biến
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground text-balance text-sm">
+                          {plan.description}
+                        </div>
+                      </div>
 
-                  {/* Features */}
-                  <div>
-                    <ul role="list" className="space-y-3 text-sm">
-                      {plan.includesPrevious && (
-                        <li className="flex items-center gap-3 font-medium">
-                          {plan.includesPrevious}:
-                        </li>
-                      )}
-                      {plan.features.map((feature, featureIndex) => (
-                        <li
-                          key={featureIndex}
-                          className="flex items-center gap-3"
+                      {/* Pricing */}
+                      <div>
+                        <div className="text-4xl font-bold mb-1">
+                          {formatVnd(plan.price)}
+                        </div>
+                        <div className="text-muted-foreground text-sm">
+                          {isTrial
+                            ? `${plan.trialDays} ngày dùng thử`
+                            : plan.billingCycle === "YEARLY"
+                              ? `Mỗi năm (~${formatVnd(Math.round(plan.price / 12))}/tháng)`
+                              : "Mỗi tháng"}
+                        </div>
+                      </div>
+
+                      {/* CTA Button */}
+                      <div>
+                        <Button
+                          className={`w-full cursor-pointer my-2 ${
+                            plan.isPopular
+                              ? "shadow-md border-[0.5px] border-white/25 shadow-black/20 bg-primary ring-1 ring-primary/15 text-primary-foreground hover:bg-primary/90"
+                              : "shadow-sm shadow-black/15 border border-transparent bg-background ring-1 ring-foreground/10 hover:bg-muted/50"
+                          }`}
+                          variant={plan.isPopular ? "default" : "secondary"}
+                          asChild
                         >
-                          <Check
-                            className="text-muted-foreground size-4 flex-shrink-0"
-                            strokeWidth={2.5}
-                          />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
+                          <Link href={signUpHref(plan)}>
+                            {isTrial
+                              ? "Bắt đầu dùng thử"
+                              : `Đăng ký gói ${plan.planName}`}
+                          </Link>
+                        </Button>
+                      </div>
+
+                      {/* Features */}
+                      <div>
+                        <ul role="list" className="space-y-3 text-sm">
+                          {includesPrevious && (
+                            <li className="flex items-center gap-3 font-medium">
+                              {includesPrevious}:
+                            </li>
+                          )}
+                          {(plan.displayFeatures ?? []).map(
+                            (feature, featureIndex) => (
+                              <li
+                                key={featureIndex}
+                                className="flex items-center gap-3"
+                              >
+                                <Check
+                                  className="text-muted-foreground size-4 flex-shrink-0"
+                                  strokeWidth={2.5}
+                                />
+                                <span>{feature}</span>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Enterprise Note */}
         <div className="mt-16 text-center">

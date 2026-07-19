@@ -19,37 +19,7 @@ import type { User } from "@/lib/auth";
 
 const TIER_ORDER = ["TRIAL", "PLUS", "PRO"] as const;
 
-// Nội dung marketing hiển thị; giá & mã gói lấy động từ /plans
-const TIER_META: Record<string, { features: string[] }> = {
-  TRIAL: {
-    features: [
-      "Dùng thử 7 ngày miễn phí",
-      "Tối đa 2 chi nhánh",
-      "Tối đa 100 sản phẩm",
-      "Tối đa 2 nhân viên",
-      "Bán hàng POS & báo cáo cơ bản",
-    ],
-  },
-  PLUS: {
-    features: [
-      "Tối đa 3 chi nhánh",
-      "Tối đa 1.000 sản phẩm",
-      "Tối đa 5 nhân viên",
-      "Quản lý kho & chuyển kho chi nhánh",
-      "Quản lý nhân sự & bảng lương",
-    ],
-  },
-  PRO: {
-    features: [
-      "Không giới hạn chi nhánh",
-      "Không giới hạn sản phẩm",
-      "Không giới hạn nhân viên",
-      "Tất cả tính năng gói Plus",
-      "Hỗ trợ ưu tiên",
-    ],
-  },
-};
-
+// Nội dung marketing (mô tả + bullet) và cờ nổi bật lấy động từ /plans.
 const baseTier = (planCode: string) => planCode.replace(/_YEARLY$/, "");
 
 const formatVnd = (amount: number) => `${amount.toLocaleString("vi-VN")}đ`;
@@ -137,7 +107,6 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
       tier,
       monthly: plans.find((p) => p.planCode === tier),
       yearly: plans.find((p) => p.planCode === `${tier}_YEARLY`),
-      features: TIER_META[tier]?.features ?? [],
     }));
   }, [plans]);
 
@@ -193,7 +162,7 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
         ) : (
           <div className="rounded-xl border">
             <div className="grid lg:grid-cols-3">
-              {tiers.map(({ tier, monthly, yearly, features }) => {
+              {tiers.map(({ tier, monthly, yearly }) => {
                 // TRIAL không có chu kỳ năm; các gói khác chọn theo toggle
                 const selected =
                   tier !== "TRIAL" && isYearly && yearly ? yearly : monthly;
@@ -201,14 +170,13 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
 
                 const tierIdx = TIER_ORDER.indexOf(tier);
                 const isExactCurrent = selected.planCode === currentPlanCode;
-                const isSameTier = tier === currentTier;
                 const isUpgradeTier = tierIdx > currentTierIdx;
                 const isLowerTier = tierIdx < currentTierIdx;
                 const isFree = selected.price === 0;
                 const isLoading = loadingPlan === selected.planCode;
+                const features = selected.displayFeatures ?? [];
                 const isElevated =
-                  isExactCurrent ||
-                  (tier === "PLUS" && currentTier === "TRIAL");
+                  isExactCurrent || (!!selected.isPopular && isUpgradeTier);
 
                 // Xác định hành động + nhãn nút
                 let label: string;
@@ -256,9 +224,9 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
                             Đang sở hữu
                           </Badge>
                         )}
-                        {tier === "PLUS" &&
-                          !isSameTier &&
-                          currentTier === "TRIAL" && (
+                        {selected.isPopular &&
+                          !isExactCurrent &&
+                          isUpgradeTier && (
                             <Badge
                               variant="secondary"
                               className="rounded-full text-xs"

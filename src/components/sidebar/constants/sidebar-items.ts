@@ -121,7 +121,7 @@ export const sidebarItems = {
     icon: Users,
   },
   subscriptions: {
-    title: "Subscription",
+    title: "Gói dịch vụ",
     url: "/admin/subscriptions",
     icon: CreditCard,
   },
