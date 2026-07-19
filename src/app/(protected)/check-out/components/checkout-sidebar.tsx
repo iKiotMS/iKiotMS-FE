@@ -10,6 +10,7 @@ import {
   QrCode,
   Banknote,
   AlertCircle,
+  Tag,
 } from "lucide-react";
 import {
   Card,
@@ -42,9 +43,11 @@ interface CheckoutSidebarProps {
   grandTotal: number;
   discount: number;
   discountType: "cash" | "percent";
-  /** Total discount from auto-applied promotions. When > 0, the manual discount input below is locked (mutually exclusive). */
+  /** Ids of the manually assigned promotions. When non-empty, the manual discount input below is locked (mutually exclusive). */
+  selectedPromotionIds: string[];
+  /** Resolved discount amount for the currently assigned promotion(s), from the last successful calculate call. */
   promotionDiscount: number;
-  /** Names of the promotions currently auto-applied, for display next to the discount amount. */
+  /** Names of the promotions currently assigned, for display next to the discount amount. */
   promotionNames: string[];
   paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
@@ -59,6 +62,8 @@ interface CheckoutSidebarProps {
   onCheckout: () => void;
   onCancel: () => void;
   onOpenNewCustomerModal: () => void;
+  onOpenPromotionPicker: () => void;
+  onClearPromotion: () => void;
 }
 
 const formatVND = (value: number) =>
@@ -72,6 +77,7 @@ export function CheckoutSidebar({
   grandTotal,
   discount,
   discountType,
+  selectedPromotionIds,
   promotionDiscount,
   promotionNames,
   paymentMethod,
@@ -87,6 +93,8 @@ export function CheckoutSidebar({
   onCheckout,
   onCancel,
   onOpenNewCustomerModal,
+  onOpenPromotionPicker,
+  onClearPromotion,
 }: CheckoutSidebarProps) {
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
@@ -151,7 +159,7 @@ export function CheckoutSidebar({
 
   // Billing math — grandTotal is fully computed by the parent (subtotal, discount/promotion,
   // VAT all folded in already); this component only derives display-only values from it.
-  const hasAutoPromotion = promotionDiscount > 0;
+  const hasPromotionApplied = selectedPromotionIds.length > 0;
   const changeDue = Math.max(0, customerPay - grandTotal);
 
   // Quick cash triggers
@@ -287,13 +295,13 @@ export function CheckoutSidebar({
             </span>
           </div>
 
-          {/* Auto-applied promotion — mutually exclusive with the manual discount below */}
-          {hasAutoPromotion && (
+          {/* Assigned promotion(s) — mutually exclusive with the manual discount below */}
+          {hasPromotionApplied ? (
             <div className="flex justify-between items-start gap-4">
               <span className="text-muted-foreground font-medium shrink-0">
-                Khuyến mãi tự động
+                Khuyến mãi
               </span>
-              <div className="flex flex-col items-end">
+              <div className="flex flex-col items-end gap-1">
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-lg tabular-nums">
                   -{formatVND(promotionDiscount)}
                 </span>
@@ -302,15 +310,40 @@ export function CheckoutSidebar({
                     {promotionNames.join(", ")}
                   </span>
                 )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onOpenPromotionPicker}
+                    className="text-sm text-primary font-bold hover:underline cursor-pointer"
+                  >
+                    Đổi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClearPromotion}
+                    className="text-sm text-muted-foreground font-semibold hover:underline cursor-pointer"
+                  >
+                    Xoá
+                  </button>
+                </div>
               </div>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenPromotionPicker}
+              className="w-full flex items-center gap-1.5 p-2.5 rounded-lg border border-dashed text-sm font-bold text-primary hover:bg-primary/5 cursor-pointer transition-colors"
+            >
+              <Tag className="size-4" />
+              Gán giảm giá
+            </button>
           )}
 
-          {/* Discount Input — locked while a promotion auto-applies */}
+          {/* Discount Input — locked while a promotion is assigned */}
           <div
             className={cn(
               "flex items-center justify-between gap-4",
-              hasAutoPromotion && "opacity-50 pointer-events-none",
+              hasPromotionApplied && "opacity-50 pointer-events-none",
             )}
           >
             <span className="text-muted-foreground font-medium shrink-0">
@@ -320,7 +353,7 @@ export function CheckoutSidebar({
               <Input
                 type="number"
                 value={discount}
-                disabled={hasAutoPromotion}
+                disabled={hasPromotionApplied}
                 onChange={(e) => {
                   const val = parseFloat(e.target.value);
                   const clean = isNaN(val) || val < 0 ? 0 : val;
@@ -335,7 +368,7 @@ export function CheckoutSidebar({
               <div className="flex border rounded-md overflow-hidden shrink-0">
                 <button
                   type="button"
-                  disabled={hasAutoPromotion}
+                  disabled={hasPromotionApplied}
                   onClick={() => {
                     onDiscountTypeChange("cash");
                     onDiscountChange(0);
@@ -351,7 +384,7 @@ export function CheckoutSidebar({
                 </button>
                 <button
                   type="button"
-                  disabled={hasAutoPromotion}
+                  disabled={hasPromotionApplied}
                   onClick={() => {
                     onDiscountTypeChange("percent");
                     onDiscountChange(0);

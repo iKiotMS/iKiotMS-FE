@@ -128,11 +128,6 @@ export const promotionsColumns: ColumnDef<Promotion>[] = [
     },
   },
   {
-    accessorKey: 'priority',
-    header: ({ column }) => <SortableHeader label="Ưu tiên" column={column} />,
-    cell: ({ row }) => <span className="tabular-nums text-sm">{row.getValue('priority')}</span>,
-  },
-  {
     accessorKey: 'status',
     header: 'Trạng thái',
     cell: ({ row }) => {

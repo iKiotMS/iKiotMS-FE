@@ -31,7 +31,8 @@ import { ProductsExpandedPanel } from './products-expanded-panel'
 import { ProductsEmpty } from '../products-empty'
 
 export function ProductsTable() {
-  const { products, setSelectedIds, selectionVersion, brands, categories } = useProducts()
+  const { products, setSelectedIds, selectionVersion, brands, categories, skuSearchIndex } =
+    useProducts()
   const columns = useMemo(() => getProductsColumns(brands, categories), [brands, categories])
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'status', desc: false }])
@@ -56,6 +57,14 @@ export function ProductsTable() {
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     onExpandedChange: setExpanded,
+    // Default global filter only sees column values on `Product` rows, which never
+    // carry sku/productCode — match those via the pre-built skuSearchIndex instead.
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const term = String(filterValue ?? '').trim().toLowerCase()
+      if (!term) return true
+      if (row.original.name.toLowerCase().includes(term)) return true
+      return (skuSearchIndex.get(row.original.id) ?? '').includes(term)
+    },
     state: {
       sorting,
       columnFilters,
