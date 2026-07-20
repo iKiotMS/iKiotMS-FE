@@ -179,10 +179,11 @@ export interface PeriodCreatePayload {
 }
 
 export interface PreviewPayload {
-  periodStartDate: string;
-  periodEndDate: string;
+  payrollMonth: string;
+  // Temporary rolling-deployment compatibility with the previous preview API.
+  periodStartDate?: string;
+  periodEndDate?: string;
   userIds?: string[];
-  manualAdjustments?: { userId: string; type: string; amount: number; note?: string }[];
 }
 
 export interface PreviewResult {

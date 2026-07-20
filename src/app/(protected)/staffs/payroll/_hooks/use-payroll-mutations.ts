@@ -168,7 +168,7 @@ export function usePayrollMutations() {
     setIsLoading(true)
     try {
       const newPeriod = await payrollApi.createPeriod({
-        payrollMonth: data.periodEnd.slice(0, 7),
+        payrollMonth: data.payrollMonth,
         userIds: data.userIds,
       })
       setPeriods((prev) => [newPeriod, ...prev])

@@ -37,8 +37,7 @@ export const paysheetSchema = z.object({
 export type PaysheetFormValues = z.infer<typeof paysheetSchema>
 
 export const periodCreateSchema = z.object({
-  periodStart: z.string().min(1, 'Ngày bắt đầu là bắt buộc'),
-  periodEnd: z.string().min(1, 'Ngày kết thúc là bắt buộc'),
+  payrollMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Tháng lương không hợp lệ'),
   userIds: z.array(z.string()).optional(),
 })
 
