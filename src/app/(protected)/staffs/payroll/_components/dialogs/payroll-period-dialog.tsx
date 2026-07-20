@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Calculator, Plus, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,78 +27,106 @@ import { usePayroll } from '../../_context/payroll-provider'
 import { periodCreateSchema, type PeriodCreateFormValues } from '../../_types/payroll.types'
 import { payrollApi } from '@/lib/api/payroll'
 import { formatVND } from '../../_constants/payroll.constants'
-import type { Payslip } from '@/types/payroll'
+import type { Payslip, PreviewResult } from '@/types/payroll'
 import { toast } from 'sonner'
 import { PayrollPayslipDetailDialog } from './payroll-payslip-detail-dialog'
 // Helper to format ISO date string to DD/MM/YYYY (Vietnam locale)
 const formatDMY = (dateStr: string) => {
   if (!dateStr) return ''
-  try {
-    const date = new Date(dateStr)
-    return new Intl.DateTimeFormat('vi-VN').format(date)
-  } catch {
-    return dateStr
-  }
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : dateStr
 }
 type PayrollPeriodDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const DEFAULT_RANGE: PeriodCreateFormValues = {
-  // Default range is current month
-  periodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-  periodEnd: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+const DEFAULT_PERIOD: PeriodCreateFormValues = {
+  payrollMonth: '',
   userIds: [],
+}
+
+function getPayrollPeriod(payrollMonth: string, periodStartDay = 1) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)) return null
+  const [year, month] = payrollMonth.split('-').map(Number)
+  const periodStart =
+    periodStartDay === 1
+      ? new Date(Date.UTC(year, month - 1, 1))
+      : new Date(Date.UTC(year, month - 2, periodStartDay))
+  const nextPeriodStart =
+    periodStartDay === 1
+      ? new Date(Date.UTC(year, month, 1))
+      : new Date(Date.UTC(year, month - 1, periodStartDay))
+
+  return {
+    periodStart: periodStart.toISOString().slice(0, 10),
+    periodEnd: new Date(nextPeriodStart.getTime() - 1).toISOString().slice(0, 10),
+  }
+}
+
+function getLatestCompletedPayrollMonth(periodStartDay = 1) {
+  const vietnamNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const currentMonth = `${vietnamNow.getUTCFullYear()}-${String(vietnamNow.getUTCMonth() + 1).padStart(2, '0')}`
+  const currentPeriod = getPayrollPeriod(currentMonth, periodStartDay)
+  const vietnamToday = vietnamNow.toISOString().slice(0, 10)
+  if (currentPeriod && currentPeriod.periodEnd < vietnamToday) return currentMonth
+
+  const previousMonth = new Date(
+    Date.UTC(vietnamNow.getUTCFullYear(), vietnamNow.getUTCMonth() - 1, 1)
+  )
+  return `${previousMonth.getUTCFullYear()}-${String(previousMonth.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogProps) {
   const { handleCreatePeriod, staffs, settings } = usePayroll()
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewData, setPreviewData] = useState<{
-    summary: {
-      totalEmployees: number
-      generatedCount: number
-      skippedCount: number
-      totalBasePay: number
-      totalOvertimePay: number
-      totalGrossSalary: number
-      totalNetSalary: number
-      totalCost?: number
-    }
-    payslips: Payslip[]
-    skipped: { userId: string; reason: string }[]
-  } | null>(null)
+  const [previewData, setPreviewData] = useState<PreviewResult | null>(null)
   const [activePreviewSlip, setActivePreviewSlip] = useState<Payslip | null>(null)
 
   const form = useForm<PeriodCreateFormValues>({
     resolver: zodResolver(periodCreateSchema),
-    defaultValues: DEFAULT_RANGE,
+    defaultValues: DEFAULT_PERIOD,
   })
 
-  // Watch selected dates to display formatted in preview header
-  const watchStart = form.watch('periodStart')
-  const watchEnd = form.watch('periodEnd')
+  const payrollMonth = useWatch({ control: form.control, name: 'payrollMonth' })
+  const latestCompletedPayrollMonth = getLatestCompletedPayrollMonth(settings?.periodStartDay ?? 1)
+  const selectedPeriod = getPayrollPeriod(payrollMonth, settings?.periodStartDay ?? 1)
+  const isPreviewCurrent = Boolean(
+    previewData &&
+      selectedPeriod &&
+      previewData.periodStart.slice(0, 10) === selectedPeriod.periodStart &&
+      previewData.periodEnd.slice(0, 10) === selectedPeriod.periodEnd
+  )
 
   useEffect(() => {
     if (!open) return
-    form.reset(DEFAULT_RANGE)
-    setPreviewData(null)
-  }, [open, form])
+    form.reset({
+      ...DEFAULT_PERIOD,
+      payrollMonth: getLatestCompletedPayrollMonth(settings?.periodStartDay ?? 1),
+    })
+    const resetPreviewId = window.setTimeout(() => setPreviewData(null), 0)
+    return () => window.clearTimeout(resetPreviewId)
+  }, [open, form, settings?.periodStartDay])
 
   async function handlePreview() {
-    const start = form.getValues('periodStart')
-    const end = form.getValues('periodEnd')
-    if (!start || !end) {
-      toast.error('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc')
+    const selectedMonth = form.getValues('payrollMonth')
+    const previewPeriod = getPayrollPeriod(selectedMonth, settings?.periodStartDay ?? 1)
+    if (!previewPeriod) {
+      toast.error('Vui lòng chọn tháng lương')
+      return
+    }
+    if (selectedMonth > latestCompletedPayrollMonth) {
+      toast.error('Chỉ có thể tính lương sau khi kỳ lương đã kết thúc')
       return
     }
 
     setPreviewLoading(true)
     try {
       const res = await payrollApi.preview({
-        periodStartDate: start,
-        periodEndDate: end,
+        payrollMonth: selectedMonth,
+        // Keep preview compatible while the new BE is rolling out to Render.
+        periodStartDate: previewPeriod.periodStart,
+        periodEndDate: previewPeriod.periodEnd,
       })
       setPreviewData(res)
       toast.success('Tính toán thử kỳ lương thành công')
@@ -111,6 +139,10 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
   }
 
   async function onSubmit(data: PeriodCreateFormValues) {
+    if (data.payrollMonth > latestCompletedPayrollMonth) {
+      toast.error('Chỉ có thể tạo bảng lương sau khi kỳ lương đã kết thúc')
+      return
+    }
     const success = await handleCreatePeriod(data)
     if (success) {
       onOpenChange(false)
@@ -123,40 +155,38 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
         <DialogHeader>
           <DialogTitle>Tạo kỳ lương mới</DialogTitle>
           <DialogDescription>
-            Chọn khoảng thời gian tính lương. Bạn có thể xem trước tính toán chi tiết trước khi xác nhận lưu.
+            Chọn tháng lương. Khoảng tính lương được cố định theo cấu hình và chỉ có thể tạo sau khi kỳ đã kết thúc.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="periodStart"
+                name="payrollMonth"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ngày bắt đầu</FormLabel>
+                    <FormLabel>Tháng lương</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="month" max={latestCompletedPayrollMonth} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="periodEnd"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ngày kết thúc</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="rounded-md border bg-muted/40 px-3 py-2">
+                <p className="text-sm font-medium">Khoảng tính lương cố định</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedPeriod
+                    ? `${formatDMY(selectedPeriod.periodStart)} → ${formatDMY(selectedPeriod.periodEnd)}`
+                    : 'Chọn tháng lương để xem khoảng thời gian'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Theo ngày bắt đầu kỳ: ngày {settings?.periodStartDay ?? 1} hàng tháng
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -177,13 +207,13 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
             </div>
 
             {/* Preview Section */}
-            {previewData && (
+            {previewData && isPreviewCurrent && (
               <div className="space-y-4 border rounded-lg p-4 bg-muted/40 animate-in fade-in duration-300">
                 {/* Period date header */}
                 <p className="text-xs text-muted-foreground text-center">
-                  Kỳ lương: <span className="font-semibold text-foreground">{formatDMY(watchStart)}</span>
+                  Kỳ lương: <span className="font-semibold text-foreground">{formatDMY(previewData.periodStart)}</span>
                   {' → '}
-                  <span className="font-semibold text-foreground">{formatDMY(watchEnd)}</span>
+                  <span className="font-semibold text-foreground">{formatDMY(previewData.periodEnd)}</span>
                 </p>
 
                 <div className="flex justify-between items-center bg-muted p-3 rounded-lg border border-dashed">
@@ -323,7 +353,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
               <Button
                 type="submit"
                 className="cursor-pointer"
-                disabled={!previewData || previewLoading}
+                disabled={!isPreviewCurrent || previewLoading}
               >
                 <Plus className="mr-2 size-4" />
                 Xác nhận tạo (Lưu nháp)
