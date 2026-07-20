@@ -33,8 +33,8 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   setOpenTicketsCount: (count) => set({ openTicketsCount: count }),
   fetchOpenTicketsCount: async () => {
     try {
-      const tickets = await listAllTickets();
-      const openCount = tickets.filter((t) => t.status === "OPEN").length;
+      const res = await listAllTickets();
+      const openCount = (res.data || []).filter((t) => t.status === "OPEN").length;
       set({ openTicketsCount: openCount });
     } catch (err) {
       console.error("Failed to fetch open tickets count:", err);
