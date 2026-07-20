@@ -11,6 +11,8 @@ import type {
   PromotionLogListResponse,
   PromotionCalculateRequest,
   PromotionCalculateResponse,
+  PromotionCandidatesRequest,
+  PromotionCandidatesResponse,
 } from '@/types/promotion'
 
 // Backend trả về document Mongoose với `_id`; FE dùng `id`.
@@ -57,6 +59,16 @@ export const promotionApi = {
 
   remove: async (id: string): Promise<void> => {
     await client.delete(`/promotions/${id}`)
+  },
+
+  listCandidates: async (
+    payload: PromotionCandidatesRequest,
+  ): Promise<PromotionCandidatesResponse> => {
+    const res = await client.post<{ data: PromotionCandidatesResponse }>(
+      '/promotions/candidates',
+      payload,
+    )
+    return res.data.data
   },
 
   calculate: async (payload: PromotionCalculateRequest): Promise<PromotionCalculateResponse> => {

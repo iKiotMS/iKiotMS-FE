@@ -1,4 +1,6 @@
+import { GoogleAuthProvider, getAuth, signInWithPopup } from "firebase/auth";
 import client from "./client";
+import { firebaseApp } from "../firebase";
 import { LoginInput, SignupInput } from "../validation";
 import { clearCachedUser, clearTokens, getRefreshToken } from "../auth";
 
@@ -27,6 +29,41 @@ export async function loginUser(data: LoginInput) {
       phoneNumber: data.phone,
       name: "User",
     };
+
+  return { accessToken, refreshToken, user };
+}
+
+/**
+ * Log in with Google via Firebase. Opens the Google popup, obtains a Firebase
+ * ID token, and exchanges it at the backend for our own session tokens. The
+ * backend requires the Google email to already exist on a user's profile —
+ * otherwise it rejects the sign-in.
+ */
+export async function loginWithGoogle() {
+  const auth = getAuth(firebaseApp);
+  const provider = new GoogleAuthProvider();
+  // Always let the user pick which Google account to use.
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  const result = await signInWithPopup(auth, provider);
+  const idToken = await result.user.getIdToken();
+
+  // We only need the ID token to exchange for our JWTs; drop the Firebase
+  // client session so it doesn't linger.
+  await auth.signOut().catch(() => {});
+
+  const response = await client.post("/auth/firebase-login", {
+    idToken,
+    platform: "web",
+  });
+
+  const accessToken =
+    response.data?.accessToken || response.data?.data?.accessToken;
+  const refreshToken =
+    response.data?.refreshToken ||
+    response.data?.data?.refreshToken ||
+    accessToken;
+  const user = response.data?.user || response.data?.data?.user;
 
   return { accessToken, refreshToken, user };
 }

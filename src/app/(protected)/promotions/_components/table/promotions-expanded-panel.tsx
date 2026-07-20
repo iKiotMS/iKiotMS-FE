@@ -112,10 +112,6 @@ export function PromotionsExpandedPanel({
               <span>{APPLICABLE_RULE_LABEL[promotion.applicableRule.type]}</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Độ ưu tiên</span>
-              <span className="tabular-nums">{promotion.priority}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Cộng dồn</span>
               <span>{promotion.stackable ? 'Có' : 'Không'}</span>
             </div>

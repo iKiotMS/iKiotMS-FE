@@ -69,9 +69,13 @@ client.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Don't refresh for auth endpoints (login, register, refresh, etc.)
+    // Don't refresh for auth endpoints (login, register, refresh, etc.).
+    // These 401s mean "bad credentials / email not registered", not "token
+    // expired" — refreshing then redirecting would just bounce the user back
+    // to /sign-in and swallow the real error message.
     const isAuthEndpoint =
       originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/firebase-login") ||
       originalRequest.url?.includes("/auth/register") ||
       originalRequest.url?.includes("/auth/refresh") ||
       originalRequest.url?.includes("/auth/forgot-password") ||

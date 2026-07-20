@@ -15,7 +15,7 @@ const RANGE_DAYS: Record<AdminRange, number> = {
 };
 
 function toDateOnly(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
 }
 
 type AdminDashboardContextType = {

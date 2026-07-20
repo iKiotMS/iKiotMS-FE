@@ -12,6 +12,7 @@ import { CheckoutSidebar } from "./components/checkout-sidebar";
 import { CustomerDialog } from "./components/customer-dialog";
 import { ReceiptDialog } from "./components/receipt-dialog";
 import { OrderQrDialog } from "./components/order-qr-dialog";
+import { PromotionPickerDialog } from "./components/promotion-picker-dialog";
 import { orderApi } from "@/lib/api/order";
 import { branchApi } from "@/lib/api/branch";
 import { promotionApi } from "@/lib/api/promotion";
@@ -51,6 +52,8 @@ interface InvoiceState {
   paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
+  /** Promotions manually assigned via the "Gán giảm giá" picker — at most 2, and if 2, both stackable. */
+  selectedPromotionIds: string[];
 }
 
 const createNewInvoice = (id: string, name: string): InvoiceState => ({
@@ -64,6 +67,7 @@ const createNewInvoice = (id: string, name: string): InvoiceState => ({
   paymentMethod: "CASH",
   customerPay: 0,
   note: "",
+  selectedPromotionIds: [],
 });
 
 export default function CheckOutPage() {
@@ -112,16 +116,18 @@ export default function CheckOutPage() {
     return "";
   };
 
-  // Promotion preview state (auto-applied promotions for the active invoice's cart).
-  // Tagged with the cart signature it was computed for, so a stale result (still
-  // in flight while the cart or tab changes) is simply ignored at render time
-  // instead of being cleared with a synchronous setState inside the effect.
+  // Discount preview for the active invoice's manually assigned promotion(s).
+  // Tagged with the signature (cart + selected promotion ids) it was computed for,
+  // so a stale result (still in flight while the cart, selection, or tab changes)
+  // is simply ignored at render time instead of being cleared with a synchronous
+  // setState inside the effect.
   const [promotionResult, setPromotionResult] = useState<
     (PromotionCalculateResponse & { signature: string }) | null
   >(null);
 
   // Modals state
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isPromotionPickerOpen, setIsPromotionPickerOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptOrder, setReceiptOrder] = useState<any | null>(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
@@ -138,8 +144,17 @@ export default function CheckOutPage() {
     return invoices.find((inv) => inv.id === activeTabId) || invoices[0];
   }, [invoices, activeTabId]);
 
-  // Signature identifying which cart (items + customer) a promotion result belongs to —
-  // lets stale/in-flight results be ignored at render time instead of reset via setState.
+  // Update helper for active invoice state
+  const updateActiveInvoice = (updates: Partial<InvoiceState>) => {
+    setInvoices((prev) =>
+      prev.map((inv) =>
+        inv.id === activeTabId ? { ...inv, ...updates } : inv,
+      ),
+    );
+  };
+
+  // Signature identifying which cart (items + customer) the active invoice has —
+  // used both to key the promotion calculation and to feed the picker dialog.
   const cartSignature = useMemo(() => {
     if (activeInvoice.items.length === 0) return null;
     const itemsKey = activeInvoice.items
@@ -148,12 +163,25 @@ export default function CheckOutPage() {
     return `${itemsKey}|${activeInvoice.selectedCustomer?.id ?? ""}`;
   }, [activeInvoice.items, activeInvoice.selectedCustomer]);
 
-  // Preview auto-applied promotions for the active invoice's cart (debounced)
+  // Signature the current promotionResult is valid for — includes the selected promotion
+  // ids, so switching the selection (or clearing it) invalidates a stale result too.
+  const promotionSignature = useMemo(() => {
+    if (!cartSignature || activeInvoice.selectedPromotionIds.length === 0) return null;
+    return `${cartSignature}|${[...activeInvoice.selectedPromotionIds].sort().join(",")}`;
+  }, [cartSignature, activeInvoice.selectedPromotionIds]);
+
+  // Recompute the discount for the active invoice's manually assigned promotion(s) whenever
+  // the cart or the selection changes (debounced). If a previously eligible promotion no
+  // longer qualifies (e.g. cart edited below its minOrderValue), the backend rejects the
+  // whole selection — drop it and let the user reassign.
   useEffect(() => {
-    if (!cartSignature) return;
+    if (!promotionSignature) return;
 
     const branchId = resolveBranchId();
     if (!branchId) return;
+
+    const signature = promotionSignature;
+    const promotionIds = activeInvoice.selectedPromotionIds;
 
     const handler = setTimeout(() => {
       promotionApi
@@ -165,29 +193,29 @@ export default function CheckOutPage() {
             quantity: item.quantity,
             unitPrice: item.unitPrice,
           })),
+          promotionIds,
         })
-        .then((result) => setPromotionResult({ ...result, signature: cartSignature }))
+        .then((result) => setPromotionResult({ ...result, signature }))
         .catch((error) => {
           console.error("Lỗi khi tính khuyến mãi:", error);
+          toast.warning(
+            error?.response?.data?.message ||
+              "Một khuyến mãi đã chọn không còn đủ điều kiện, vui lòng chọn lại.",
+          );
+          updateActiveInvoice({ selectedPromotionIds: [] });
         });
     }, 300);
 
     return () => clearTimeout(handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartSignature, branches]);
+  }, [promotionSignature, branches]);
 
-  // Ignore a promotion result computed for a different cart (stale tab switch / in-flight edit)
-  const activePromotionResult = promotionResult?.signature === cartSignature ? promotionResult : null;
+  // Ignore a promotion result computed for a different cart/selection (stale tab switch,
+  // in-flight edit, or a selection that was just cleared).
+  const activePromotionResult =
+    promotionResult?.signature === promotionSignature ? promotionResult : null;
   const promotionDiscount = activePromotionResult?.totalDiscount ?? 0;
-
-  // Update helper for active invoice state
-  const updateActiveInvoice = (updates: Partial<InvoiceState>) => {
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === activeTabId ? { ...inv, ...updates } : inv,
-      ),
-    );
-  };
+  const hasPromotionApplied = activeInvoice.selectedPromotionIds.length > 0;
 
   // Add new tab
   const handleTabAdd = () => {
@@ -297,12 +325,10 @@ export default function CheckOutPage() {
     );
   }, [activeInvoice.items]);
 
-  // Auto-applied promotions and the manual order-level discount are mutually exclusive:
-  // when a promotion is eligible for this cart, it wins and the manual discount is ignored.
-  const hasAutoPromotion = promotionDiscount > 0;
-
+  // Assigned promotion(s) and the manual order-level discount are mutually exclusive:
+  // once the user assigns a promotion, it wins and the manual discount is ignored.
   const grandTotal = useMemo(() => {
-    const calculatedDiscount = hasAutoPromotion
+    const calculatedDiscount = hasPromotionApplied
       ? promotionDiscount
       : activeInvoice.discountType === "cash"
         ? activeInvoice.discount
@@ -315,7 +341,7 @@ export default function CheckOutPage() {
     activeInvoice.discount,
     activeInvoice.discountType,
     activeInvoice.vatPercent,
-    hasAutoPromotion,
+    hasPromotionApplied,
     promotionDiscount,
   ]);
 
@@ -350,7 +376,7 @@ export default function CheckOutPage() {
     // Snapshot of the cart the promotion preview was calculated for — captured now
     // because the invoice resets as soon as order creation succeeds below.
     const promotionToApply =
-      hasAutoPromotion && activePromotionResult
+      hasPromotionApplied && activePromotionResult
         ? {
             branchId: resolvedBranchId,
             customerId: activeInvoice.selectedCustomer?.id,
@@ -359,6 +385,7 @@ export default function CheckOutPage() {
               quantity: item.quantity,
               unitPrice: item.unitPrice,
             })),
+            promotionIds: activeInvoice.selectedPromotionIds,
           }
         : null;
 
@@ -366,7 +393,7 @@ export default function CheckOutPage() {
     let discountValue = 0;
     let appliedPromotions = null;
 
-    if (hasAutoPromotion && activePromotionResult) {
+    if (hasPromotionApplied && activePromotionResult) {
       discountType = "PROMOTION";
       discountValue = promotionDiscount;
       appliedPromotions = activePromotionResult.appliedPromotions.map((p) => ({
@@ -563,6 +590,7 @@ export default function CheckOutPage() {
               grandTotal={grandTotal}
               discount={activeInvoice.discount}
               discountType={activeInvoice.discountType}
+              selectedPromotionIds={activeInvoice.selectedPromotionIds}
               promotionDiscount={promotionDiscount}
               promotionNames={(activePromotionResult?.appliedPromotions ?? []).map(
                 (p) => p.promoName,
@@ -588,6 +616,8 @@ export default function CheckOutPage() {
               onCheckout={handleCheckoutSubmit}
               onCancel={handleCancelOrder}
               onOpenNewCustomerModal={() => setIsCustomerModalOpen(true)}
+              onOpenPromotionPicker={() => setIsPromotionPickerOpen(true)}
+              onClearPromotion={() => updateActiveInvoice({ selectedPromotionIds: [] })}
             />
           </div>
         </ResizablePanel>
@@ -600,6 +630,20 @@ export default function CheckOutPage() {
         onCustomerAdded={(newCustomer) =>
           updateActiveInvoice({ selectedCustomer: newCustomer })
         }
+      />
+
+      <PromotionPickerDialog
+        open={isPromotionPickerOpen}
+        onOpenChange={setIsPromotionPickerOpen}
+        branchId={resolveBranchId()}
+        customerId={activeInvoice.selectedCustomer?.id}
+        items={activeInvoice.items.map((item) => ({
+          productItemId: item.productItemId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }))}
+        selectedPromotionIds={activeInvoice.selectedPromotionIds}
+        onConfirm={(selectedPromotionIds) => updateActiveInvoice({ selectedPromotionIds })}
       />
 
       <ReceiptDialog

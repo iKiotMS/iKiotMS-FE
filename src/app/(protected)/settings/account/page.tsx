@@ -177,13 +177,18 @@ export default function AccountSettings() {
                     <FormItem>
                       <FormLabel>Địa chỉ email</FormLabel>
                       <FormControl>
+                        {/* Editable by every role: this email is the key used
+                            to sign in with Google. */}
                         <Input
                           type="email"
                           placeholder="Nhập địa chỉ email"
                           {...field}
-                          disabled={!isTenantOwner}
                         />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Dùng để đăng nhập bằng Google. Email phải trùng với tài
+                        khoản Google của bạn.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

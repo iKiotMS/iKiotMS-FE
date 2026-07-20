@@ -25,7 +25,7 @@ const RANGE_DAYS: Record<DashboardRange, number> = {
 }
 
 function toDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 }
 
 function parseLocationKey(locationKey: string): { branchId?: string; warehouseId?: string } {

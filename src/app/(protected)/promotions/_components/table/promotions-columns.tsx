@@ -75,7 +75,9 @@ export const promotionsColumns: ColumnDef<Promotion>[] = [
         <div className="flex flex-col">
           <span className="font-medium">{promotion.promoName}</span>
           <span className="text-xs text-muted-foreground line-clamp-1">
-            {promotion.branchId ? 'Theo chi nhánh' : 'Toàn hệ thống'}
+            {promotion.branchIds && promotion.branchIds.length > 0
+              ? `Theo chi nhánh (${promotion.branchIds.length})`
+              : 'Toàn hệ thống'}
           </span>
         </div>
       )
@@ -124,11 +126,6 @@ export const promotionsColumns: ColumnDef<Promotion>[] = [
         </span>
       )
     },
-  },
-  {
-    accessorKey: 'priority',
-    header: ({ column }) => <SortableHeader label="Ưu tiên" column={column} />,
-    cell: ({ row }) => <span className="tabular-nums text-sm">{row.getValue('priority')}</span>,
   },
   {
     accessorKey: 'status',

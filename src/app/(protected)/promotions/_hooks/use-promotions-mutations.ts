@@ -8,6 +8,7 @@ import type { Promotion } from '@/types/promotion'
 import type { PromotionFormValues } from '../_types/promotion.types'
 import { promotionApi } from '@/lib/api/promotion'
 import { useAuthStore } from '@/store/auth-store'
+import { vnStartOfDayToIso, vnEndOfDayToIso } from '../_shared/promotion-date'
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
@@ -21,7 +22,7 @@ function toPayload(data: PromotionFormValues) {
   return {
     promoName: data.promoName,
     description: data.description || undefined,
-    branchId: data.branchId,
+    branchIds: data.branchIds,
     discountType: data.discountType,
     discountValue: data.discountValue,
     maxDiscountAmount: data.maxDiscountAmount,
@@ -31,9 +32,10 @@ function toPayload(data: PromotionFormValues) {
       categoryIds: data.applicableRuleType === 'category' ? data.categoryIds : [],
       productItemIds: data.applicableRuleType === 'product' ? data.productItemIds : [],
     },
-    startDate: new Date(data.startDate).toISOString(),
-    endDate: new Date(data.endDate).toISOString(),
-    priority: data.priority,
+    // Ngày chọn trên form là ngày lịch VN (input date-only, không có timezone) — quy đổi
+    // đúng sang mốc UTC của đầu/cuối ngày giờ VN thay vì hiểu nhầm thành UTC midnight.
+    startDate: vnStartOfDayToIso(data.startDate),
+    endDate: vnEndOfDayToIso(data.endDate),
     stackable: data.stackable,
     usageLimit: data.usageLimit,
     usageLimitPerCustomer: data.usageLimitPerCustomer,

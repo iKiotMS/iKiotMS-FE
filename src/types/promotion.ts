@@ -13,7 +13,8 @@ export interface Promotion {
   id: string
   _id?: string
   tenantId?: string
-  branchId?: string | null
+  /** Empty/omitted = applies to all branches (tenant-wide). */
+  branchIds?: string[]
   promoName: string
   description?: string
   discountType: DiscountType
@@ -23,7 +24,6 @@ export interface Promotion {
   applicableRule: ApplicableRule
   startDate: string
   endDate: string
-  priority: number
   stackable: boolean
   usageLimit?: number | null
   usageLimitPerCustomer?: number | null
@@ -54,7 +54,7 @@ export interface PromotionListResponse {
 }
 
 export interface PromotionCreatePayload {
-  branchId?: string | null
+  branchIds?: string[]
   promoName: string
   description?: string
   discountType: DiscountType
@@ -64,7 +64,6 @@ export interface PromotionCreatePayload {
   applicableRule: ApplicableRule
   startDate: string
   endDate: string
-  priority?: number
   stackable?: boolean
   usageLimit?: number | null
   usageLimitPerCustomer?: number | null
@@ -99,10 +98,18 @@ export interface PromotionCalculateItem {
   unitPrice: number
 }
 
+export interface PromotionCandidatesRequest {
+  branchId?: string
+  customerId?: string
+  items: PromotionCalculateItem[]
+}
+
 export interface PromotionCalculateRequest {
   branchId?: string
   customerId?: string
   items: PromotionCalculateItem[]
+  /** User-chosen promotions to apply. Empty = no discount. At most 2, and if 2, both must be stackable. */
+  promotionIds: string[]
 }
 
 export interface PromotionAppliedEntry {
@@ -116,4 +123,27 @@ export interface PromotionCalculateResponse {
   totalDiscount: number
   itemBreakdown: { productItemId: string; discountAmount: number }[]
   grandTotal: number
+}
+
+/** One promotion in the "assign discount" picker, annotated for this specific cart. */
+export interface PromotionCandidate {
+  id: string
+  promoName: string
+  description?: string
+  discountType: DiscountType
+  discountValue: number
+  maxDiscountAmount?: number | null
+  minOrderValue: number
+  branchIds?: string[]
+  stackable: boolean
+  eligible: boolean
+  /** Why it's ineligible, in Vietnamese, when eligible=false. */
+  reason: string | null
+  /** Discount if this promotion alone were applied. */
+  previewDiscount: number
+}
+
+export interface PromotionCandidatesResponse {
+  branchPromotions: PromotionCandidate[]
+  systemPromotions: PromotionCandidate[]
 }
