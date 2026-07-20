@@ -10,6 +10,7 @@ import {
   createTicket,
   listMyTickets,
   replyMyTicket,
+  deleteTicket,
   type Ticket,
 } from "@/lib/api/ticket";
 import { getSocket } from "@/lib/socket";
@@ -55,6 +56,7 @@ import {
   Clock,
   AlertTriangle,
   LifeBuoy,
+  Trash2,
 } from "lucide-react";
 
 // ─── Validation Schema ───────────────────────────────────────────────────────
@@ -132,6 +134,28 @@ export default function TenantTicketsPage() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!ticketToDelete) return;
+    setDeleting(true);
+    try {
+      await deleteTicket(ticketToDelete._id);
+      toast.success("Đã xóa phiếu phản ánh thành công!");
+      setTickets((prev) => prev.filter((t) => t._id !== ticketToDelete._id));
+      if (selectedTicket?._id === ticketToDelete._id) {
+        setSelectedTicket(null);
+      }
+      setTicketToDelete(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Xóa phiếu phản ánh thất bại!");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -219,9 +243,17 @@ export default function TenantTicketsPage() {
         });
         setSelectedTicket((cur) => (cur?._id === updated._id ? updated : cur));
       };
+
+      const handleDelete = (payload: { _id: string }) => {
+        setTickets((prev) => prev.filter((t) => t._id !== payload._id));
+        setSelectedTicket((cur) => (cur?._id === payload._id ? null : cur));
+      };
+
       socket.on("ticket-update", handleUpdate);
+      socket.on("ticket-delete", handleDelete);
       return () => {
         socket.off("ticket-update", handleUpdate);
+        socket.off("ticket-delete", handleDelete);
       };
     } catch (e) {
       console.error(e);
@@ -443,50 +475,65 @@ export default function TenantTicketsPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {tickets.map((ticket) => (
-                <button
-                  key={ticket._id}
-                  onClick={() => setSelectedTicket(ticket)}
-                  className="w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-xs group"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[10px] font-semibold bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                          {ticket.ticketId}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] h-5 ${getPriorityClass(ticket.priority)}`}
-                        >
-                          {getPriorityLabel(ticket.priority)}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] h-5 ${getStatusClass(ticket.status)}`}
-                        >
-                          {getStatusLabel(ticket.status)}
-                        </Badge>
+                <div key={ticket._id} className="relative group w-full">
+                  <button
+                    onClick={() => setSelectedTicket(ticket)}
+                    className="w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-xs"
+                  >
+                    <div className="flex items-start justify-between gap-3 pr-6">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[10px] font-semibold bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                            {ticket.ticketId}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] h-5 ${getPriorityClass(ticket.priority)}`}
+                          >
+                            {getPriorityLabel(ticket.priority)}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] h-5 ${getStatusClass(ticket.status)}`}
+                          >
+                            {getStatusLabel(ticket.status)}
+                          </Badge>
+                        </div>
+                        <p className="font-medium text-sm mt-1.5 truncate group-hover:text-primary transition-colors">
+                          {ticket.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {ticket.description}
+                        </p>
                       </div>
-                      <p className="font-medium text-sm mt-1.5 truncate group-hover:text-primary transition-colors">
-                        {ticket.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {ticket.description}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end shrink-0 gap-1">
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(ticket.updatedAt)}
+                      <div className="flex flex-col items-end shrink-0 gap-1">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(ticket.updatedAt)}
+                        </div>
+                        {ticket.messages.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {ticket.messages.length} tin nhắn
+                          </span>
+                        )}
                       </div>
-                      {ticket.messages.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {ticket.messages.length} tin nhắn
-                        </span>
-                      )}
                     </div>
-                  </div>
-                </button>
+                  </button>
+
+                  {ticket.status === "CLOSED" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTicketToDelete(ticket);
+                      }}
+                      title="Xóa phiếu phản ánh"
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer z-10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -614,6 +661,41 @@ export default function TenantTicketsPage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm Delete Dialog ── */}
+      <Dialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-rose-600 flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Xác nhận xóa phản ánh
+            </DialogTitle>
+            <DialogDescription className="text-xs mt-1">
+              Bạn có chắc chắn muốn xóa phiếu phản ánh &quot;{ticketToDelete?.title}&quot; (mã {ticketToDelete?.ticketId})? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={deleting}
+              onClick={() => setTicketToDelete(null)}
+              className="cursor-pointer"
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleting}
+              onClick={confirmDelete}
+              className="cursor-pointer"
+            >
+              {deleting ? "Đang xóa..." : "Xóa vĩnh viễn"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

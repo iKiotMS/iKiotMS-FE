@@ -28,6 +28,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getSocket } from "@/lib/socket";
 import { toast } from "sonner";
 import {
@@ -36,11 +43,23 @@ import {
   Send,
   CheckCircle2,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function AdminTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
 
   // Active ticket selection details modal
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -63,10 +82,15 @@ export default function AdminTicketsPage() {
   };
 
   // Load all support tickets initially
-  const fetchTickets = () => {
+  const fetchTickets = (p = page, l = limit) => {
     setLoading(true);
-    listAllTickets()
-      .then((data) => setTickets(data || []))
+    listAllTickets({ page: p, limit: l })
+      .then((res) => {
+        setTickets(res.data || []);
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
+      })
       .catch((err) => {
         console.error(err);
         toast.error("Không thể tải danh sách yêu cầu hỗ trợ!");
@@ -75,8 +99,8 @@ export default function AdminTicketsPage() {
   };
 
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    fetchTickets(page, limit);
+  }, [page, limit]);
 
   // Auto-open ticket from URL query parameter (ticketId or id)
   useEffect(() => {
@@ -333,18 +357,28 @@ export default function AdminTicketsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={getStatusBadge(ticket.status)}
-                    >
-                      {ticket.status === "OPEN"
-                        ? "Đang chờ"
-                        : ticket.status === "IN_PROGRESS"
-                          ? "Đang xử lý"
-                          : ticket.status === "RESOLVED"
-                            ? "Đã giải quyết"
-                            : "Đã đóng"}
-                    </Badge>
+                    <div className="flex flex-col gap-1 items-start">
+                      <Badge
+                        variant="outline"
+                        className={getStatusBadge(ticket.status)}
+                      >
+                        {ticket.status === "OPEN"
+                          ? "Đang chờ"
+                          : ticket.status === "IN_PROGRESS"
+                            ? "Đang xử lý"
+                            : ticket.status === "RESOLVED"
+                              ? "Đã giải quyết"
+                              : "Đã đóng"}
+                      </Badge>
+                      {ticket.isDeletedByTenant && (
+                        <Badge
+                          variant="outline"
+                          className="bg-rose-500/10 text-rose-500 border-rose-500/30 text-[9px] h-4 font-normal"
+                        >
+                          Đã xóa bởi user
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {formatDate(ticket.updatedAt)}
@@ -365,6 +399,56 @@ export default function AdminTicketsPage() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination Footer */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t bg-muted/20">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Hiển thị:</span>
+            <Select
+              value={limit.toString()}
+              onValueChange={(val) => {
+                setLimit(Number(val));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px] text-xs">
+                <SelectValue placeholder={limit.toString()} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="ml-1">
+              dòng/trang &bull; Từ {tickets.length > 0 ? (page - 1) * limit + 1 : 0} đến {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total} phiếu
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-2 font-medium">
+              Trang {pagination.page} / {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              disabled={page >= pagination.totalPages || loading}
+              onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Ticket Dialogue Dialogue / Conversation Modal */}
