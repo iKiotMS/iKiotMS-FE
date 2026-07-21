@@ -64,6 +64,11 @@ type ApiLocation = {
   name?: string;
 };
 
+type ApiProductImage = {
+  url?: string;
+  isThumbnail?: boolean;
+};
+
 type ApiProductItem = {
   _id: string;
   productName?: string;
@@ -72,12 +77,14 @@ type ApiProductItem = {
   costPrice?: number;
   retailPrice?: number;
   stock?: number;
+  images?: ApiProductImage[];
   suppliers?: Array<string | { _id?: string; id?: string }>;
 };
 
 type ApiProduct = {
   _id?: string;
   name?: string;
+  images?: ApiProductImage[];
   items?: ApiProductItem[];
   productItems?: ApiProductItem[];
 };
@@ -241,6 +248,18 @@ function resolveSupplierIds(
     .filter(Boolean);
 }
 
+function resolveProductImageUrl(
+  item?: { images?: ApiProductImage[] },
+  product?: { images?: ApiProductImage[] },
+): string | undefined {
+  const fromItem =
+    item?.images?.find((i) => i.isThumbnail)?.url ?? item?.images?.[0]?.url;
+  if (fromItem) return fromItem;
+  return (
+    product?.images?.find((i) => i.isThumbnail)?.url ?? product?.images?.[0]?.url
+  );
+}
+
 function mapApiProductsToItemOptions(
   products: ApiProduct[],
 ): StockMovementProductItemOption[] {
@@ -253,6 +272,7 @@ function mapApiProductsToItemOptions(
         sku: item.sku ?? "",
         costPrice: item.costPrice ?? item.retailPrice ?? 0,
         retailPrice: item.retailPrice,
+        imageUrl: resolveProductImageUrl(item, product),
         supplierIds: resolveSupplierIds(item.suppliers),
         stock: item.stock,
       }),
@@ -356,6 +376,7 @@ async function fetchSupplierProductItemOptions(
           sku: item.sku ?? "",
           costPrice: item.costPrice ?? item.retailPrice ?? 0,
           retailPrice: item.retailPrice,
+          imageUrl: resolveProductImageUrl(item, detail),
           supplierIds: ids,
         });
       }

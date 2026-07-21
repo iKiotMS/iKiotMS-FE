@@ -19,6 +19,7 @@ import {
   formatMoneyVnd,
   parseImportPriceInput,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
+import { safeImageSrc } from "@/app/(protected)/products/_constants/product.constants";
 import type { StockMovementProductItemOption } from "@/types/stock-movement";
 
 /* ─── atoms dùng chung dialog / expanded panel ─── */
@@ -167,9 +168,6 @@ function ProductMeta({
     return (
       <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-snug">
         {product.sku ? <span>SKU: {product.sku}</span> : null}
-        {typeof product.costPrice === "number" ? (
-          <span>Giá vốn: {formatMoneyVnd(product.costPrice)}</span>
-        ) : null}
         {typeof product.retailPrice === "number" ? (
           <span>Giá bán: {formatMoneyVnd(product.retailPrice)}</span>
         ) : null}
@@ -204,6 +202,26 @@ function ProductMeta({
   );
 }
 
+function ProductThumb({
+  product,
+  className,
+}: {
+  product: StockMovementProductItemOption;
+  className?: string;
+}) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={safeImageSrc(product.imageUrl)}
+      alt=""
+      className={cn(
+        "size-9 shrink-0 rounded-md border object-cover bg-muted",
+        className,
+      )}
+    />
+  );
+}
+
 function ProductOptionLabel({
   product,
   mode,
@@ -212,9 +230,12 @@ function ProductOptionLabel({
   mode: ProductMetaMode;
 }) {
   return (
-    <span className="flex min-w-0 max-w-full flex-col gap-0.5 text-left">
-      <span className="truncate font-medium leading-snug">{product.name}</span>
-      <ProductMeta product={product} mode={mode} />
+    <span className="flex min-w-0 max-w-full items-start gap-2.5 text-left">
+      <ProductThumb product={product} />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate font-medium leading-snug">{product.name}</span>
+        <ProductMeta product={product} mode={mode} />
+      </span>
     </span>
   );
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link2, Loader2, Package, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,6 @@ import {
   resolveItemImportPrice,
   stockMovementApi,
 } from "@/lib/api/stock-movement";
-import { getApiErrorMessage } from "@/lib/api/staff-mapper";
 import {
   filterLocationsByAuthScope,
   getEffectiveLocationScope,
@@ -56,6 +55,7 @@ import {
   formatMoneyVnd,
   refineDuplicateProducts,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
+import { safeImageSrc } from "@/app/(protected)/products/_constants/product.constants";
 import type {
   StockMovementLocationOption,
   StockMovementProductItemOption,
@@ -116,9 +116,6 @@ function isPriceOverRetail(price?: number, retail?: number) {
 function productMetaLine(item: StockMovementProductItemOption) {
   const parts = [
     item.sku ? `SKU: ${item.sku}` : null,
-    typeof item.costPrice === "number"
-      ? `Giá vốn ${formatMoneyVnd(item.costPrice)}`
-      : null,
     typeof item.retailPrice === "number"
       ? `Giá bán ${formatMoneyVnd(item.retailPrice)}`
       : null,
@@ -131,22 +128,16 @@ function ImportDetailLine({
   index,
   product,
   lineProducts,
-  mismatched,
-  isLinking,
   canRemove,
   onRemove,
-  onAttach,
   onPick,
 }: {
   form: UseFormReturn<ImportFormValues>;
   index: number;
   product?: StockMovementProductItemOption;
   lineProducts: StockMovementProductItemOption[];
-  mismatched: boolean;
-  isLinking: boolean;
   canRemove: boolean;
   onRemove: () => void;
-  onAttach: () => void;
   onPick: (item: StockMovementProductItemOption) => void;
 }) {
   const importPrice = useWatch({
@@ -164,10 +155,7 @@ function ImportDetailLine({
       index={index}
       canRemove={canRemove}
       onRemove={onRemove}
-      className={cn(
-        (mismatched || priceOver) && "border-destructive/60",
-        mismatched && "bg-destructive/5",
-      )}
+      className={cn(priceOver && "border-destructive/60")}
     >
       <FormField
         control={form.control}
@@ -193,25 +181,6 @@ function ImportDetailLine({
           </FormItem>
         )}
       />
-
-      {mismatched && (
-        <div className="flex flex-col gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-destructive">
-            Hàng chưa thuộc nhà cung cấp đã chọn.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="destructive"
-            className="shrink-0 cursor-pointer"
-            disabled={isLinking}
-            onClick={onAttach}
-          >
-            <Link2 className="mr-1.5 size-3.5" />
-            {isLinking ? "Đang gắn..." : "Thêm nhà cung cấp"}
-          </Button>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[8.5rem_minmax(12rem,1.25fr)_minmax(10rem,1fr)]">
         <FormField
@@ -326,7 +295,6 @@ export function ImportsCreateDialog({
     () => new Map<string, StockMovementProductItemOption>(),
   );
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
-  const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     StockMovementProductItemOption[]
@@ -337,11 +305,6 @@ export function ImportsCreateDialog({
   const visibleLocations = useMemo(
     () => filterLocationsByAuthScope(locations, effectiveScope),
     [locations, effectiveScope],
-  );
-
-  const linkedIds = useMemo(
-    () => new Set(supplierProducts.map((p) => p._id)),
-    [supplierProducts],
   );
 
   const productById = useMemo(() => {
@@ -366,16 +329,15 @@ export function ImportsCreateDialog({
   );
 
   const canSubmit = useMemo(() => {
-    if (!details.length || isOptionsLoading || linkingItemId) return false;
+    if (!details.length || isOptionsLoading) return false;
     for (const d of details) {
       if (!d.productItemId) return false;
-      if (!linkedIds.has(d.productItemId)) return false;
       if (isPriceOverRetail(d.importPrice, productById.get(d.productItemId)?.retailPrice)) {
         return false;
       }
     }
     return true;
-  }, [details, isOptionsLoading, linkingItemId, linkedIds, productById]);
+  }, [details, isOptionsLoading, productById]);
 
   const cacheProduct = useCallback((item: StockMovementProductItemOption) => {
     setExtraById((prev) => {
@@ -514,40 +476,9 @@ export function ImportsCreateDialog({
     return () => clearTimeout(timer);
   }, [open, fromSupplierId, searchQuery]);
 
-  const handleAttachSupplier = useCallback(
-    async (itemId: string) => {
-      if (!fromSupplierId) return;
-      setLinkingItemId(itemId);
-      try {
-        await stockMovementApi.attachSupplierToProductItem(
-          itemId,
-          fromSupplierId,
-        );
-        const item = productById.get(itemId);
-        if (item) {
-          setSupplierProducts((prev) =>
-            prev.some((p) => p._id === itemId) ? prev : [...prev, item],
-          );
-        }
-        toast.success("Đã gắn nhà cung cấp vào hàng hóa");
-      } catch (error) {
-        toast.error(getApiErrorMessage(error) || "Không thể gắn nhà cung cấp");
-      } finally {
-        setLinkingItemId(null);
-      }
-    },
-    [fromSupplierId, productById],
-  );
-
   async function onSubmit(data: ImportFormValues) {
     if (role === "BRANCH_MANAGER") {
       toast.error("Chi nhánh không được tạo đơn nhập hàng");
-      return;
-    }
-    if (data.details.some((d) => d.productItemId && !linkedIds.has(d.productItemId))) {
-      toast.error(
-        "Có hàng chưa thuộc nhà cung cấp. Hãy gắn NCC hoặc đổi hàng trước khi tạo đơn.",
-      );
       return;
     }
     for (const d of data.details) {
@@ -740,16 +671,18 @@ export function ImportsCreateDialog({
                                   : "cursor-pointer hover:bg-muted/60",
                               )}
                             >
-                              <Package className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={safeImageSrc(item.imageUrl)}
+                                alt=""
+                                className="mt-0.5 size-10 shrink-0 rounded-md border object-cover bg-muted"
+                              />
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-sm font-medium">
                                   {item.name}
                                 </span>
                                 <span className="mt-0.5 block text-xs text-muted-foreground">
                                   {productMetaLine(item)}
-                                  {!linkedIds.has(item._id)
-                                    ? " · Chưa thuộc NCC"
-                                    : ""}
                                   {already ? " · Đã thêm" : ""}
                                 </span>
                               </span>
@@ -792,8 +725,6 @@ export function ImportsCreateDialog({
                     index={idx}
                     product={product}
                     lineProducts={lineProducts}
-                    mismatched={!!itemId && !linkedIds.has(itemId)}
-                    isLinking={linkingItemId === itemId}
                     canRemove
                     onRemove={() => {
                       remove(idx);
@@ -805,7 +736,6 @@ export function ImportsCreateDialog({
                         return next;
                       });
                     }}
-                    onAttach={() => void handleAttachSupplier(itemId)}
                     onPick={(item) => applyProduct(item, idx)}
                   />
                 );
