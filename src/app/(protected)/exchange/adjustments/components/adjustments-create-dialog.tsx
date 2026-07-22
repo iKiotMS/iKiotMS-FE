@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, CheckCircle } from 'lucide-react'
@@ -27,7 +27,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
-import { ProductSelect } from "@/app/(protected)/exchange/shared/form-fields";
+import { ProductPickerField } from "@/app/(protected)/exchange/shared/form-fields";
+import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { getAdjustQtyChange } from "@/app/(protected)/exchange/shared/qty";
 import { refineDuplicateProducts } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import { stockMovementApi } from "@/lib/api/stock-movement";
@@ -91,6 +92,7 @@ export function AdjustmentsCreateDialog({
     [locationKey],
   )
   const isLocationLocked = !!effectiveScope.locationId
+  const isTenantOwner = effectiveScope.role === 'TENANT_OWNER'
 
   const form = useForm<AdjustFormValues>({
     resolver: zodResolver(adjustFormSchema),
@@ -98,7 +100,7 @@ export function AdjustmentsCreateDialog({
     mode: 'onTouched',
     reValidateMode: 'onChange',
   })
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'details' })
+  const { fields, append, remove, update } = useFieldArray({ control: form.control, name: 'details' })
 
   const visibleLocations = useMemo(
     () => filterLocationsByAuthScope(locations, effectiveScope),
@@ -107,6 +109,40 @@ export function AdjustmentsCreateDialog({
 
   const locationId = form.watch('locationId')
   const locationType = form.watch('locationType') as LocationType
+  const details = useWatch({ control: form.control, name: 'details' }) ?? []
+
+  const usedIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const d of details) if (d.productItemId) set.add(d.productItemId)
+    return set
+  }, [details])
+
+  /** BR/WH: chỉ hàng đã có tồn tại location đang điều chỉnh; TO: full pool. */
+  const searchableProducts = useMemo(
+    () =>
+      isTenantOwner
+        ? products
+        : products.filter((p) => p.atLocation || (p.stock ?? 0) > 0),
+    [products, isTenantOwner],
+  )
+
+  const applyProduct = (item: StockMovementProductItemOption) => {
+    const current = form.getValues('details') ?? []
+    if (current.some((d) => d.productItemId === item._id)) {
+      toast.message('Hàng hóa này đã có trong danh sách')
+      return
+    }
+    const stock = Math.max(0, item.stock ?? 0)
+    const base = {
+      productItemId: item._id,
+      receivedQuantity: stock,
+      note: '',
+    }
+    const emptyIdx = current.findIndex((d) => !d.productItemId)
+    if (emptyIdx >= 0) update(emptyIdx, base)
+    else append(base)
+    void form.trigger('details')
+  }
 
   useEffect(() => {
     if (!open) return
@@ -267,11 +303,29 @@ export function AdjustmentsCreateDialog({
                 </Button>
               </div>
 
+              <MovementProductSearch
+                usedIds={usedIds}
+                onPick={applyProduct}
+                searchScope="list"
+                poolProducts={searchableProducts}
+                disabled={!locationId}
+                metaMode="stock"
+                placeholder={
+                  locationId
+                    ? 'Tìm hàng tại kho / chi nhánh đang điều chỉnh...'
+                    : 'Chọn kho / chi nhánh trước'
+                }
+              />
+
               {fields.map((f, idx) => {
-                const selected = products.find((p) => p._id === form.watch(`details.${idx}.productItemId`))
+                const itemId = form.watch(`details.${idx}.productItemId`) ?? ''
+                const selected = products.find((p) => p._id === itemId)
                 const snapshot = selected?.stock ?? 0
                 const actual = form.watch(`details.${idx}.receivedQuantity`) ?? 0
                 const diff = getAdjustQtyChange(snapshot, actual)
+                const lineProducts = searchableProducts.filter(
+                  (p) => p._id === itemId || !usedIds.has(p._id),
+                )
 
                 return (
                   <div key={f.id} className="rounded-lg border bg-muted/30 p-3 space-y-3">
@@ -285,9 +339,15 @@ export function AdjustmentsCreateDialog({
                               <FormLabel className="text-xs">
                                 Hàng hóa <span className="text-destructive">*</span>
                               </FormLabel>
-                              <ProductSelect
-                                products={products}
+                              <ProductPickerField
+                                products={lineProducts}
                                 value={field.value}
+                                displayProduct={
+                                  selected &&
+                                  !lineProducts.some((p) => p._id === selected._id)
+                                    ? selected
+                                    : undefined
+                                }
                                 metaMode="stock"
                                 placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn hàng hóa'}
                                 onValueChange={(value) => {

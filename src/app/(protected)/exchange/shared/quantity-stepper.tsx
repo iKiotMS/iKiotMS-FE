@@ -42,7 +42,7 @@ export function QuantityStepper({
   return (
     <div
       className={cn(
-        "flex h-8 w-full min-w-[7.5rem] items-stretch overflow-hidden rounded-md border bg-background",
+        "flex h-9 w-full min-w-[6.5rem] shrink-0 items-stretch overflow-hidden rounded-md border border-input bg-background",
         className,
       )}
       onClick={(e) => e.stopPropagation()}
@@ -54,7 +54,7 @@ export function QuantityStepper({
         disabled={disabled}
         value={Number.isFinite(value) ? String(value) : ""}
         className={cn(
-          "h-full flex-1 rounded-none border-0 shadow-none focus-visible:ring-0 px-2 text-right tabular-nums",
+          "h-full min-w-0 flex-1 rounded-none border-0 shadow-none focus-visible:ring-0 px-2 text-right tabular-nums",
           inputClassName,
         )}
         onChange={(e) => {

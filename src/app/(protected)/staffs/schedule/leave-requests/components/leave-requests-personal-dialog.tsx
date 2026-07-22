@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,26 +41,56 @@ import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useLeaveRequests } from "./leave-requests-provider";
 
-const personalLeaveSchema = z
-  .object({
-    reason: z.string().min(3, "Lý do nghỉ tối thiểu 3 ký tự"),
-    startDate: z.string().min(1, "Vui lòng chọn ngày bắt đầu"),
-    startTime: z.string().min(1, "Vui lòng chọn giờ bắt đầu"),
-    endDate: z.string().min(1, "Vui lòng chọn ngày kết thúc"),
-    endTime: z.string().min(1, "Vui lòng chọn giờ kết thúc"),
-    handoverToUserId: z.string().optional(),
-  })
-  .refine(
-    (values) =>
-      new Date(combineLeaveDateTime(values.startDate, values.startTime)) <=
-      new Date(combineLeaveDateTime(values.endDate, values.endTime)),
-    {
-      message: "Thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc",
-      path: ["endTime"],
-    },
-  );
+const personalLeaveBaseSchema = z.object({
+  reason: z.string().min(3, "Lý do nghỉ tối thiểu 3 ký tự"),
+  startDate: z.string().min(1, "Vui lòng chọn ngày bắt đầu"),
+  startTime: z.string().min(1, "Vui lòng chọn giờ bắt đầu"),
+  endDate: z.string().min(1, "Vui lòng chọn ngày kết thúc"),
+  endTime: z.string().min(1, "Vui lòng chọn giờ kết thúc"),
+  handoverToUserId: z.string().optional(),
+});
 
-type PersonalLeaveFormValues = z.infer<typeof personalLeaveSchema>;
+function buildPersonalLeaveSchema(opts: {
+  handoverRequired: boolean;
+  isBranchManager: boolean;
+  allowedHandoverIds: Set<string>;
+}) {
+  return personalLeaveBaseSchema
+    .refine(
+      (values) =>
+        new Date(combineLeaveDateTime(values.startDate, values.startTime)) <=
+        new Date(combineLeaveDateTime(values.endDate, values.endTime)),
+      {
+        message: "Thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc",
+        path: ["endTime"],
+      },
+    )
+    .superRefine((values, ctx) => {
+      if (!opts.handoverRequired) return;
+      const id = values.handoverToUserId?.trim() ?? "";
+      if (!id) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["handoverToUserId"],
+          message: opts.isBranchManager
+            ? "Vui lòng chọn nhân viên thay thế tạm trong thời gian nghỉ"
+            : "Vui lòng chọn nhân viên nhận bàn giao lịch",
+        });
+        return;
+      }
+      if (!opts.allowedHandoverIds.has(id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["handoverToUserId"],
+          message: opts.isBranchManager
+            ? "Nhân viên thay thế phải là Staff thuộc chi nhánh của bạn"
+            : "Nhân viên bàn giao không hợp lệ",
+        });
+      }
+    });
+}
+
+type PersonalLeaveFormValues = z.infer<typeof personalLeaveBaseSchema>;
 
 const DEFAULT_START_TIME = "08:00";
 const DEFAULT_END_TIME = "17:00";
@@ -75,23 +105,37 @@ export function LeaveRequestsPersonalDialog({
   const { user } = useAuth();
   const { handleCreatePersonal, handoverOptions, balance } = useLeaveRequests();
   const role = user?.role;
-  /** BR luôn bắt buộc gán staff thay thế tạm. WH vẫn theo preview lịch. */
   const isBranchManager = role === "BRANCH_MANAGER";
   const isWarehouseManager = role === "WAREHOUSE_MANAGER";
   const needsHandoverPicker = isBranchManager || isWarehouseManager;
 
   const [scheduleHandoverRequired, setScheduleHandoverRequired] = useState(false);
-  const [handoverCount, setHandoverCount] = useState(0);
   const [checkingHandover, setCheckingHandover] = useState(false);
   const [checkingSchedule, setCheckingSchedule] = useState(false);
   const [missingScheduleDates, setMissingScheduleDates] = useState<Date[]>([]);
   const [totalDaysInRange, setTotalDaysInRange] = useState(0);
 
   const requiresHandover = isBranchManager || scheduleHandoverRequired;
-  const staffHandoverOptions = handoverOptions;
+  const allowedHandoverIds = useMemo(
+    () => new Set(handoverOptions.map((o) => o.value)),
+    [handoverOptions],
+  );
+
+  const personalLeaveSchema = useMemo(
+    () =>
+      buildPersonalLeaveSchema({
+        handoverRequired: requiresHandover,
+        isBranchManager,
+        allowedHandoverIds,
+      }),
+    [requiresHandover, isBranchManager, allowedHandoverIds],
+  );
+  const schemaRef = useRef(personalLeaveSchema);
+  schemaRef.current = personalLeaveSchema;
 
   const form = useForm<PersonalLeaveFormValues>({
-    resolver: zodResolver(personalLeaveSchema),
+    resolver: (values, context, options) =>
+      zodResolver(schemaRef.current)(values, context, options),
     defaultValues: {
       reason: "",
       startDate: todayIsoDate(),
@@ -118,13 +162,13 @@ export function LeaveRequestsPersonalDialog({
         handoverToUserId: "",
       });
       setScheduleHandoverRequired(false);
-      setHandoverCount(0);
       setMissingScheduleDates([]);
     }
   }, [open, form]);
 
   useEffect(() => {
-    if (!open || !needsHandoverPicker || !startDate || !endDate) return;
+    // BR luôn bắt buộc handover — không cần gọi preview.
+    if (!open || !isWarehouseManager || !startDate || !endDate) return;
     const startIso = combineLeaveDateTime(
       startDate,
       startTime || DEFAULT_START_TIME,
@@ -139,16 +183,11 @@ export function LeaveRequestsPersonalDialog({
         const preview = await leaveRequestApi.previewHandover(startIso, endIso);
         if (cancelled) return;
         setScheduleHandoverRequired(preview.requiresHandover);
-        setHandoverCount(preview.count);
-        // BR luôn giữ lựa chọn staff; WH mới clear khi không cần bàn giao lịch.
-        if (!isBranchManager && !preview.requiresHandover) {
+        if (!preview.requiresHandover) {
           form.setValue("handoverToUserId", "");
         }
       } catch {
-        if (!cancelled) {
-          setScheduleHandoverRequired(false);
-          setHandoverCount(0);
-        }
+        if (!cancelled) setScheduleHandoverRequired(false);
       } finally {
         if (!cancelled) setCheckingHandover(false);
       }
@@ -160,8 +199,7 @@ export function LeaveRequestsPersonalDialog({
     };
   }, [
     open,
-    needsHandoverPicker,
-    isBranchManager,
+    isWarehouseManager,
     startDate,
     endDate,
     startTime,
@@ -169,15 +207,12 @@ export function LeaveRequestsPersonalDialog({
     form,
   ]);
 
-  // --- Schedule check: warn if no working schedule in selected range ---
   useEffect(() => {
     if (!open || !startDate || !endDate) return;
-    const startIso = combineLeaveDateTime(
-      startDate,
-      startTime || DEFAULT_START_TIME,
-    );
-    const endIso = combineLeaveDateTime(endDate, endTime || DEFAULT_END_TIME);
-    if (new Date(startIso) > new Date(endIso)) {
+    if (
+      new Date(combineLeaveDateTime(startDate, startTime || DEFAULT_START_TIME)) >
+      new Date(combineLeaveDateTime(endDate, endTime || DEFAULT_END_TIME))
+    ) {
       setMissingScheduleDates([]);
       return;
     }
@@ -186,12 +221,13 @@ export function LeaveRequestsPersonalDialog({
     const timer = setTimeout(async () => {
       setCheckingSchedule(true);
       try {
-        const result = await workingScheduleApi.getList(
-          { startDate: startDate, endDate: endDate, recordPerPage: 500 },
-        );
+        const result = await workingScheduleApi.getList({
+          startDate,
+          endDate,
+          recordPerPage: 500,
+        });
         if (cancelled) return;
 
-        // Compute which dates in range have no schedule
         const scheduledDates = new Set(
           result.data.map((s) => s.workDate.slice(0, 10)),
         );
@@ -199,10 +235,9 @@ export function LeaveRequestsPersonalDialog({
           start: parseISO(startDate),
           end: parseISO(endDate),
         });
-        const missing = allDates.filter(
-          (d) => !scheduledDates.has(format(d, "yyyy-MM-dd"))
+        setMissingScheduleDates(
+          allDates.filter((d) => !scheduledDates.has(format(d, "yyyy-MM-dd"))),
         );
-        setMissingScheduleDates(missing);
         setTotalDaysInRange(allDates.length);
       } catch {
         if (!cancelled) setMissingScheduleDates([]);
@@ -218,15 +253,6 @@ export function LeaveRequestsPersonalDialog({
   }, [open, startDate, endDate, startTime, endTime]);
 
   async function onSubmit(values: PersonalLeaveFormValues) {
-    if (requiresHandover && !values.handoverToUserId) {
-      form.setError("handoverToUserId", {
-        message: isBranchManager
-          ? "Vui lòng chọn nhân viên thay thế tạm trong thời gian nghỉ"
-          : "Vui lòng chọn nhân viên nhận bàn giao lịch",
-      });
-      return;
-    }
-
     try {
       await handleCreatePersonal({
         startDate: combineLeaveDateTime(values.startDate, values.startTime),
@@ -239,6 +265,11 @@ export function LeaveRequestsPersonalDialog({
       // toast handled in provider
     }
   }
+
+  const scheduleWarning =
+    missingScheduleDates.length > 0 && !checkingSchedule
+      ? getScheduleWarningData(missingScheduleDates, totalDaysInRange)
+      : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -314,30 +345,25 @@ export function LeaveRequestsPersonalDialog({
               />
             </div>
 
-            {missingScheduleDates.length > 0 && !checkingSchedule && (() => {
-              const warningData = getScheduleWarningData(missingScheduleDates, totalDaysInRange);
-              if (warningData.type === "none") return null;
-              
-              return (
+            {scheduleWarning && scheduleWarning.type !== "none" && (
                 <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-400">
                   <TriangleAlert className="mt-0.5 size-4 shrink-0" />
                   <p>
-                    {warningData.type === "all" && "Bạn không có lịch làm việc trong toàn bộ khoảng ngày này."}
-                    {warningData.type === "summary" && (
+                    {scheduleWarning.type === "all" && "Bạn không có lịch làm việc trong toàn bộ khoảng ngày này."}
+                    {scheduleWarning.type === "summary" && (
                       <>
-                        Có <span className="font-medium">{warningData.missingCount}/{warningData.totalCount}</span> ngày không có lịch làm việc trong khoảng này.
+                        Có <span className="font-medium">{scheduleWarning.missingCount}/{scheduleWarning.totalCount}</span> ngày không có lịch làm việc trong khoảng này.
                       </>
                     )}
-                    {warningData.type === "detailed" && (
+                    {scheduleWarning.type === "detailed" && (
                       <>
                         Bạn không có lịch làm việc vào:{" "}
-                        <span className="font-medium">{warningData.formattedRanges}</span>
+                        <span className="font-medium">{scheduleWarning.formattedRanges}</span>
                       </>
                     )}
                   </p>
                 </div>
-              );
-            })()}
+            )}
 
             <FormField
               control={form.control}
@@ -393,12 +419,12 @@ export function LeaveRequestsPersonalDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {staffHandoverOptions.length === 0 ? (
+                        {handoverOptions.length === 0 ? (
                           <SelectItem value="__empty" disabled>
                             Không có nhân viên phù hợp
                           </SelectItem>
                         ) : (
-                          staffHandoverOptions.map((item) => (
+                          handoverOptions.map((item) => (
                             <SelectItem key={item.value} value={item.value}>
                               {item.label}
                             </SelectItem>
@@ -425,7 +451,7 @@ export function LeaveRequestsPersonalDialog({
                 type="submit"
                 className="cursor-pointer"
                 disabled={
-                  isBranchManager && staffHandoverOptions.length === 0
+                  isBranchManager && handoverOptions.length === 0
                 }
               >
                 <Plus className="mr-2 size-4" />

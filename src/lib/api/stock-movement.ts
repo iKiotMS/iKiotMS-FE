@@ -78,6 +78,7 @@ type ApiProductItem = {
   retailPrice?: number;
   stock?: number;
   images?: ApiProductImage[];
+  productDetails?: Array<{ name?: string; value?: string }>;
   suppliers?: Array<string | { _id?: string; id?: string }>;
 };
 
@@ -260,6 +261,19 @@ function resolveProductImageUrl(
   );
 }
 
+function mapProductDetails(
+  details?: Array<{ name?: string; value?: string }>,
+): Array<{ name: string; value: string }> | undefined {
+  if (!details?.length) return undefined;
+  const mapped = details
+    .map((d) => ({
+      name: d.name?.trim() ?? "",
+      value: d.value?.trim() ?? "",
+    }))
+    .filter((d) => d.name && d.value);
+  return mapped.length ? mapped : undefined;
+}
+
 function mapApiProductsToItemOptions(
   products: ApiProduct[],
 ): StockMovementProductItemOption[] {
@@ -273,6 +287,7 @@ function mapApiProductsToItemOptions(
         costPrice: item.costPrice ?? item.retailPrice ?? 0,
         retailPrice: item.retailPrice,
         imageUrl: resolveProductImageUrl(item, product),
+        productDetails: mapProductDetails(item.productDetails),
         supplierIds: resolveSupplierIds(item.suppliers),
         stock: item.stock,
       }),
@@ -377,6 +392,7 @@ async function fetchSupplierProductItemOptions(
           costPrice: item.costPrice ?? item.retailPrice ?? 0,
           retailPrice: item.retailPrice,
           imageUrl: resolveProductImageUrl(item, detail),
+          productDetails: mapProductDetails(item.productDetails),
           supplierIds: ids,
         });
       }
@@ -405,13 +421,6 @@ export function resolveItemImportPrice(
     return Math.min(cost, item.retailPrice);
   }
   return cost;
-}
-
-async function attachSupplierToProductItem(
-  itemId: string,
-  supplierId: string,
-): Promise<void> {
-  await client.post(`/products/items/${itemId}/suppliers`, { supplierId });
 }
 
 async function getProductLookup(): Promise<ProductLookup> {
@@ -593,40 +602,6 @@ export const stockMovementApi = {
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  createReturn: async (
-    payload: Omit<CreateExportPayload, "movementType"> & {
-      movementType?: "RETURN";
-    },
-  ): Promise<StockMovement> => {
-    const response = await client.post("/stock-movements", {
-      ...payload,
-      movementType: "RETURN",
-    });
-    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
-  },
-
-  /** Create ADJUST then approve (payload: productItemId + receivedQuantity only). */
-  executeAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
-    const createBody: CreateAdjustPayload = {
-      ...payload,
-      details: payload.details.map((d) => ({
-        productItemId: d.productItemId,
-        receivedQuantity: d.receivedQuantity,
-        note: d.note,
-      })),
-    };
-    const createResponse = await client.post("/stock-movements", createBody);
-    const created = await safeEnrichMovement(
-      mapMovement(createResponse.data?.data as ApiMovement),
-    );
-    const approveResponse = await client.patch(
-      `/stock-movements/${created._id}/approve-adjust`,
-    );
-    return safeEnrichMovement(
-      mapMovement(approveResponse.data?.data as ApiMovement),
-    );
-  },
-
   createAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
     const createBody: CreateAdjustPayload = {
       ...payload,
@@ -776,8 +751,6 @@ export const stockMovementApi = {
     });
     return res.items;
   },
-  attachSupplierToProductItem,
-  resolveItemImportPrice,
 
   /** Sản phẩm kèm cờ có tại location (nhập hàng) */
   getProductItemsForDestination: async (

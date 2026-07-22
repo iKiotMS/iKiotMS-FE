@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,11 +43,15 @@ import {
 } from "@/app/(protected)/exchange/shared/auth-scope";
 import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
 import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
+import {
+  canSearchImportCatalog,
+} from "@/app/(protected)/exchange/shared/product-item-search";
+import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { useAuthStore } from "@/store/auth-store";
 import {
   DetailLineCard,
   MoneyInput,
-  ProductSelect,
+  ProductPickerField,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
 import {
@@ -55,7 +59,6 @@ import {
   formatMoneyVnd,
   refineDuplicateProducts,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
-import { safeImageSrc } from "@/app/(protected)/products/_constants/product.constants";
 import type {
   StockMovementLocationOption,
   StockMovementProductItemOption,
@@ -113,16 +116,6 @@ function isPriceOverRetail(price?: number, retail?: number) {
   );
 }
 
-function productMetaLine(item: StockMovementProductItemOption) {
-  const parts = [
-    item.sku ? `SKU: ${item.sku}` : null,
-    typeof item.retailPrice === "number"
-      ? `Giá bán ${formatMoneyVnd(item.retailPrice)}`
-      : null,
-  ].filter(Boolean);
-  return parts.join(" · ") || "—";
-}
-
 function ImportDetailLine({
   form,
   index,
@@ -161,11 +154,11 @@ function ImportDetailLine({
         control={form.control}
         name={`details.${index}.productItemId`}
         render={({ field }) => (
-          <FormItem className="gap-1.5">
+          <FormItem className="min-w-0 gap-1.5">
             <FormLabel className="text-xs leading-none">
               Hàng hóa <span className="text-destructive">*</span>
             </FormLabel>
-            <ProductSelect
+            <ProductPickerField
               products={lineProducts}
               value={field.value}
               displayProduct={displayOrphan}
@@ -193,7 +186,7 @@ function ImportDetailLine({
               </FormLabel>
               <FormControl>
                 <QuantityStepper
-                  className="h-9 w-full"
+                  className="h-9 w-full min-w-0"
                   min={1}
                   value={Number.isFinite(field.value) ? field.value : 1}
                   onChange={field.onChange}
@@ -262,6 +255,7 @@ export function ImportsCreateDialog({
     [locationKey],
   );
   const { role, locationId: lockedLocationId } = effectiveScope;
+  const searchAllCatalog = canSearchImportCatalog(role);
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
@@ -295,12 +289,6 @@ export function ImportsCreateDialog({
     () => new Map<string, StockMovementProductItemOption>(),
   );
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    StockMovementProductItemOption[]
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const searchSeq = useRef(0);
 
   const visibleLocations = useMemo(
     () => filterLocationsByAuthScope(locations, effectiveScope),
@@ -346,11 +334,6 @@ export function ImportsCreateDialog({
       next.set(item._id, item);
       return next;
     });
-  }, []);
-
-  const clearSearch = useCallback(() => {
-    setSearchQuery("");
-    setSearchResults([]);
   }, []);
 
   const applyProduct = useCallback(
@@ -403,8 +386,7 @@ export function ImportsCreateDialog({
     });
     setSupplierProducts([]);
     setExtraById(new Map());
-    clearSearch();
-  }, [open, form, lockedLocationId, clearSearch]);
+  }, [open, form, lockedLocationId]);
 
   useEffect(() => {
     if (!open) return;
@@ -441,40 +423,6 @@ export function ImportsCreateDialog({
       cancelled = true;
     };
   }, [open, fromSupplierId]);
-
-  useEffect(() => {
-    if (!open || !fromSupplierId) {
-      setSearchResults([]);
-      return;
-    }
-    const q = searchQuery.trim();
-    if (q.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const seq = ++searchSeq.current;
-    const timer = setTimeout(() => {
-      setIsSearching(true);
-      void stockMovementApi
-        .searchProductItems(q)
-        .then((items) => {
-          if (seq !== searchSeq.current) return;
-          setSearchResults(items);
-        })
-        .catch(() => {
-          if (seq !== searchSeq.current) return;
-          setSearchResults([]);
-          toast.error("Không thể tìm hàng hóa");
-        })
-        .finally(() => {
-          if (seq === searchSeq.current) setIsSearching(false);
-        });
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [open, fromSupplierId, searchQuery]);
 
   async function onSubmit(data: ImportFormValues) {
     if (role === "BRANCH_MANAGER") {
@@ -524,8 +472,6 @@ export function ImportsCreateDialog({
     }
   }
 
-  const showSearchPanel = !!fromSupplierId && searchQuery.trim().length >= 2;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -549,7 +495,6 @@ export function ImportsCreateDialog({
                         field.onChange(v);
                         form.setValue("details", [{ ...EMPTY_DETAIL }]);
                         setExtraById(new Map());
-                        clearSearch();
                       }}
                       value={field.value}
                     >
@@ -626,74 +571,24 @@ export function ImportsCreateDialog({
             <Separator />
 
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Tìm hàng khác</h3>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={!fromSupplierId}
-                  placeholder={
-                    fromSupplierId
-                      ? "Tìm theo tên, mã, SKU..."
-                      : "Chọn nhà cung cấp trước"
-                  }
-                  className="h-10 pl-9"
-                />
-                {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                )}
-              </div>
-
-              {showSearchPanel && (
-                <div className="max-h-56 overflow-y-auto rounded-lg border bg-background">
-                  {searchResults.length === 0 ? (
-                    <p className="px-3 py-4 text-sm text-muted-foreground">
-                      {isSearching ? "Đang tìm..." : "Không tìm thấy hàng hóa phù hợp"}
-                    </p>
-                  ) : (
-                    <ul className="divide-y">
-                      {searchResults.map((item) => {
-                        const already = usedIds.has(item._id);
-                        return (
-                          <li key={item._id}>
-                            <button
-                              type="button"
-                              disabled={already}
-                              onClick={() => {
-                                applyProduct(item);
-                                clearSearch();
-                              }}
-                              className={cn(
-                                "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors",
-                                already
-                                  ? "cursor-not-allowed opacity-50"
-                                  : "cursor-pointer hover:bg-muted/60",
-                              )}
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={safeImageSrc(item.imageUrl)}
-                                alt=""
-                                className="mt-0.5 size-10 shrink-0 rounded-md border object-cover bg-muted"
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium">
-                                  {item.name}
-                                </span>
-                                <span className="mt-0.5 block text-xs text-muted-foreground">
-                                  {productMetaLine(item)}
-                                  {already ? " · Đã thêm" : ""}
-                                </span>
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              )}
+              <h3 className="text-sm font-semibold">
+                {searchAllCatalog ? "Tìm hàng khác" : "Tìm trong hàng NCC"}
+              </h3>
+              <MovementProductSearch
+                usedIds={usedIds}
+                onPick={(item) => applyProduct(item)}
+                searchScope={searchAllCatalog ? "catalog" : "list"}
+                poolProducts={supplierProducts}
+                disabled={!fromSupplierId}
+                metaMode="price"
+                placeholder={
+                  !fromSupplierId
+                    ? "Chọn nhà cung cấp trước"
+                    : searchAllCatalog
+                      ? "Tìm theo tên, mã, SKU (toàn catalog)..."
+                      : "Tìm theo tên, SKU trong hàng của NCC..."
+                }
+              />
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <h3 className="text-sm font-semibold">

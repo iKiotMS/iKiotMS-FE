@@ -35,9 +35,13 @@ import type { Staff, StaffGender, StaffProfilePayload, StaffRole } from "@/types
 import type { PaySheetOption } from "@/types/paysheet";
 import { paySheetApi } from "@/lib/api/paysheet";
 import {
-  isValidIdentificationId,
   parseIdentificationId,
+  validateStaffIdentificationId,
 } from "@/app/(protected)/staffs/shared/identification-format";
+import {
+  normalizeStaffPhoneNumber,
+  validateStaffPhoneNumber,
+} from "@/app/(protected)/staffs/shared/staff-phone-validation";
 import {
   getDobInputBounds,
   getHireDateInputBounds,
@@ -66,6 +70,7 @@ import { isManagerRole } from "@/app/(protected)/staffs/shared/staff-manager-uti
 import {
   resolveBranchIdForRole,
   resolveWarehouseIdForRole,
+  validateManagerWorkplace,
   validateStaffWorkplace,
 } from "@/app/(protected)/staffs/shared/staff-workplace";
 import { useStaffs } from "./staffs-provider";
@@ -90,8 +95,15 @@ const dobInputBounds = getDobInputBounds();
 const hireDateInputBounds = getHireDateInputBounds();
 
 function applyStaffProfileValidation(
-  data: { dob?: string; hireDate?: string; taxNumber?: string },
+  data: {
+    dob?: string;
+    hireDate?: string;
+    taxNumber?: string;
+    identificationId?: string;
+    gender?: string;
+  },
   ctx: z.RefinementCtx,
+  opts?: { identificationRequired?: boolean },
 ) {
   const dobResult = validateOptionalDob(data.dob);
   if (!dobResult.ok) {
@@ -118,15 +130,23 @@ function applyStaffProfileValidation(
       path: ["taxNumber"],
     });
   }
+
+  const cccdError = validateStaffIdentificationId(data.identificationId, {
+    required: opts?.identificationRequired ?? false,
+    dob: data.dob,
+    gender: data.gender,
+  });
+  if (cccdError) {
+    ctx.addIssue({
+      code: "custom",
+      message: cccdError,
+      path: ["identificationId"],
+    });
+  }
 }
 
 const profileFieldsSchema = {
-  identificationId: z
-    .string()
-    .optional()
-    .refine((value) => isValidIdentificationId(value), {
-      message: "CCCD phải có đúng 12 số",
-    }),
+  identificationId: z.string().optional(),
   address: z.string().max(255, "Địa chỉ tối đa 255 ký tự").optional(),
   gender: z
     .string()
@@ -134,7 +154,6 @@ const profileFieldsSchema = {
     .refine(
       (value) =>
         !value ||
-        value === "" ||
         value === "MALE" ||
         value === "FEMALE" ||
         value === "OTHER",
@@ -143,6 +162,37 @@ const profileFieldsSchema = {
   dob: z.string().optional(),
   taxNumber: z.string().optional(),
 };
+
+function applyWorkplaceValidation(
+  data: { role: StaffRole; branchId?: string; warehouseId?: string },
+  ctx: z.RefinementCtx,
+) {
+  const managerError = validateManagerWorkplace(
+    data.role,
+    data.branchId,
+    data.warehouseId,
+  );
+  if (managerError) {
+    ctx.addIssue({
+      code: "custom",
+      message: managerError.message,
+      path: [managerError.path],
+    });
+  }
+
+  const workplaceError = validateStaffWorkplace(
+    data.role,
+    data.branchId,
+    data.warehouseId,
+  );
+  if (workplaceError) {
+    ctx.addIssue({
+      code: "custom",
+      message: workplaceError,
+      path: ["branchId"],
+    });
+  }
+}
 
 function buildProfilePayload(data: {
   identificationId?: string;
@@ -181,7 +231,14 @@ const createFormSchema = z
     lastName: z.string().trim().min(1, "Họ là bắt buộc").max(50, "Họ tối đa 50 ký tự"),
     phoneNumber: z
       .string()
-      .regex(/^(0|\+84)(\d{9})$/, "Số điện thoại không hợp lệ"),
+      .trim()
+      .min(1, "Số điện thoại là bắt buộc")
+      .superRefine((value, ctx) => {
+        const error = validateStaffPhoneNumber(value);
+        if (error) {
+          ctx.addIssue({ code: "custom", message: error });
+        }
+      }),
     email: optionalEmailSchema,
     role: z.enum(["STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
     branchId: z.string().optional(),
@@ -197,35 +254,8 @@ const createFormSchema = z
     path: ["reEnterPassword"],
   })
   .superRefine((data, ctx) => {
-    applyStaffProfileValidation(data, ctx);
-
-    if (data.role === "WAREHOUSE_MANAGER" && !data.warehouseId?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Quản lý kho cần chọn kho",
-        path: ["warehouseId"],
-      });
-    }
-    if (data.role === "BRANCH_MANAGER" && !data.branchId?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Quản lý chi nhánh cần chọn chi nhánh",
-        path: ["branchId"],
-      });
-    }
-
-    const workplaceError = validateStaffWorkplace(
-      data.role,
-      data.branchId,
-      data.warehouseId,
-    );
-    if (workplaceError) {
-      ctx.addIssue({
-        code: "custom",
-        message: workplaceError,
-        path: ["branchId"],
-      });
-    }
+    applyStaffProfileValidation(data, ctx, { identificationRequired: true });
+    applyWorkplaceValidation(data, ctx);
   });
 
 const editFormSchema = z
@@ -242,35 +272,8 @@ const editFormSchema = z
     ...profileFieldsSchema,
   })
   .superRefine((data, ctx) => {
-    applyStaffProfileValidation(data, ctx);
-
-    if (data.role === "WAREHOUSE_MANAGER" && !data.warehouseId?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Quản lý kho cần chọn kho",
-        path: ["warehouseId"],
-      });
-    }
-    if (data.role === "BRANCH_MANAGER" && !data.branchId?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Quản lý chi nhánh cần chọn chi nhánh",
-        path: ["branchId"],
-      });
-    }
-
-    const workplaceError = validateStaffWorkplace(
-      data.role,
-      data.branchId,
-      data.warehouseId,
-    );
-    if (workplaceError) {
-      ctx.addIssue({
-        code: "custom",
-        message: workplaceError,
-        path: ["branchId"],
-      });
-    }
+    applyStaffProfileValidation(data, ctx, { identificationRequired: false });
+    applyWorkplaceValidation(data, ctx);
   });
 
 type CreateFormValues = z.infer<typeof createFormSchema>;
@@ -436,13 +439,8 @@ export function StaffsMutateDialog({
     setAvatarRemoved(true);
   }
 
-  async function resolveAvatarUrl(existingUrl?: string): Promise<string | null | undefined> {
-    if (pendingAvatarFile) {
-      return uploadImage(pendingAvatarFile);
-    }
-    if (avatarRemoved) {
-      return null;
-    }
+  function resolveAvatarUrl(existingUrl?: string): string | null | undefined {
+    if (avatarRemoved) return null;
     return existingUrl?.trim() || undefined;
   }
 
@@ -614,7 +612,7 @@ export function StaffsMutateDialog({
   useEffect(() => {
     if (!open || isEdit || canAssignWarehouse) return;
     form.setValue("warehouseId", "");
-  }, [open, isEdit, canAssignWarehouse, form, selectedRole]);
+  }, [open, isEdit, canAssignWarehouse, form]);
 
   async function onSubmit(data: CreateFormValues | EditFormValues) {
     const existingAvatarUrl = isEdit ? currentRow?.profile?.avatarUrl : undefined;
@@ -629,7 +627,7 @@ export function StaffsMutateDialog({
         avatarUrl = isEdit ? existingAvatarUrl : undefined;
       }
     } else {
-      avatarUrl = await resolveAvatarUrl(existingAvatarUrl);
+      avatarUrl = resolveAvatarUrl(existingAvatarUrl);
     }
 
     try {
@@ -723,7 +721,7 @@ export function StaffsMutateDialog({
         await handleAdd({
           firstName: createData.firstName,
           lastName: createData.lastName,
-          phoneNumber: createData.phoneNumber,
+          phoneNumber: normalizeStaffPhoneNumber(createData.phoneNumber),
           email: createData.email || undefined,
           role: createData.role,
           branchId: resolveBranchIdForRole(createData.role, createData.branchId),
@@ -816,9 +814,25 @@ export function StaffsMutateDialog({
                 name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Số điện thoại</FormLabel>
+                    <FormLabel>
+                      Số điện thoại <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="0901234567" {...field} />
+                      <Input
+                        placeholder="0901234567"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        maxLength={10}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        onChange={(e) =>
+                          field.onChange(
+                            normalizeStaffPhoneNumber(e.target.value),
+                          )
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -877,10 +891,16 @@ export function StaffsMutateDialog({
                   name="branchId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Chi nhánh</FormLabel>
+                      <FormLabel>
+                        Chi nhánh{" "}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
                       {visibleBranchOptions.length > 0 ? (
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("warehouseId", "");
+                          }}
                           value={field.value || ""}
                           disabled={
                             Boolean(isEditingManager) ||
@@ -917,48 +937,57 @@ export function StaffsMutateDialog({
                   )}
                 />
               )}
-            </div>
 
-            {canAssignWarehouse && selectedRole === "WAREHOUSE_MANAGER" && (
-              <FormField
-                control={form.control}
-                name="warehouseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kho hàng</FormLabel>
-                    {visibleWarehouseOptions.length > 0 ? (
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ""}
-                        disabled={Boolean(isEditingManager)}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="cursor-pointer w-full">
-                            <SelectValue placeholder="Chọn kho hàng" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {visibleWarehouseOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
-                        {warehouseOptionsFailed
-                          ? "Không tải được danh sách kho."
-                          : warehouseOptions.length > 0
-                            ? "Tất cả kho đã có quản lý."
-                            : "Hiện chưa có kho hàng nào trong hệ thống."}
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+              {canAssignWarehouse &&
+                selectedRole === "WAREHOUSE_MANAGER" && (
+                <FormField
+                  control={form.control}
+                  name="warehouseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Kho hàng <span className="text-destructive">*</span>
+                      </FormLabel>
+                      {visibleWarehouseOptions.length > 0 ? (
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("branchId", "");
+                          }}
+                          value={field.value || ""}
+                          disabled={Boolean(isEditingManager)}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="cursor-pointer w-full">
+                              <SelectValue placeholder="Chọn kho hàng" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {visibleWarehouseOptions.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
+                          {warehouseOptionsFailed
+                            ? "Không tải được danh sách kho."
+                            : warehouseOptions.length > 0
+                              ? "Tất cả kho đã có quản lý."
+                              : "Hiện chưa có kho hàng nào trong hệ thống."}
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
 
             <FormField
               control={form.control}
@@ -1024,7 +1053,12 @@ export function StaffsMutateDialog({
                 name="identificationId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CCCD</FormLabel>
+                    <FormLabel>
+                      CCCD{" "}
+                      {!isEdit ? (
+                        <span className="text-destructive">*</span>
+                      ) : null}
+                    </FormLabel>
                     <FormControl>
                       <CccdInput
                         name={field.name}

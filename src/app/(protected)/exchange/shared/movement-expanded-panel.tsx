@@ -120,6 +120,7 @@ export function MovementExpandedPanel({
   const {
     openingDetails,
     openingProducts,
+    catalogProducts,
     openingRowErrors,
     receivedQtys,
     setReceivedQtys,
@@ -128,6 +129,8 @@ export function MovementExpandedPanel({
     isActionLoading,
     updateOpeningRow,
     addOpeningRow,
+    pickOpeningProduct,
+    ensureOpeningProduct,
     removeOpeningRow,
     validateOpening,
     runAction,
@@ -252,7 +255,9 @@ export function MovementExpandedPanel({
       })),
       {
         requireImportPrice: true,
-        retailPriceByItemId: buildRetailPriceByItemId(openingProducts),
+        retailPriceByItemId: buildRetailPriceByItemId(
+          catalogProducts.length > 0 ? catalogProducts : openingProducts,
+        ),
       },
     );
     if (err) {
@@ -561,16 +566,18 @@ export function MovementExpandedPanel({
         mode={mode}
         detail={detail}
         canEditOpening={canEditOpening && !showReceiveForm}
-        isOpening={isOpening}
         isReceived={isReceived}
         isInTransit={isInTransit}
         showReceiveForm={showReceiveForm}
         showReceivedColumn={showReceivedColumn}
         openingDetails={openingDetails}
         openingProducts={openingProducts}
+        catalogProducts={catalogProducts}
         openingRowErrors={openingRowErrors}
         updateOpeningRow={updateOpeningRow}
         removeOpeningRow={removeOpeningRow}
+        pickOpeningProduct={pickOpeningProduct}
+        ensureOpeningProduct={ensureOpeningProduct}
         receivedQtys={receivedQtys}
         setReceivedQtys={setReceivedQtys}
         totalValue={
@@ -578,6 +585,9 @@ export function MovementExpandedPanel({
         }
         totalQty={totalQty}
         openingTotalQty={openingTotalQty}
+        importSearchScope={
+          isTenantOwner ? "catalog" : "list"
+        }
       />
 
       <MovementActionBar

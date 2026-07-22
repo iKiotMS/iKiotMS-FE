@@ -23,7 +23,8 @@ import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/
 import { useAuthStore } from '@/store/auth-store'
 import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/qty'
 import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
-import { MoneyInput, ProductSelect } from '@/app/(protected)/exchange/shared/form-fields'
+import { MoneyInput, ProductPickerField } from '@/app/(protected)/exchange/shared/form-fields'
+import { MovementProductSearch } from '@/app/(protected)/exchange/shared/movement-product-search'
 import {
   MAX_IMPORT_PRICE,
   formatMoneyVnd,
@@ -51,6 +52,7 @@ type TransferFormValues = {
 }
 
 const EMPTY_DETAIL = { productItemId: '', quantity: 1, importPrice: 0, note: '' }
+const EMPTY_DETAILS: TransferFormValues['details'] = []
 
 const EMPTY_VALUES: TransferFormValues = {
   fromLocationId: '',
@@ -122,9 +124,41 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     reValidateMode: 'onChange',
   })
 
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'details' })
+  const { fields, append, remove, update } = useFieldArray({ control: form.control, name: 'details' })
   const fromLocationId = useWatch({ control: form.control, name: 'fromLocationId' })
-  const details = useWatch({ control: form.control, name: 'details' }) ?? []
+  const details = useWatch({ control: form.control, name: 'details' }) ?? EMPTY_DETAILS
+
+  const usedIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const d of details) if (d.productItemId) set.add(d.productItemId)
+    return set
+  }, [details])
+
+  const applyProduct = (item: StockMovementProductItemOption) => {
+    const current = form.getValues('details') ?? []
+    if (current.some((d) => d.productItemId === item._id)) {
+      toast.message('Hàng hóa này đã có trong danh sách')
+      return
+    }
+    const importPrice = Math.min(
+      Math.max(0, item.costPrice ?? 0),
+      MAX_IMPORT_PRICE,
+    )
+    const qty = 1
+    const base = {
+      productItemId: item._id,
+      quantity: qty,
+      importPrice,
+      note: '',
+    }
+    const emptyIdx = current.findIndex((d) => !d.productItemId)
+    if (emptyIdx >= 0) {
+      update(emptyIdx, base)
+    } else {
+      append(base)
+    }
+    void form.trigger('details')
+  }
 
   const total = useMemo(
     () =>
@@ -157,7 +191,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     return {
       title: 'Tạo yêu cầu chuyển hàng',
       toLabel: 'Nơi nhận',
-      toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
+      toPlaceholder: 'Chọn chi nhánh nhận',
       listTitle: 'Danh sách hàng hóa cần chuyển',
       submit: 'Tạo yêu cầu chuyển hàng',
     }
@@ -191,12 +225,23 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (isWarehouseActor) {
       return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
     }
-    // Branch actor (BM hoặc tenant switch BR): chuyển/trả tới CN khác hoặc kho
+    // BR chuyển hàng: chỉ CN khác. BR trả hàng: kho / CN khác (không gồm nơi gửi).
     if (isBranchActor) {
+      if (branchRequestKind === 'transfer') {
+        return locations.filter(
+          (l) => l.type === 'branch' && l._id !== fromLocationId,
+        )
+      }
       return locations.filter((l) => l._id !== fromLocationId)
     }
     return locations.filter((l) => l._id !== fromLocationId)
-  }, [locations, fromLocationId, isWarehouseActor, isBranchActor])
+  }, [
+    locations,
+    fromLocationId,
+    isWarehouseActor,
+    isBranchActor,
+    branchRequestKind,
+  ])
 
   useEffect(() => {
     if (!open || !fromLocationId || !fromLocation) {
@@ -243,6 +288,15 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
           ? 'Kho chỉ được xuất từ kho của bạn'
           : 'Chi nhánh chỉ được xuất từ chi nhánh của bạn',
       )
+      return
+    }
+
+    if (
+      isBranchActor &&
+      branchRequestKind === 'transfer' &&
+      toLoc?.type !== 'branch'
+    ) {
+      toast.error('Chuyển hàng chỉ được gửi tới chi nhánh khác')
       return
     }
 
@@ -357,9 +411,12 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                     <p className="text-xs text-amber-600">
                       {isWarehouseActor
                         ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
-                        : 'Không có nơi nhận phù hợp.'}
+                        : isBranchActor && branchRequestKind === 'transfer'
+                          ? 'Chưa có chi nhánh khác để chuyển hàng.'
+                          : 'Không có nơi nhận phù hợp.'}
                     </p>
-                  )}                  <FormMessage />
+                  )}
+                  <FormMessage />
                 </FormItem>
               )} />
             </div>
@@ -402,11 +459,30 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                 </Button>
               </div>
 
+              <MovementProductSearch
+                usedIds={usedIds}
+                onPick={applyProduct}
+                searchScope="list"
+                poolProducts={products}
+                disabled={!fromLocationId}
+                metaMode="stock"
+                placeholder={
+                  fromLocationId
+                    ? 'Tìm hàng tại nơi gửi (có tồn)...'
+                    : 'Chọn nơi gửi trước'
+                }
+              />
+
               {fromLocationId && products.length === 0 && (
                 <p className="text-xs text-amber-600">{labels.noStockAtSource}</p>
               )}
 
-              {fields.map((f, idx) => (
+              {fields.map((f, idx) => {
+                const rowProductId = details[idx]?.productItemId
+                const pickerProducts = products.filter(
+                  (p) => p._id === rowProductId || !usedIds.has(p._id),
+                )
+                return (
                   <div key={f.id} className="space-y-3 rounded-lg border bg-muted/30 p-3">
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
@@ -418,8 +494,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                               <FormLabel className="text-xs">
                                 Hàng hóa <span className="text-destructive">*</span>
                               </FormLabel>
-                              <ProductSelect
-                                products={products}
+                              <ProductPickerField
+                                products={pickerProducts}
                                 value={field.value}
                                 metaMode="stock"
                                 onValueChange={(v) => {
@@ -532,7 +608,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                       </span>
                     </p>
                   </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-3">
