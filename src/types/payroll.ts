@@ -1,6 +1,6 @@
 // [Domain – Types]
 export type PayrollCycle = 'MONTHLY' | 'WEEKLY' | string;
-export type PeriodStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PAID';
+export type PeriodStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PAID' | 'CANCELLED';
 export type AdjustmentType = 'BONUS' | 'DEDUCTION';
 
 export interface PayrollSettings {
@@ -168,6 +168,9 @@ export interface PayrollPeriod {
   payslips: Payslip[];
   totalCost?: number;
   note?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
   createdAt?: string;
   updatedAt?: string;
 }

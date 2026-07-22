@@ -7,6 +7,7 @@ import { PayrollAdjustDialog } from './payroll-adjust-dialog'
 import { PayrollMarkPaidDialog } from './payroll-mark-paid-dialog'
 import { PayrollReturnDraftDialog } from './payroll-return-draft-dialog'
 import { PayrollPayslipDetailDialog } from './payroll-payslip-detail-dialog'
+import { PayrollCancelPeriodDialog } from './payroll-cancel-period-dialog'
 
 export function PayrollDialogs() {
   const { open, setOpen, currentRow, setCurrentRow, currentPayslip, setCurrentPayslip } = usePayroll()
@@ -75,6 +76,19 @@ export function PayrollDialogs() {
       {currentRow && open === 'returnDraft' && (
         <PayrollReturnDraftDialog
           open={open === 'returnDraft'}
+          onOpenChange={(v) => {
+            if (!v) {
+              setOpen(null)
+              setCurrentRow(null)
+            }
+          }}
+          currentRow={currentRow}
+        />
+      )}
+
+      {currentRow && open === 'cancelPeriod' && (
+        <PayrollCancelPeriodDialog
+          open={open === 'cancelPeriod'}
           onOpenChange={(v) => {
             if (!v) {
               setOpen(null)

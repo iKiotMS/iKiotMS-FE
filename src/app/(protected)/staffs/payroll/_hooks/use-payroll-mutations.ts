@@ -171,7 +171,7 @@ export function usePayrollMutations() {
         userIds: data.userIds,
       })
       setPeriods((prev) => [newPeriod, ...prev])
-      toast.success('Tạo kỳ lương mới thành công')
+      toast.success('Tạo kỳ lương nháp thành công')
       return true
     } catch (err) {
       const axiosError = err as { response?: { data?: { message?: string } } }
@@ -256,6 +256,25 @@ export function usePayrollMutations() {
     }
   }
 
+  async function handleCancelPeriod(id: string, reason: string): Promise<boolean> {
+    setIsLoading(true)
+    try {
+      const updated = await payrollApi.cancelPeriod(id, reason)
+      setPeriods((prev) => prev.map((p) => (p._id === id ? { ...p, ...updated } : p)))
+      if (activePeriod && activePeriod._id === id) {
+        setActivePeriod({ ...activePeriod, ...updated })
+      }
+      toast.success('Đã hủy kỳ lương nháp')
+      return true
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || 'Hủy kỳ lương thất bại')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   async function handleApprovePeriod(id: string): Promise<boolean> {
     setIsLoading(true)
     try {
@@ -311,6 +330,7 @@ export function usePayrollMutations() {
     handleCreatePeriod,
     handleAdjustPayslip,
     handleSubmitPeriod,
+    handleCancelPeriod,
     handleReturnToDraft,
     handleApprovePeriod,
     handleMarkPaid,
