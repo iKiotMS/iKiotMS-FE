@@ -79,21 +79,11 @@ export function HeroSection() {
               {/* Light mode dashboard video */}
               <video
                 src="/ikiot-tvc.mp4"
-                className="w-full rounded-xl object-cover block dark:hidden aspect-video"
+                className="w-full rounded-xl object-cover block aspect-video"
                 autoPlay
                 muted
                 loop
                 playsInline
-              />
-
-              {/* Dark mode dashboard image */}
-              <Image
-                src="/dashboard-dark.png"
-                alt="Dashboard Preview - Dark Mode"
-                width={1200}
-                height={800}
-                className="w-full rounded-xl object-cover hidden dark:block"
-                priority
               />
 
               {/* Bottom fade effect - gradient overlay that fades the image to background (only in dark mode) */}
