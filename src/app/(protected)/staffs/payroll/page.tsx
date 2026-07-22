@@ -4,7 +4,7 @@ import { getCachedUser } from '@/lib/auth'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Settings2 } from 'lucide-react'
+import { Banknote, Calendar, Plus, Settings2 } from 'lucide-react'
 import { usePayroll } from './_context/payroll-provider'
 import { PeriodsTable } from './_components/table/periods-table'
 import { PaysheetsTable } from './_components/table/paysheets-table'
@@ -114,15 +114,27 @@ export default function PayrollPage() {
           /* Tabbed Master View */
           <div className="animate-in fade-in slide-in-from-left-8 duration-300 ease-out-sine">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="bg-muted/80 p-1 border rounded-lg max-w-md grid grid-cols-3">
-              <TabsTrigger value="periods" className="cursor-pointer">
-                Kỳ lương
+            <TabsList className="bg-slate-200/60 dark:bg-slate-800/60 p-1.5 border border-slate-200/80 dark:border-slate-700/60 rounded-full max-w-lg grid grid-cols-3 h-11 gap-1">
+              <TabsTrigger
+                value="periods"
+                className="cursor-pointer rounded-full gap-2 transition-all duration-200 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 font-medium data-[state=active]:font-semibold"
+              >
+                <Calendar className="size-4" />
+                <span>Kỳ lương</span>
               </TabsTrigger>
-              <TabsTrigger value="paysheets" className="cursor-pointer">
-                Lương cơ bản
+              <TabsTrigger
+                value="paysheets"
+                className="cursor-pointer rounded-full gap-2 transition-all duration-200 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 font-medium data-[state=active]:font-semibold"
+              >
+                <Banknote className="size-4" />
+                <span>Lương cơ bản</span>
               </TabsTrigger>
-              <TabsTrigger value="settings" className="cursor-pointer">
-                Cấu hình
+              <TabsTrigger
+                value="settings"
+                className="cursor-pointer rounded-full gap-2 transition-all duration-200 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 font-medium data-[state=active]:font-semibold"
+              >
+                <Settings2 className="size-4" />
+                <span>Cấu hình</span>
               </TabsTrigger>
             </TabsList>
 
@@ -156,9 +168,9 @@ export default function PayrollPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Ngày bắt đầu chu kỳ:</span>
+                      <span className="text-muted-foreground">Khoảng tính lương:</span>
                       <span className="font-bold ml-2 text-slate-800 dark:text-slate-200">
-                        Ngày {settings.periodStartDay} hàng tháng
+                        Ngày 1 đến ngày cuối tháng
                       </span>
                     </div>
                     <div>

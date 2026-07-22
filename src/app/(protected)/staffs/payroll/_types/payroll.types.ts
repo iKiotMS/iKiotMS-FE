@@ -13,14 +13,13 @@ export type PayrollDialogType =
 
 export const payrollSettingsSchema = z.object({
   cycle: z.string().min(1, 'Chu kỳ lương là bắt buộc'),
-  periodStartDay: z
-    .number()
-    .min(1, 'Ngày bắt đầu tối thiểu là 1')
-    .max(28, 'Ngày bắt đầu tối đa là 28'),
   approveAfterPeriodEndDays: z.number().min(0, 'Số ngày duyệt không được âm'),
   payAfterPeriodEndDays: z.number().min(0, 'Số ngày thanh toán không được âm'),
   autoGenerate: z.boolean(),
-  standardWorkingDays: z.number().min(0, 'Số ngày công chuẩn không được âm'),
+  standardWorkingDays: z
+    .number()
+    .min(0, 'Số ngày công chuẩn không được âm')
+    .max(31, 'Số ngày công chuẩn không được vượt quá 31 ngày (ngày tối đa trong tháng)'),
   standardWorkingHoursPerDay: z.number().min(0, 'Số giờ làm việc/ngày không được âm'),
   weekendDays: z.array(z.number()),
   lateGraceMinutes: z.number().min(0, 'Thời gian đi muộn cho phép không được âm'),

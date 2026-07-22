@@ -143,7 +143,6 @@ export function usePayrollMutations() {
       } else {
         savedSettings = await payrollApi.createSettings({
           cycle: data.cycle,
-          periodStartDay: data.periodStartDay,
           approveAfterPeriodEndDays: data.approveAfterPeriodEndDays,
           payAfterPeriodEndDays: data.payAfterPeriodEndDays,
           autoGenerate: data.autoGenerate,
