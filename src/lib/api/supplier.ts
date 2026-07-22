@@ -50,7 +50,21 @@ export const supplierApi = {
     await client.delete(`/suppliers/${id}`)
   },
 
-  // Thanh toán công nợ: backend giảm outstandingDebt và tạo bản ghi CashFlow (chi).
+  // Bước 1 cho BANK_TRANSFER: tạo QR và lưu SupplierPaymentIntent (KHÔNG trừ tiền).
+  // Khi SePay webhook nhận được chuyển khoản, mới tự động commit.
+  initiateQr: async (
+    id: string,
+    amount: number,
+    note?: string,
+  ): Promise<{ qrUrl: string; paymentReference: string }> => {
+    const res = await client.post<{ data: { qrUrl: string; paymentReference: string } }>(
+      `/suppliers/${id}/payments/initiate-qr`,
+      { amount, note },
+    )
+    return res.data.data
+  },
+
+  // Bước 2: gọi sau khi user xác nhận đã chuyển khoản (hoặc trả tiền mặt).
   payDebt: async (id: string, payload: SupplierPayDebtPayload): Promise<Supplier> => {
     const res = await client.post<{ data: { supplier: SupplierDoc } }>(
       `/suppliers/${id}/payments`,
