@@ -31,7 +31,6 @@ export function useAccountSettings() {
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null)
 
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
 
   const isTenantOwner = canEditAccountProfile(user?.role)
 
@@ -280,9 +279,21 @@ export function useAccountSettings() {
     }
   }
 
+  const isDirty =
+    form.formState.isDirty ||
+    pendingAvatarFile !== null ||
+    (profileImage === null && Boolean(user?.profile?.avatarUrl))
+
+  const handleCancel = () => {
+    form.reset()
+    setPendingAvatarFile(null)
+    setProfileImage(user?.profile?.avatarUrl || null)
+  }
+
   return {
     user,
     form,
+    isDirty,
     profileImage,
     selectedImageSrc,
     isCropDialogOpen,
@@ -295,13 +306,12 @@ export function useAccountSettings() {
     isSaving,
     isPasswordDialogOpen,
     setIsPasswordDialogOpen,
-    twoFactorEnabled,
-    setTwoFactorEnabled,
     isTenantOwner,
     fileInputRef,
     handleFileUploadClick,
     handleFileChange,
     handleResetAvatar,
+    handleCancel,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,

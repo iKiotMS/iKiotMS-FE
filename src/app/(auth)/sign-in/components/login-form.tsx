@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -151,16 +152,12 @@ export function LoginForm2({
         <div className="grid gap-3">
           <div className="flex items-center">
             <Label htmlFor="password">Mật khẩu</Label>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                toast.info("Tính năng đang được phát triển.");
-              }}
+            <Link
+              href="/forgot-password"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Quên mật khẩu?
-            </a>
+            </Link>
           </div>
           <Input
             id="password"

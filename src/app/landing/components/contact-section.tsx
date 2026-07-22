@@ -20,10 +20,10 @@ import { Mail, MessageCircle, BookOpen } from "lucide-react";
 
 const contactFormSchema = z.object({
   firstName: z.string().min(2, {
-    message: "Họ phải có ít nhất 2 ký tự.",
+    message: "Tên phải có ít nhất 2 ký tự.",
   }),
   lastName: z.string().min(2, {
-    message: "Tên phải có ít nhất 2 ký tự.",
+    message: "Họ phải có ít nhất 2 ký tự.",
   }),
   email: z.string().email({
     message: "Vui lòng nhập email hợp lệ.",
@@ -162,7 +162,7 @@ export function ContactSection() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <FormField
                         control={form.control}
-                        name="firstName"
+                        name="lastName"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Họ</FormLabel>
@@ -175,7 +175,7 @@ export function ContactSection() {
                       />
                       <FormField
                         control={form.control}
-                        name="lastName"
+                        name="firstName"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Tên</FormLabel>

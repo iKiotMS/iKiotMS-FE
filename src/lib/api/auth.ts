@@ -174,3 +174,57 @@ export async function updateMe(payload: {
   );
   return response.data.data;
 }
+
+/**
+ * Change password for current logged in user
+ */
+export async function changePassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword?: string;
+}) {
+  const response = await client.post<{ success: boolean; message: string }>(
+    "/auth/change-password",
+    payload,
+  );
+  return response.data;
+}
+
+/**
+ * Request SMS OTP for password reset
+ */
+export async function sendForgotPasswordOtp(phoneNumber: string) {
+  const response = await client.post<{ success: boolean; message: string }>(
+    "/auth/send-forgot-password-otp",
+    { phoneNumber },
+  );
+  return response.data;
+}
+
+/**
+ * Verify SMS OTP and receive password reset token
+ */
+export async function verifyForgotPasswordOtp(phoneNumber: string, otpCode: string) {
+  const response = await client.post<{ success: boolean; resetToken: string; message: string }>(
+    "/auth/verify-forgot-password-otp",
+    { phoneNumber, otpCode },
+  );
+  return response.data;
+}
+
+/**
+ * Reset password using resetToken
+ */
+export async function resetPassword(payload: {
+  token?: string;
+  resetToken?: string;
+  newPassword: string;
+  confirmPassword?: string;
+}) {
+  const response = await client.post<{ success: boolean; message: string }>(
+    "/auth/reset-password",
+    payload,
+  );
+  return response.data;
+}
+

@@ -1,9 +1,15 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { PageHeader } from "@/components/page-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import * as React from "react";
+import { PageHeader } from "@/components/page-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -11,23 +17,22 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Upload, Loader2, Key, Shield, Info } from "lucide-react"
+} from "@/components/ui/select";
+import { Upload, Loader2, Key, Info } from "lucide-react";
 
-import { useAccountSettings } from "./hooks/use-account-settings"
-import { AvatarCropDialog } from "./components/avatar-crop-dialog"
-import { ChangePasswordDialog } from "./components/change-password-dialog"
+import { useAccountSettings } from "./hooks/use-account-settings";
+import { AvatarCropDialog } from "./components/avatar-crop-dialog";
+import { ChangePasswordDialog } from "./components/change-password-dialog";
 
 export default function AccountSettings() {
   const {
@@ -45,13 +50,12 @@ export default function AccountSettings() {
     isSaving,
     isPasswordDialogOpen,
     setIsPasswordDialogOpen,
-    twoFactorEnabled,
-    setTwoFactorEnabled,
     isTenantOwner,
     fileInputRef,
     handleFileUploadClick,
     handleFileChange,
     handleResetAvatar,
+    handleCancel,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -59,7 +63,8 @@ export default function AccountSettings() {
     handleTouchMove,
     handleApplyCrop,
     onSubmit,
-  } = useAccountSettings()
+    isDirty,
+  } = useAccountSettings();
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
@@ -76,14 +81,45 @@ export default function AccountSettings() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Thông tin cá nhân</CardTitle>
-              <CardDescription>
-                Cập nhật thông tin cá nhân hiển thị trên hồ sơ và thanh điều hướng.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardTitle>Thông tin cá nhân</CardTitle>
+                <CardDescription className="mt-1">
+                  Cập nhật thông tin cá nhân hiển thị trên hồ sơ và thanh điều
+                  hướng.
+                </CardDescription>
+              </div>
+              {isDirty && (
+                <div className="flex items-center space-x-2 shrink-0 animate-in fade-in-0 duration-200">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="cursor-pointer"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang lưu...
+                      </>
+                    ) : (
+                      "Lưu thay đổi"
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    size="sm"
+                    onClick={handleCancel}
+                    className="cursor-pointer"
+                    disabled={isSaving}
+                  >
+                    Hủy
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
-              
               {/* Profile Picture Section */}
               <div className="flex flex-col sm:flex-row items-center gap-6 pb-2">
                 <Avatar className="h-24 w-24 rounded-full border-4 border-background shadow-md">
@@ -303,25 +339,24 @@ export default function AccountSettings() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Địa chỉ</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Nhập địa chỉ của bạn"
+                          {...field}
+                          disabled={!isTenantOwner}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Địa chỉ</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Nhập địa chỉ của bạn"
-                        {...field}
-                        disabled={!isTenantOwner}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
 
@@ -358,31 +393,6 @@ export default function AccountSettings() {
                     Đổi mật khẩu
                   </Button>
                 </div>
-
-                {/* Xác thực 2 lớp Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 last:pb-0">
-                  <div className="flex gap-4 items-start">
-                    <Shield className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-semibold text-sm">
-                          Xác thực 2 lớp cho tài khoản của bạn
-                        </h4>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
-                      </div>
-                      <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-                        Yêu cầu mã xác thực khi bạn đăng nhập trên thiết bị lạ.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center self-start sm:self-center">
-                    <Switch
-                      id="two-factor"
-                      checked={twoFactorEnabled}
-                      onCheckedChange={setTwoFactorEnabled}
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           )}
@@ -418,33 +428,6 @@ export default function AccountSettings() {
               </CardContent>
             </Card>
           )}
-
-          {/* Action buttons at the bottom - Always visible */}
-          <div className="flex space-x-2 pt-2">
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang lưu...
-                </>
-              ) : (
-                "Lưu thay đổi"
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => form.reset()}
-              className="cursor-pointer"
-              disabled={isSaving}
-            >
-              Hủy
-            </Button>
-          </div>
         </form>
       </Form>
 
@@ -472,5 +455,5 @@ export default function AccountSettings() {
         userId={user?.id || ""}
       />
     </div>
-  )
+  );
 }

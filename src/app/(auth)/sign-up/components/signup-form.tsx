@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,11 +32,20 @@ export function SignupForm2({
   const [isChecking, setIsChecking] = useState(false);
   const [otpPhase, setOtpPhase] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [cooldown, setCooldown] = useState(0);
   const [pendingData, setPendingData] = useState<SignupInput | null>(null);
   const router = useRouter();
   const planParam = useSearchParams().get("plan");
   const pendingPlan = planParam && planParam !== "TRIAL" ? planParam : null;
   const { sendOtp, isSending } = usePhoneOtp();
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const {
     register,
@@ -148,6 +157,7 @@ export function SignupForm2({
 
   // First step: validate the form, then send the OTP (or bypass in dev).
   const onSubmit = async (data: SignupInput) => {
+    if (cooldown > 0) return;
     // Pre-check uniqueness first — stop early (and keep the SMS) if taken.
     const isAvailable = await checkAvailability(data);
     if (!isAvailable) return;
@@ -161,6 +171,7 @@ export function SignupForm2({
       setPendingData(data);
       setOtpPhase(true);
       setOtpCode("");
+      setCooldown(90);
       toast.success(`Đã gửi mã OTP đến ${data.phoneNumber}.`);
     } catch (error) {
       console.error("Send OTP error:", error);
@@ -191,10 +202,11 @@ export function SignupForm2({
   };
 
   const handleResendOtp = async () => {
-    if (!pendingData) return;
+    if (!pendingData || cooldown > 0) return;
     try {
       await sendOtp(pendingData.phoneNumber);
       setOtpCode("");
+      setCooldown(90);
       toast.success("Đã gửi lại mã OTP.");
     } catch (error) {
       console.error("Resend OTP error:", error);
@@ -260,10 +272,14 @@ export function SignupForm2({
           <button
             type="button"
             onClick={handleResendOtp}
-            disabled={isSending || isLoading}
+            disabled={cooldown > 0 || isSending || isLoading}
             className="underline underline-offset-4 hover:text-primary disabled:opacity-50"
           >
-            {isSending ? "Đang gửi lại..." : "Gửi lại mã"}
+            {isSending
+              ? "Đang gửi lại..."
+              : cooldown > 0
+                ? `Gửi lại mã (${cooldown}s)`
+                : "Gửi lại mã"}
           </button>
         </div>
       </div>
@@ -291,30 +307,30 @@ export function SignupForm2({
           </h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="firstName">Họ</Label>
-              <Input
-                id="firstName"
-                placeholder="Nguyễn"
-                disabled={isLoading}
-                {...register("firstName")}
-              />
-              {errors.firstName && (
-                <p className="text-xs font-medium text-destructive">
-                  {errors.firstName.message}
-                </p>
-              )}
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="lastName">Tên</Label>
+              <Label htmlFor="lastName">Họ</Label>
               <Input
                 id="lastName"
-                placeholder="Văn A"
+                placeholder="Nguyễn"
                 disabled={isLoading}
                 {...register("lastName")}
               />
               {errors.lastName && (
                 <p className="text-xs font-medium text-destructive">
                   {errors.lastName.message}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="firstName">Tên</Label>
+              <Input
+                id="firstName"
+                placeholder="Văn A"
+                disabled={isLoading}
+                {...register("firstName")}
+              />
+              {errors.firstName && (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.firstName.message}
                 </p>
               )}
             </div>
@@ -441,7 +457,7 @@ export function SignupForm2({
         <Button
           type="submit"
           className="w-full cursor-pointer mt-1"
-          disabled={isChecking || isLoading || isSending}
+          disabled={cooldown > 0 || isChecking || isLoading || isSending}
         >
           {isChecking
             ? "Đang kiểm tra thông tin..."
@@ -449,9 +465,11 @@ export function SignupForm2({
               ? "Đang gửi mã OTP..."
               : isLoading
                 ? "Đang xử lý..."
-                : OTP_BYPASS
-                  ? "Đăng ký cửa hàng"
-                  : "Tiếp tục & nhận mã OTP"}
+                : cooldown > 0
+                  ? `Tiếp tục & nhận mã OTP (${cooldown}s)`
+                  : OTP_BYPASS
+                    ? "Đăng ký cửa hàng"
+                    : "Tiếp tục & nhận mã OTP"}
         </Button>
       </div>
 

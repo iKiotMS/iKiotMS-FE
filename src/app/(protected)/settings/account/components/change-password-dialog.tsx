@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
-import { staffApi } from "@/lib/api/staff"
+import { changePassword } from "@/lib/api/auth"
 import { useAuthStore } from "@/store/auth-store"
 import { useRouter } from "next/navigation"
 
@@ -47,6 +47,11 @@ export function ChangePasswordDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!form.currentPassword) {
+      toast.error("Vui lòng nhập mật khẩu hiện tại")
+      return
+    }
+
     if (!form.newPassword || !form.confirmPassword) {
       toast.error("Vui lòng điền đầy đủ thông tin mật khẩu mới")
       return
@@ -64,9 +69,10 @@ export function ChangePasswordDialog({
 
     setIsSaving(true)
     try {
-      await staffApi.updatePassword(userId, {
+      await changePassword({
+        currentPassword: form.currentPassword,
         newPassword: form.newPassword,
-        reEnterPassword: form.confirmPassword,
+        confirmPassword: form.confirmPassword,
       })
 
       toast.success("Đổi mật khẩu thành công! Hệ thống sẽ tự động đăng xuất...")

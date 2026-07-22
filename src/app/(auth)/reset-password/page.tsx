@@ -1,9 +1,10 @@
-import { ForgotPasswordForm2 } from "./components/forgot-password-form";
+import { Suspense } from "react";
+import { ResetPasswordForm } from "./components/reset-password-form";
 import { Logo } from "@/components/logo";
 import Link from "next/link";
 import Image from "next/image";
 
-export default function ForgotPassword2Page() {
+export default function ResetPasswordPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
@@ -17,7 +18,9 @@ export default function ForgotPassword2Page() {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-md">
-            <ForgotPasswordForm2 />
+            <Suspense fallback={<div className="text-center p-4">Đang tải...</div>}>
+              <ResetPasswordForm />
+            </Suspense>
           </div>
         </div>
       </div>

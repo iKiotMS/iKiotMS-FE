@@ -6,8 +6,8 @@ export const loginSchema = z.object({
 });
 
 export const signupSchema = z.object({
-  firstName: z.string().min(1, { message: "Vui lòng nhập họ." }),
-  lastName: z.string().min(1, { message: "Vui lòng nhập tên." }),
+  firstName: z.string().min(1, { message: "Vui lòng nhập tên." }),
+  lastName: z.string().min(1, { message: "Vui lòng nhập họ." }),
   phoneNumber: z.string().regex(/^[0-9+]{9,15}$/, { message: "Vui lòng nhập số điện thoại hợp lệ (9-15 ký tự)." }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 ký tự." }),
   confirmPassword: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 ký tự." }),
