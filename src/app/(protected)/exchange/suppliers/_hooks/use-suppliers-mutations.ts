@@ -100,19 +100,6 @@ export function useSuppliersMutations() {
     }
   }
 
-  async function handleInitiateQr(
-    id: string,
-    amount: number,
-    note?: string,
-  ): Promise<{ qrUrl: string; paymentReference: string } | null> {
-    try {
-      return await supplierApi.initiateQr(id, amount, note)
-    } catch (error) {
-      toast.error(extractErrorMessage(error, 'Không thể tạo mã QR thanh toán'))
-      return null
-    }
-  }
-
   async function handlePayDebt(id: string, payload: SupplierPayDebtPayload): Promise<boolean> {
     setIsLoading(true)
     try {
@@ -128,9 +115,5 @@ export function useSuppliersMutations() {
     }
   }
 
-  function updateSupplierInList(updated: Supplier) {
-    setSuppliers((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
-  }
-
-  return { suppliers, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany, handleInitiateQr, handlePayDebt, updateSupplierInList }
+  return { suppliers, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany, handlePayDebt }
 }
