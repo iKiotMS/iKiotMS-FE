@@ -6,7 +6,6 @@ export type AdjustmentType = 'BONUS' | 'DEDUCTION';
 export interface PayrollSettings {
   _id?: string;
   cycle: PayrollCycle;
-  periodStartDay: number;
   approveAfterPeriodEndDays: number;
   payAfterPeriodEndDays: number;
   autoGenerate: boolean;

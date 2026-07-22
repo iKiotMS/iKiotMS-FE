@@ -118,7 +118,7 @@ export default function MyPayslipsPage() {
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mt-1.5">
-              Xin chào, {userFullName}! 👋
+              Xin chào, {userFullName}!
             </h1>
             <p className="text-xs text-muted-foreground">
               Tra cứu biên lai lương chi tiết và quá trình cống hiến của bạn tại chi nhánh.

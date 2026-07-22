@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clock, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Clock, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +28,18 @@ import { cn } from "@/lib/utils";
 import { useSchedule } from "./schedule-provider";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function getShiftDurationHours(startTime: string, endTime: string): number {
+  if (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)) return 0;
+  const [sH, sM] = startTime.split(":").map(Number);
+  const [eH, eM] = endTime.split(":").map(Number);
+  let startMinutes = sH * 60 + sM;
+  let endMinutes = eH * 60 + eM;
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60; // Ca qua đêm
+  }
+  return Number(((endMinutes - startMinutes) / 60).toFixed(1));
+}
 
 const shiftTemplateSchema = z.object({
   name: z.string().trim().min(1, "Tên ca mẫu là bắt buộc"),
@@ -135,6 +148,10 @@ export function ShiftTemplateDialog({
     );
   }
 
+  const startTimeValue = useWatch({ control: form.control, name: "startTime" });
+  const endTimeValue = useWatch({ control: form.control, name: "endTime" });
+  const shiftDuration = getShiftDurationHours(startTimeValue || "", endTimeValue || "");
+
   function beginEdit() {
     if (!selectedTemplate) return;
     enterEditMode(selectedTemplate);
@@ -146,6 +163,14 @@ export function ShiftTemplateDialog({
   }
 
   async function onSubmit(values: ShiftTemplateFormValues) {
+    const duration = getShiftDurationHours(values.startTime, values.endTime);
+    if (duration > 8) {
+      toast.warning(
+        `Cảnh báo: Ca làm việc "${values.name}" có thời lượng (${duration} tiếng) vượt quá 8 tiếng, nhưng hệ thống vẫn ghi nhận ca này.`,
+        { duration: 5000 }
+      );
+    }
+
     if (editingTemplate) {
       await handleUpdateShiftTemplate(editingTemplate._id, values);
       cancelEdit();
@@ -194,33 +219,68 @@ export function ShiftTemplateDialog({
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="startTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Giờ bắt đầu</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="endTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Giờ kết thúc</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="group relative">
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={cn('transition-colors', shiftDuration > 8 && 'text-amber-600 dark:text-amber-400 font-semibold')}>
+                          Giờ bắt đầu
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            className={cn(
+                              'transition-colors',
+                              shiftDuration > 8 && 'border-amber-500 text-amber-600 dark:text-amber-400 font-semibold bg-amber-50/20 dark:bg-amber-950/20 focus-visible:ring-amber-500/40'
+                            )}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={cn('transition-colors', shiftDuration > 8 && 'text-amber-600 dark:text-amber-400 font-semibold')}>
+                          Giờ kết thúc
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            className={cn(
+                              'transition-colors',
+                              shiftDuration > 8 && 'border-amber-500 text-amber-600 dark:text-amber-400 font-semibold bg-amber-50/20 dark:bg-amber-950/20 focus-visible:ring-amber-500/40'
+                            )}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {shiftDuration > 8 && (
+                  <div className="hidden group-hover:block group-focus-within:block absolute z-30 top-full left-0 mt-1.5 w-full rounded-lg bg-amber-50 dark:bg-amber-950/95 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 p-2.5 text-xs shadow-xl animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="absolute -top-1.5 left-5 size-3 bg-amber-50 dark:bg-amber-950/95 border-t border-l border-amber-200 dark:border-amber-800 rotate-45" />
+                    <div className="flex items-start gap-2 relative z-10">
+                      <AlertTriangle className="size-4 shrink-0 text-amber-500 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-amber-800 dark:text-amber-300">Cảnh báo thời lượng ca làm việc</p>
+                        <p className="mt-0.5 text-amber-700/90 dark:text-amber-400">
+                          Ca làm việc này ({shiftDuration} tiếng) đang vượt quá 8 tiếng (vẫn cho phép lưu).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
           </Form>
