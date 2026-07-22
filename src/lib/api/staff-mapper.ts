@@ -195,22 +195,144 @@ export function getApiFieldErrors(
 
   const data = (error as { response?: { data?: Record<string, unknown> } })
     .response?.data;
-  const errors = data?.errors;
+  if (!data || typeof data !== "object") return undefined;
 
-  if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
-    return undefined;
-  }
+  const rawErrors =
+    data.errors ??
+    (typeof data.data === "object" &&
+    data.data !== null &&
+    !Array.isArray(data.data)
+      ? (data.data as Record<string, unknown>).errors
+      : undefined);
 
   const mapped: Record<string, string> = {};
-  for (const [key, value] of Object.entries(errors)) {
-    if (typeof value === "string") {
-      mapped[key] = value;
-    } else if (Array.isArray(value) && typeof value[0] === "string") {
-      mapped[key] = value[0];
+
+  if (Array.isArray(rawErrors)) {
+    for (const item of rawErrors) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      const key =
+        (typeof row.field === "string" && row.field) ||
+        (typeof row.path === "string" && row.path) ||
+        (typeof row.param === "string" && row.param) ||
+        undefined;
+      const message =
+        (typeof row.message === "string" && row.message) ||
+        (typeof row.msg === "string" && row.msg) ||
+        undefined;
+      if (key && message) mapped[key] = message;
+    }
+  } else if (rawErrors && typeof rawErrors === "object") {
+    for (const [key, value] of Object.entries(rawErrors)) {
+      if (typeof value === "string") {
+        mapped[key] = value;
+      } else if (Array.isArray(value) && typeof value[0] === "string") {
+        mapped[key] = value[0];
+      } else if (value && typeof value === "object") {
+        const nested = value as Record<string, unknown>;
+        if (typeof nested.message === "string") mapped[key] = nested.message;
+        else if (typeof nested.msg === "string") mapped[key] = nested.msg;
+      }
     }
   }
 
+  // Một số BE chỉ trả message + field ở root
+  if (
+    Object.keys(mapped).length === 0 &&
+    typeof data.field === "string" &&
+    typeof data.message === "string" &&
+    data.message !== "Validation failed"
+  ) {
+    mapped[data.field] = data.message;
+  }
+
   return Object.keys(mapped).length > 0 ? mapped : undefined;
+}
+
+const STAFF_FORM_FIELD_KEYS = new Set([
+  "firstName",
+  "lastName",
+  "phoneNumber",
+  "email",
+  "role",
+  "branchId",
+  "warehouseId",
+  "hireDate",
+  "paySheetId",
+  "identificationId",
+  "address",
+  "gender",
+  "dob",
+  "taxNumber",
+  "newPassword",
+  "reEnterPassword",
+  "accountNote",
+]);
+
+/** Gợi ý field từ nội dung message khi BE trả `general`. */
+function inferStaffFormFieldFromMessage(message: string): string | undefined {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("điện thoại") ||
+    lower.includes("phone") ||
+    lower.includes("sđt")
+  ) {
+    return "phoneNumber";
+  }
+  if (lower.includes("email")) return "email";
+  if (
+    lower.includes("căn cước") ||
+    lower.includes("cccd") ||
+    lower.includes("identification")
+  ) {
+    return "identificationId";
+  }
+  if (lower.includes("ngày sinh") || lower.includes("dob")) return "dob";
+  if (lower.includes("giới tính") || lower.includes("gender")) return "gender";
+  if (lower.includes("chi nhánh") || lower.includes("branch")) return "branchId";
+  if (lower.includes("kho") || lower.includes("warehouse")) return "warehouseId";
+  if (lower.includes("mật khẩu") || lower.includes("password")) {
+    return "newPassword";
+  }
+  return undefined;
+}
+
+export function getApiFormFieldErrors(
+  error: unknown,
+): Record<string, string> | undefined {
+  const errors = getApiFieldErrors(error);
+  if (!errors) return undefined;
+
+  const mapped: Record<string, string> = {};
+  for (const [key, message] of Object.entries(errors)) {
+    if (!message) continue;
+
+    if (key === "general") {
+      const inferred = inferStaffFormFieldFromMessage(message);
+      if (inferred) mapped[inferred] = message;
+      continue;
+    }
+
+    const formKey = key.includes(".") ? (key.split(".").pop() ?? key) : key;
+    if (STAFF_FORM_FIELD_KEYS.has(formKey)) {
+      mapped[formKey] = message;
+    } else {
+      const inferred = inferStaffFormFieldFromMessage(message);
+      if (inferred) mapped[inferred] = message;
+    }
+  }
+  return Object.keys(mapped).length > 0 ? mapped : undefined;
+}
+
+/** Lỗi validate staff từ BE — form gắn từng ô, không toast chung. */
+export function isStaffApiValidationError(error: unknown): boolean {
+  if (getApiFormFieldErrors(error)) return true;
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return false;
+  }
+  const data = (error as { response?: { data?: Record<string, unknown> } })
+    .response?.data;
+  return data?.message === "Validation failed";
 }
 
 export function getApiErrorMessage(error: unknown): string {
@@ -234,6 +356,20 @@ export function getApiErrorMessage(error: unknown): string {
       }
       if (data.message.includes("phân công quản lý")) {
         return data.message;
+      }
+      if (data.message === "Validation failed") {
+        const formFields = getApiFormFieldErrors(error);
+        if (formFields) {
+          const first = Object.values(formFields).find(Boolean);
+          if (first) return first;
+        }
+        const fieldErrors = getApiFieldErrors(error);
+        if (fieldErrors?.general) return fieldErrors.general;
+        const firstField = fieldErrors
+          ? Object.values(fieldErrors).find(Boolean)
+          : undefined;
+        if (firstField) return firstField;
+        return "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại các trường đã nhập.";
       }
       return data.message;
     }

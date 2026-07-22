@@ -14,14 +14,13 @@ import {
   FieldError,
   MoneyCell,
   MoneyInput,
-  ProductPickerField,
+  ProductLineDisplay,
   ProductSummary,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import {
   formatMoneyVnd,
   type OpeningRowFieldErrors,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
-import { resolveItemImportPrice } from "@/lib/api/stock-movement";
 import type { OpeningDetailRow } from "@/app/(protected)/exchange/shared/use-stock-movement-detail";
 import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { cn } from "@/lib/utils";
@@ -47,13 +46,12 @@ export function MovementDetailsTable({
   updateOpeningRow,
   removeOpeningRow,
   pickOpeningProduct,
-  ensureOpeningProduct,
   receivedQtys,
   setReceivedQtys,
   totalValue,
   totalQty,
   openingTotalQty,
-  /** IMPORT: catalog = TO tìm all; list = WH chỉ trong SP NCC (openingProducts). */
+  /** IMPORT: catalog = TO/WH tìm all; list = role khác trong SP NCC. */
   importSearchScope = "catalog",
 }: {
   mode: Mode;
@@ -71,7 +69,6 @@ export function MovementDetailsTable({
   updateOpeningRow: (idx: number, patch: Partial<OpeningDetailRow>) => void;
   removeOpeningRow: (idx: number) => void;
   pickOpeningProduct?: (item: StockMovementProductItemOption) => void;
-  ensureOpeningProduct?: (item: StockMovementProductItemOption) => void;
   receivedQtys: Record<string, number>;
   setReceivedQtys: Dispatch<SetStateAction<Record<string, number>>>;
   totalValue: number;
@@ -175,10 +172,6 @@ export function MovementDetailsTable({
                   const display = selected ?? fallback;
                   const rowErr = openingRowErrors[idx] ?? {};
                   const lineTotal = (item.importPrice ?? 0) * item.quantity;
-                  const pickerProducts = openingProducts.filter(
-                    (p) =>
-                      p._id === item.productItemId || !usedIds.has(p._id),
-                  );
                   const selectedProduct = productById.get(item.productItemId);
                   const stockMax =
                     mode === "transfer" &&
@@ -195,41 +188,11 @@ export function MovementDetailsTable({
                       )}
                     >
                       <div className="min-w-0 overflow-hidden">
-                        <ProductPickerField
-                          products={pickerProducts}
-                          value={item.productItemId}
-                          displayProduct={
-                            display &&
-                            !pickerProducts.some((p) => p._id === display._id)
-                              ? display
-                              : undefined
-                          }
+                        <ProductLineDisplay
+                          product={selectedProduct ?? display}
+                          name={display?.name}
+                          sku={display?.sku}
                           metaMode={mode === "import" ? "price" : "stock"}
-                          placeholder={
-                            mode === "import" && openingProducts.length === 0
-                              ? "Chọn NCC có hàng hoặc dùng ô tìm"
-                              : "Chọn mặt hàng"
-                          }
-                          onValueChange={(value) => {
-                            const product = productById.get(value);
-                            if (product) ensureOpeningProduct?.(product);
-                            const nextQty =
-                              mode === "transfer" &&
-                              typeof product?.stock === "number"
-                                ? Math.min(
-                                    Math.max(1, item.quantity || 1),
-                                    Math.max(1, product.stock),
-                                  )
-                                : item.quantity;
-                            updateOpeningRow(idx, {
-                              productItemId: value,
-                              quantity: nextQty,
-                              importPrice: Math.min(
-                                Math.max(0, resolveItemImportPrice(product)),
-                                1_000_000_000_000,
-                              ),
-                            });
-                          }}
                         />
                         <FieldError message={rowErr.productItemId} />
                       </div>

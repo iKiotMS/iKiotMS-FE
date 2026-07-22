@@ -348,41 +348,31 @@ useEffect(() => {
   }
 
   async function handleAdd(payload: CreateStaffPayload) {
-    try {
-      const created = await staffApi.create(payload);
+    const created = await staffApi.create(payload);
 
-      if (payload.newPassword && payload.reEnterPassword) {
-        try {
-          await staffApi.createAccount(created._id, {
-            newPassword: payload.newPassword,
-            reEnterPassword: payload.reEnterPassword,
-          });
-          toast.success("Đã thêm nhân viên");
-        } catch {
-          toast.warning(
-            "Đã tạo nhân viên nhưng chưa kích hoạt tài khoản. Bạn có thể kích hoạt sau.",
-          );
-        }
-      } else {
+    if (payload.newPassword && payload.reEnterPassword) {
+      try {
+        await staffApi.createAccount(created._id, {
+          newPassword: payload.newPassword,
+          reEnterPassword: payload.reEnterPassword,
+        });
         toast.success("Đã thêm nhân viên");
+      } catch {
+        toast.warning(
+          "Đã tạo nhân viên nhưng chưa kích hoạt tài khoản. Bạn có thể kích hoạt sau.",
+        );
       }
-
-      await fetchStaffs();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-      throw error;
+    } else {
+      toast.success("Đã thêm nhân viên");
     }
+
+    await fetchStaffs();
   }
 
   async function handleEdit(id: string, payload: UpdateStaffPayload) {
-    try {
-      await staffApi.update(id, payload);
-      toast.success("Đã cập nhật nhân viên");
-      await fetchStaffs();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-      throw error;
-    }
+    await staffApi.update(id, payload);
+    toast.success("Đã cập nhật nhân viên");
+    await fetchStaffs();
   }
 
   async function handleDelete(id: string, replacementManagerId?: string) {

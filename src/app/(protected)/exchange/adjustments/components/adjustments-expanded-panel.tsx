@@ -30,7 +30,7 @@ import { MovementOrderNote } from "@/app/(protected)/exchange/shared/movement-or
 import { CancelConfirmDialog } from "@/app/(protected)/exchange/shared/cancel-confirm-dialog";
 import {
   InfoItem,
-  ProductPickerField,
+  ProductLineDisplay,
   ProductSummary,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
@@ -314,14 +314,8 @@ export function AdjustmentsExpandedPanel({
           <TableBody>
             {canEditPending
               ? editRows.map((row, idx) => {
-                  const usedIds = new Set(
-                    editRows
-                      .map((r) => r.productItemId)
-                      .filter(Boolean),
-                  );
-                  const pickerProducts = products.filter(
-                    (p) =>
-                      p._id === row.productItemId || !usedIds.has(p._id),
+                  const selected = products.find(
+                    (p) => p._id === row.productItemId,
                   );
                   const diff = getAdjustQtyChange(
                     row.quantity,
@@ -330,29 +324,9 @@ export function AdjustmentsExpandedPanel({
                   return (
                     <TableRow key={`${row.productItemId || "new"}-${idx}`}>
                       <TableCell className="max-w-0 min-w-[14rem] align-top whitespace-normal overflow-hidden">
-                        <ProductPickerField
-                          products={pickerProducts}
-                          value={row.productItemId}
+                        <ProductLineDisplay
+                          product={selected}
                           metaMode="stock"
-                          placeholder="Chọn mặt hàng"
-                          onValueChange={(value) => {
-                            const p = products.find((x) => x._id === value);
-                            setEditRows((prev) =>
-                              prev.map((r, i) =>
-                                i === idx
-                                  ? {
-                                      ...r,
-                                      productItemId: value,
-                                      quantity: p?.stock ?? r.quantity,
-                                      receivedQuantity:
-                                        typeof p?.stock === "number"
-                                          ? p.stock
-                                          : r.receivedQuantity,
-                                    }
-                                  : r,
-                              ),
-                            );
-                          }}
                         />
                       </TableCell>
                       <TableCell className="align-top text-right tabular-nums">

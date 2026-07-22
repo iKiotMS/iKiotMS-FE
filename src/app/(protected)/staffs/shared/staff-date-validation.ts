@@ -4,7 +4,6 @@ import {
   isValid,
   parseISO,
   startOfDay,
-  subYears,
 } from "date-fns";
 
 export const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,14 +40,17 @@ export function validateOptionalDob(value?: string): {
   const trimmed = value?.trim();
   if (!trimmed) return { ok: true };
 
-  if (!DATE_INPUT_PATTERN.test(trimmed)) {
+  const iso = DATE_INPUT_PATTERN.test(trimmed)
+    ? trimmed
+    : viDateToIso(trimmed);
+  if (!iso) {
     return {
       ok: false,
-      message: "Ngày sinh phải đủ định dạng ngày/tháng/năm (YYYY-MM-DD)",
+      message: "Ngày sinh phải đủ định dạng ngày/tháng/năm (dd/mm/yyyy)",
     };
   }
 
-  const dob = parseDateInput(trimmed);
+  const dob = parseDateInput(iso);
   if (!dob) {
     return { ok: false, message: "Ngày sinh không hợp lệ" };
   }
@@ -133,21 +135,19 @@ export function validateOptionalHireDate(
 }
 
 export function normalizeDateInput(value?: string): string | undefined {
-  const parsed = parseDateInput(value);
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  const iso = DATE_INPUT_PATTERN.test(trimmed)
+    ? trimmed
+    : viDateToIso(trimmed);
+  const parsed = parseDateInput(iso);
   if (!parsed) return undefined;
 
   const year = parsed.getFullYear();
   const month = String(parsed.getMonth() + 1).padStart(2, "0");
   const day = String(parsed.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-export function getDobInputBounds() {
-  const today = startOfDay(new Date());
-  return {
-    min: formatDateForInput(subYears(today, 100)),
-    max: formatDateForInput(today),
-  };
 }
 
 export function getHireDateInputBounds() {
@@ -173,4 +173,31 @@ export function isValidTaxNumber(value?: string): boolean {
 
 export function parseTaxNumber(value?: string): string {
   return (value ?? "").replace(/\D/g, "").slice(0, 14);
+}
+
+/** yyyy-MM-dd → dd/mm/yyyy */
+export function isoDateToViDisplay(value?: string): string {
+  const iso = value?.trim() ?? "";
+  if (!DATE_INPUT_PATTERN.test(iso)) return "";
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+/** Mask nhập dd/mm/yyyy. */
+export function maskViDateInput(value?: string): string {
+  const digits = (value ?? "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+/** dd/mm/yyyy → yyyy-MM-dd khi đủ và hợp lệ. */
+export function viDateToIso(value?: string): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (digits.length !== 8) return "";
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  const iso = `${year}-${month}-${day}`;
+  return parseDateInput(iso) ? iso : "";
 }

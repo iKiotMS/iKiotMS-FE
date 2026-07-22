@@ -7,13 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -137,16 +130,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
   },
 );
 
-/* ─── Product picker ─── */
-
-const PRODUCT_TRIGGER_CLASS =
-  "!h-auto min-h-11 w-full min-w-0 items-start justify-between gap-2 overflow-hidden px-3 py-2.5 text-left text-sm !whitespace-normal " +
-  "data-[size=default]:!h-auto data-[size=default]:min-h-11 " +
-  "*:data-[slot=select-value]:!line-clamp-none *:data-[slot=select-value]:flex " +
-  "*:data-[slot=select-value]:h-auto *:data-[slot=select-value]:w-full *:data-[slot=select-value]:min-w-0 " +
-  "*:data-[slot=select-value]:max-w-full *:data-[slot=select-value]:items-start " +
-  "*:data-[slot=select-value]:overflow-hidden *:data-[slot=select-value]:!whitespace-normal " +
-  "[&>svg]:mt-1.5 [&>svg]:shrink-0";
+/* ─── Product display ─── */
 
 const CHIP_MAX = 3;
 
@@ -282,203 +266,34 @@ export function ProductSummary({
   );
 }
 
-function ProductMeta({
+/** Dòng hàng trên phiếu: chỉ hiện tóm tắt — chọn qua ô tìm, không dùng dropdown. */
+export function ProductLineDisplay({
   product,
-  mode,
+  name,
+  sku,
+  metaMode = "skuOnly",
+  emptyHint = "Dùng ô tìm phía trên để chọn hàng",
 }: {
-  product: StockMovementProductItemOption;
-  mode: ProductMetaMode;
+  product?: StockMovementProductItemOption;
+  name?: string;
+  sku?: string;
+  metaMode?: ProductMetaMode;
+  emptyHint?: string;
 }) {
-  const sku = product.sku ? (
-    <span className="truncate">SKU: {product.sku}</span>
-  ) : null;
-
-  if (mode === "price") {
+  if (!product && !(name?.trim())) {
     return (
-      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-snug">
-        {sku}
-        {typeof product.retailPrice === "number" ? (
-          <span className="shrink-0">
-            Giá bán: {formatMoneyVnd(product.retailPrice)}
-          </span>
-        ) : null}
-      </span>
+      <p className="flex min-h-11 min-w-0 items-center rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 px-3 text-sm text-muted-foreground">
+        {emptyHint}
+      </p>
     );
   }
 
-  if (mode === "stock") {
-    return (
-      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-snug">
-        {sku}
-        {typeof product.stock === "number" ? (
-          <Badge
-            variant="secondary"
-            className="h-5 px-1.5 text-[10px] font-normal"
-          >
-            Tồn: {product.stock.toLocaleString("vi-VN")}
-          </Badge>
-        ) : null}
-      </span>
-    );
-  }
-
-  if (!product.sku) return null;
   return (
-    <span className="min-w-0 truncate text-xs text-muted-foreground leading-snug">
-      SKU: {product.sku}
-      {typeof product.stock === "number"
-        ? ` · Tồn: ${product.stock.toLocaleString("vi-VN")}`
-        : ""}
-    </span>
-  );
-}
-
-const ProductOptionLabel = React.memo(function ProductOptionLabel({
-  product,
-  mode,
-}: {
-  product: StockMovementProductItemOption;
-  mode: ProductMetaMode;
-}) {
-  return (
-    <span className="flex w-full min-w-0 max-w-full items-start gap-2.5 overflow-hidden text-left">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={safeImageSrc(product.imageUrl)}
-        alt=""
-        className="size-9 shrink-0 rounded-md border object-cover bg-muted"
-        loading="lazy"
-      />
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden">
-        <span className="truncate font-medium leading-snug">{product.name}</span>
-        <ProductMeta product={product} mode={mode} />
-      </span>
-    </span>
-  );
-});
-
-function resolveSelectedProduct(
-  products: StockMovementProductItemOption[],
-  value: string,
-  displayProduct?: StockMovementProductItemOption,
-) {
-  return (
-    products.find((p) => p._id === value) ??
-    (displayProduct?._id === value ? displayProduct : undefined)
-  );
-}
-
-function ProductSelect({
-  products,
-  value,
-  onValueChange,
-  placeholder = "Chọn hàng hóa",
-  metaMode = "skuOnly",
-  className,
-  disabled,
-  displayProduct,
-}: {
-  products: StockMovementProductItemOption[];
-  value: string;
-  onValueChange: (value: string) => void;
-  placeholder?: string;
-  metaMode?: ProductMetaMode;
-  className?: string;
-  disabled?: boolean;
-  displayProduct?: StockMovementProductItemOption;
-}) {
-  const resolvedDisplay = displayProduct
-    ? displayProduct
-    : value && !products.some((p) => p._id === value)
-      ? ({
-          _id: value,
-          name: "Đang tải...",
-          sku: "",
-        } satisfies StockMovementProductItemOption)
-      : undefined;
-
-  const selected = resolveSelectedProduct(products, value, resolvedDisplay);
-  const orphan =
-    !!resolvedDisplay &&
-    resolvedDisplay._id === value &&
-    !products.some((p) => p._id === resolvedDisplay._id);
-
-  return (
-    <Select
-      value={value || undefined}
-      onValueChange={onValueChange}
-      disabled={disabled}
-    >
-      <SelectTrigger className={cn(PRODUCT_TRIGGER_CLASS, className)}>
-        <SelectValue placeholder={placeholder}>
-          {selected ? (
-            <ProductOptionLabel product={selected} mode={metaMode} />
-          ) : undefined}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent
-        position="popper"
-        className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]"
-      >
-        {orphan && resolvedDisplay ? (
-          <SelectItem value={resolvedDisplay._id} className="py-2.5" disabled>
-            <ProductOptionLabel product={resolvedDisplay} mode={metaMode} />
-          </SelectItem>
-        ) : null}
-        {products.length === 0 && !orphan ? (
-          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-            Không có hàng hóa
-          </div>
-        ) : (
-          products.map((p) => (
-            <SelectItem
-              key={p._id}
-              value={p._id}
-              className="items-start overflow-hidden py-2.5"
-            >
-              <ProductOptionLabel product={p} mode={metaMode} />
-            </SelectItem>
-          ))
-        )}
-      </SelectContent>
-    </Select>
-  );
-}
-
-/** Select + chip thuộc tính (ngoài Select để +N bấm được). */
-export function ProductPickerField({
-  products,
-  value,
-  onValueChange,
-  placeholder = "Chọn hàng hóa",
-  metaMode = "skuOnly",
-  className,
-  disabled,
-  displayProduct,
-}: {
-  products: StockMovementProductItemOption[];
-  value: string;
-  onValueChange: (value: string) => void;
-  placeholder?: string;
-  metaMode?: ProductMetaMode;
-  className?: string;
-  disabled?: boolean;
-  displayProduct?: StockMovementProductItemOption;
-}) {
-  const selected = resolveSelectedProduct(products, value, displayProduct);
-
-  return (
-    <div className={cn("min-w-0 space-y-1.5 overflow-hidden", className)}>
-      <ProductSelect
-        products={products}
-        value={value}
-        onValueChange={onValueChange}
-        placeholder={placeholder}
-        metaMode={metaMode}
-        disabled={disabled}
-        displayProduct={displayProduct}
-      />
-      <ProductDetailsChips details={selected?.productDetails} />
-    </div>
+    <ProductSummary
+      product={product}
+      name={name}
+      sku={sku}
+      metaMode={metaMode}
+    />
   );
 }

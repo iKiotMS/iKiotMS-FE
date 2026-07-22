@@ -23,7 +23,7 @@ import { getStockMovementErrorMessage } from '@/app/(protected)/exchange/shared/
 import { useAuthStore } from '@/store/auth-store'
 import { normalizeOptionalNote } from '@/app/(protected)/exchange/shared/qty'
 import { QuantityStepper } from '@/app/(protected)/exchange/shared/quantity-stepper'
-import { MoneyInput, ProductPickerField } from '@/app/(protected)/exchange/shared/form-fields'
+import { MoneyInput, ProductLineDisplay } from '@/app/(protected)/exchange/shared/form-fields'
 import { MovementProductSearch } from '@/app/(protected)/exchange/shared/movement-product-search'
 import {
   MAX_IMPORT_PRICE,
@@ -479,9 +479,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
               {fields.map((f, idx) => {
                 const rowProductId = details[idx]?.productItemId
-                const pickerProducts = products.filter(
-                  (p) => p._id === rowProductId || !usedIds.has(p._id),
-                )
+                const selected = products.find((p) => p._id === rowProductId)
                 return (
                   <div key={f.id} className="space-y-3 rounded-lg border bg-muted/30 p-3">
                     <div className="flex items-start gap-2">
@@ -489,35 +487,14 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                         <FormField
                           control={form.control}
                           name={`details.${idx}.productItemId`}
-                          render={({ field }) => (
+                          render={() => (
                             <FormItem>
                               <FormLabel className="text-xs">
                                 Hàng hóa <span className="text-destructive">*</span>
                               </FormLabel>
-                              <ProductPickerField
-                                products={pickerProducts}
-                                value={field.value}
+                              <ProductLineDisplay
+                                product={selected}
                                 metaMode="stock"
-                                onValueChange={(v) => {
-                                  field.onChange(v)
-                                  const p = products.find((x) => x._id === v)
-                                  if (p?.costPrice) {
-                                    form.setValue(
-                                      `details.${idx}.importPrice`,
-                                      Math.min(p.costPrice, MAX_IMPORT_PRICE),
-                                      { shouldDirty: true, shouldValidate: true },
-                                    )
-                                  }
-                                  if (typeof p?.stock === 'number' && p.stock > 0) {
-                                    const currentQty = form.getValues(`details.${idx}.quantity`)
-                                    form.setValue(
-                                      `details.${idx}.quantity`,
-                                      Math.min(Math.max(1, currentQty || 1), p.stock),
-                                      { shouldDirty: true, shouldValidate: true },
-                                    )
-                                  }
-                                  void form.trigger('details')
-                                }}
                               />
                               <FormMessage />
                             </FormItem>

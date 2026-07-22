@@ -51,7 +51,7 @@ import { useAuthStore } from "@/store/auth-store";
 import {
   DetailLineCard,
   MoneyInput,
-  ProductPickerField,
+  ProductLineDisplay,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
 import {
@@ -120,28 +120,20 @@ function ImportDetailLine({
   form,
   index,
   product,
-  lineProducts,
   canRemove,
   onRemove,
-  onPick,
 }: {
   form: UseFormReturn<ImportFormValues>;
   index: number;
   product?: StockMovementProductItemOption;
-  lineProducts: StockMovementProductItemOption[];
   canRemove: boolean;
   onRemove: () => void;
-  onPick: (item: StockMovementProductItemOption) => void;
 }) {
   const importPrice = useWatch({
     control: form.control,
     name: `details.${index}.importPrice`,
   });
   const priceOver = isPriceOverRetail(importPrice, product?.retailPrice);
-  const displayOrphan =
-    product && !lineProducts.some((p) => p._id === product._id)
-      ? product
-      : undefined;
 
   return (
     <DetailLineCard
@@ -153,23 +145,12 @@ function ImportDetailLine({
       <FormField
         control={form.control}
         name={`details.${index}.productItemId`}
-        render={({ field }) => (
+        render={() => (
           <FormItem className="min-w-0 gap-1.5">
             <FormLabel className="text-xs leading-none">
               Hàng hóa <span className="text-destructive">*</span>
             </FormLabel>
-            <ProductPickerField
-              products={lineProducts}
-              value={field.value}
-              displayProduct={displayOrphan}
-              metaMode="price"
-              placeholder="Chọn hàng hóa"
-              onValueChange={(id) => {
-                const item = lineProducts.find((p) => p._id === id);
-                if (item) onPick(item);
-                else field.onChange(id);
-              }}
-            />
+            <ProductLineDisplay product={product} metaMode="price" />
             <FormMessage />
           </FormItem>
         )}
@@ -572,7 +553,7 @@ export function ImportsCreateDialog({
 
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">
-                {searchAllCatalog ? "Tìm hàng khác" : "Tìm trong hàng NCC"}
+                {searchAllCatalog ? "Tìm hàng" : "Tìm trong hàng NCC"}
               </h3>
               <MovementProductSearch
                 usedIds={usedIds}
@@ -610,16 +591,12 @@ export function ImportsCreateDialog({
               {fields.map((f, idx) => {
                 const itemId = details[idx]?.productItemId ?? "";
                 const product = itemId ? productById.get(itemId) : undefined;
-                const lineProducts = supplierProducts.filter(
-                  (p) => p._id === itemId || !usedIds.has(p._id),
-                );
                 return (
                   <ImportDetailLine
                     key={f.id}
                     form={form}
                     index={idx}
                     product={product}
-                    lineProducts={lineProducts}
                     canRemove
                     onRemove={() => {
                       remove(idx);
@@ -631,7 +608,6 @@ export function ImportsCreateDialog({
                         return next;
                       });
                     }}
-                    onPick={(item) => applyProduct(item, idx)}
                   />
                 );
               })}

@@ -30,6 +30,7 @@ import {
   useStockMovementDetail,
 } from "@/app/(protected)/exchange/shared/use-stock-movement-detail";
 import { getEffectiveLocationScope } from "@/app/(protected)/exchange/shared/auth-scope";
+import { canSearchImportCatalog } from "@/app/(protected)/exchange/shared/product-item-search";
 import type { TransferUiLabels } from "@/app/(protected)/exchange/shared/transfer-ui-labels";
 import {
   MovementActionBar,
@@ -130,7 +131,6 @@ export function MovementExpandedPanel({
     updateOpeningRow,
     addOpeningRow,
     pickOpeningProduct,
-    ensureOpeningProduct,
     removeOpeningRow,
     validateOpening,
     runAction,
@@ -577,7 +577,6 @@ export function MovementExpandedPanel({
         updateOpeningRow={updateOpeningRow}
         removeOpeningRow={removeOpeningRow}
         pickOpeningProduct={pickOpeningProduct}
-        ensureOpeningProduct={ensureOpeningProduct}
         receivedQtys={receivedQtys}
         setReceivedQtys={setReceivedQtys}
         totalValue={
@@ -586,7 +585,7 @@ export function MovementExpandedPanel({
         totalQty={totalQty}
         openingTotalQty={openingTotalQty}
         importSearchScope={
-          isTenantOwner ? "catalog" : "list"
+          canSearchImportCatalog(effectiveScope.role) ? "catalog" : "list"
         }
       />
 

@@ -350,7 +350,6 @@ export function useOpeningEditor({
     updateOpeningRow,
     addOpeningRow,
     pickOpeningProduct,
-    ensureOpeningProduct,
     removeOpeningRow,
     validateOpening,
     runAction,

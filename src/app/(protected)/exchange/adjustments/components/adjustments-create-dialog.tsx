@@ -27,7 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
-import { ProductPickerField } from "@/app/(protected)/exchange/shared/form-fields";
+import { ProductLineDisplay } from "@/app/(protected)/exchange/shared/form-fields";
 import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { getAdjustQtyChange } from "@/app/(protected)/exchange/shared/qty";
 import { refineDuplicateProducts } from "@/app/(protected)/exchange/shared/movement-detail-validation";
@@ -323,9 +323,6 @@ export function AdjustmentsCreateDialog({
                 const snapshot = selected?.stock ?? 0
                 const actual = form.watch(`details.${idx}.receivedQuantity`) ?? 0
                 const diff = getAdjustQtyChange(snapshot, actual)
-                const lineProducts = searchableProducts.filter(
-                  (p) => p._id === itemId || !usedIds.has(p._id),
-                )
 
                 return (
                   <div key={f.id} className="rounded-lg border bg-muted/30 p-3 space-y-3">
@@ -334,32 +331,14 @@ export function AdjustmentsCreateDialog({
                         <FormField
                           control={form.control}
                           name={`details.${idx}.productItemId`}
-                          render={({ field }) => (
+                          render={() => (
                             <FormItem>
                               <FormLabel className="text-xs">
                                 Hàng hóa <span className="text-destructive">*</span>
                               </FormLabel>
-                              <ProductPickerField
-                                products={lineProducts}
-                                value={field.value}
-                                displayProduct={
-                                  selected &&
-                                  !lineProducts.some((p) => p._id === selected._id)
-                                    ? selected
-                                    : undefined
-                                }
+                              <ProductLineDisplay
+                                product={selected}
                                 metaMode="stock"
-                                placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn hàng hóa'}
-                                onValueChange={(value) => {
-                                  field.onChange(value)
-                                  const p = products.find((x) => x._id === value)
-                                  const stock = p?.stock ?? 0
-                                  form.setValue(
-                                    `details.${idx}.receivedQuantity`,
-                                    Math.max(0, stock),
-                                  )
-                                  void form.trigger('details')
-                                }}
                               />
                               {selected && (
                                 <p className="text-xs text-muted-foreground">

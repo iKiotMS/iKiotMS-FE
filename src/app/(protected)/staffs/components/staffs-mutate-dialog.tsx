@@ -43,7 +43,6 @@ import {
   validateStaffPhoneNumber,
 } from "@/app/(protected)/staffs/shared/staff-phone-validation";
 import {
-  getDobInputBounds,
   getHireDateInputBounds,
   isValidTaxNumber,
   normalizeDateInput,
@@ -53,12 +52,17 @@ import {
 } from "@/app/(protected)/staffs/shared/staff-date-validation";
 import { toDateInputValue } from "@/app/(protected)/staffs/shared/staff-format";
 import { CccdInput } from "./cccd-input";
+import { VietnamDateInput } from "./vietnam-date-input";
 import { StaffAvatarField } from "./staff-avatar-field";
 import { uploadImage } from "@/lib/api/upload";
 import { branchApi } from "@/lib/api/branch";
 import { staffApi } from "@/lib/api/staff";
 import { warehouseApi } from "@/lib/api/warehouse";
-import { getApiErrorMessage } from "@/lib/api/staff-mapper";
+import {
+  getApiErrorMessage,
+  getApiFormFieldErrors,
+  isStaffApiValidationError,
+} from "@/lib/api/staff-mapper";
 import { getSessionBranchId, getSessionRole } from "@/lib/auth";
 import {
   canAssignWarehouseOnStaffForm,
@@ -91,7 +95,6 @@ const GENDER_OPTIONS: { value: StaffGender; label: string }[] = [
   { value: "OTHER", label: "Khác" },
 ];
 
-const dobInputBounds = getDobInputBounds();
 const hireDateInputBounds = getHireDateInputBounds();
 
 function applyStaffProfileValidation(
@@ -189,7 +192,7 @@ function applyWorkplaceValidation(
     ctx.addIssue({
       code: "custom",
       message: workplaceError,
-      path: ["branchId"],
+      path: [data.warehouseId?.trim() ? "warehouseId" : "branchId"],
     });
   }
 }
@@ -370,8 +373,8 @@ export function StaffsMutateDialog({
   const form = useForm<CreateFormValues | EditFormValues>({
     resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
     defaultValues: EMPTY_CREATE_VALUES,
-    mode: "onSubmit",
-    reValidateMode: "onSubmit",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
 
   const selectedRole = form.watch("role");
@@ -661,43 +664,39 @@ export function StaffsMutateDialog({
             editData.branchId,
           );
           if (!branchId) {
-            toast.error("Quản lý chi nhánh cần chọn chi nhánh");
+            form.setError("branchId", {
+              type: "manual",
+              message: "Quản lý chi nhánh cần chọn chi nhánh",
+            });
             return;
           }
-          try {
-            await staffApi.update(currentRow._id, {
-              ...profilePayload,
-              branchId,
-              warehouseId: null,
-            });
-            await branchApi.assignManager(branchId, currentRow._id);
-            toast.success("Đã thăng quản lý chi nhánh");
-            await fetchStaffs();
-          } catch (error) {
-            toast.error(getApiErrorMessage(error));
-            throw error;
-          }
+          await staffApi.update(currentRow._id, {
+            ...profilePayload,
+            branchId,
+            warehouseId: null,
+          });
+          await branchApi.assignManager(branchId, currentRow._id);
+          toast.success("Đã thăng quản lý chi nhánh");
+          await fetchStaffs();
         } else if (promotingToWarehouseManager) {
           const warehouseId = resolveWarehouseIdForRole(
             "WAREHOUSE_MANAGER",
             editData.warehouseId,
           );
           if (!warehouseId) {
-            toast.error("Quản lý kho cần chọn kho");
+            form.setError("warehouseId", {
+              type: "manual",
+              message: "Quản lý kho cần chọn kho",
+            });
             return;
           }
-          try {
-            await staffApi.update(currentRow._id, {
-              ...profilePayload,
-              branchId: null,
-            });
-            await warehouseApi.assignManager(warehouseId, currentRow._id);
-            toast.success("Đã thăng quản lý kho");
-            await fetchStaffs();
-          } catch (error) {
-            toast.error(getApiErrorMessage(error));
-            throw error;
-          }
+          await staffApi.update(currentRow._id, {
+            ...profilePayload,
+            branchId: null,
+          });
+          await warehouseApi.assignManager(warehouseId, currentRow._id);
+          toast.success("Đã thăng quản lý kho");
+          await fetchStaffs();
         } else {
           if (canEditRoleWorkplace && !isEditingManager) {
             profilePayload.branchId = resolveBranchIdForRole(
@@ -745,8 +744,25 @@ export function StaffsMutateDialog({
         });
       }
       onOpenChange(false);
-    } catch {
-      // Error toast handled in provider / above
+    } catch (error) {
+      const fieldErrors = getApiFormFieldErrors(error);
+      if (fieldErrors) {
+        for (const [key, message] of Object.entries(fieldErrors)) {
+          form.setError(key as "phoneNumber", {
+            type: "server",
+            message,
+          });
+        }
+        return;
+      }
+      if (isStaffApiValidationError(error)) {
+        form.setError(isEdit ? "identificationId" : "phoneNumber", {
+          type: "server",
+          message: getApiErrorMessage(error),
+        });
+        return;
+      }
+      toast.error(getApiErrorMessage(error));
     }
   }
 
@@ -1143,11 +1159,12 @@ export function StaffsMutateDialog({
                 <FormItem>
                   <FormLabel>Ngày sinh</FormLabel>
                   <FormControl>
-                    <Input
-                      type="date"
-                      min={dobInputBounds.min}
-                      max={dobInputBounds.max}
-                      {...field}
+                    <VietnamDateInput
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />

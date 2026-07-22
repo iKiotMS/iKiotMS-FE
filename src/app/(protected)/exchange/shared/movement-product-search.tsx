@@ -28,7 +28,7 @@ type MovementProductSearchProps = {
 
 /**
  * Ô tìm hàng dùng chung stock movement.
- * BR/WH: searchScope=list + pool = SP tại nơi gửi / NCC.
+ * catalog = API toàn tenant (TO/WH nhập hàng); list = lọc poolProducts.
  */
 export function MovementProductSearch({
   usedIds,
