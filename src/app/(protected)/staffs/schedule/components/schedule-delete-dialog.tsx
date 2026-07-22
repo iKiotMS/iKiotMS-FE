@@ -23,14 +23,19 @@ export function ScheduleDeleteDialog({
   onOpenChange: (value: boolean) => void;
   currentRow: WorkingSchedule | null;
 }) {
-  const { handleDelete } = useSchedule();
+  const { handleDelete, handleRemoveAssignee, selectedAssigneeUserId } =
+    useSchedule();
   const isLocked = currentRow ? isScheduleLocked(currentRow.status) : false;
   const multiAssignee = (currentRow?.assignees.length ?? 0) > 1;
 
   async function onConfirm() {
     if (!currentRow || isLocked) return;
     try {
-      await handleDelete(currentRow._id);
+      if (multiAssignee && selectedAssigneeUserId) {
+        await handleRemoveAssignee(currentRow._id, selectedAssigneeUserId);
+      } else {
+        await handleDelete(currentRow._id);
+      }
       onOpenChange(false);
     } catch {
       // Toast handled in provider
@@ -53,13 +58,10 @@ export function ScheduleDeleteDialog({
                     ? currentRow?.shiftName
                     : currentRow?.staffName ?? ""}
                 </strong>
-                {multiAssignee ? (
+                {multiAssignee && selectedAssigneeUserId ? (
                   <>
-                    ? Toàn bộ ca sẽ bị xóa cho{" "}
-                    <strong className="text-foreground">
-                      {currentRow?.assignees.length} nhân viên
-                    </strong>{" "}
-                    được phân cùng lịch này.
+                    ? Chỉ nhân viên đang chọn sẽ được gỡ khỏi ca; lịch của các
+                    nhân viên còn lại vẫn được giữ nguyên.
                   </>
                 ) : (
                   "? Hành động này không thể hoàn tác."

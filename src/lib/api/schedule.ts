@@ -252,4 +252,8 @@ export const workingScheduleApi = {
   remove: async (id: string): Promise<void> => {
     await client.delete(`/working-schedules/${id}`);
   },
+
+  removeAssignee: async (scheduleId: string, userId: string): Promise<void> => {
+    await client.delete(`/working-schedules/${scheduleId}/users/${userId}`);
+  },
 };

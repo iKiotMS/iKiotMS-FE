@@ -85,11 +85,12 @@ export function ScheduleDetailPanel() {
 
   useEffect(() => {
     if (!selectedSchedule) {
-      setDetail(null);
       return;
     }
 
     let cancelled = false;
+    // Loading belongs to this async detail request; reset it whenever selection changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     void fetchScheduleDetail(
       selectedSchedule._id,
@@ -116,6 +117,16 @@ export function ScheduleDetailPanel() {
 
   const data = detail ?? selectedSchedule;
   const scheduleLocked = data ? isScheduleLocked(data.status) : false;
+  const selectedAssigneeAttendanceLocked = Boolean(
+    data?.assignees.some(
+      (assignee) => assignee.attendance.status !== "NOT_CHECKED_IN",
+    ),
+  );
+  const scheduleAttendanceLocked = Boolean(
+    selectedSchedule?.assignees.some(
+      (assignee) => assignee.attendance.status !== "NOT_CHECKED_IN",
+    ),
+  );
 
   const targetAssigneeUserId = resolveScheduleAssigneeUserId(
     selectedAssigneeUserId,
@@ -167,6 +178,23 @@ export function ScheduleDetailPanel() {
     if (!selectedSchedule) return;
     setCurrentRow(selectedSchedule);
     setOpen("edit");
+  }
+
+  async function handleAttendanceUpdated() {
+    if (!selectedSchedule) return;
+    const fresh = await fetchScheduleDetail(
+      selectedSchedule._id,
+      selectedAssigneeUserId,
+    );
+    if (fresh) setDetail(fresh);
+  }
+
+  function canManualCheckoutAssignee(assigneeUserId: string) {
+    return (
+      ["TENANT_OWNER", "BRANCH_MANAGER"].includes(
+        userRole ?? "",
+      ) && assigneeUserId !== sessionUserId
+    );
   }
 
   return (
@@ -315,11 +343,21 @@ export function ScheduleDetailPanel() {
             <ScheduleDetailContent
               data={data}
               loading={loading}
-              canEdit={canEdit && !scheduleLocked}
-              canDelete={canDelete && !scheduleLocked}
+              canEdit={canEdit && !scheduleLocked && !scheduleAttendanceLocked}
+              canDelete={
+                canDelete &&
+                !scheduleLocked &&
+                !(selectedAssigneeUserId
+                  ? selectedAssigneeAttendanceLocked
+                  : scheduleAttendanceLocked)
+              }
               readOnlyHint={readOnlyHint}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              canManualCheckout={(assignee) =>
+                canManualCheckoutAssignee(assignee.userId)
+              }
+              onAttendanceUpdated={handleAttendanceUpdated}
             />
           )}
         </div>
