@@ -3,7 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar } from 'lucide-react'
+import { Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar, XCircle } from 'lucide-react'
 import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
 
@@ -62,7 +62,15 @@ export function PeriodsTable() {
             return (
               <TableRow key={p._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                 <TableCell className="font-semibold text-slate-700 dark:text-slate-200">
-                  {formatDMY(p.periodStart)} ➔ {formatDMY(p.periodEnd)}
+                  <div>{formatDMY(p.periodStart)} ➔ {formatDMY(p.periodEnd)}</div>
+                  {p.status === 'CANCELLED' && p.cancelReason && (
+                    <p
+                      className="mt-1 max-w-sm truncate text-xs font-normal text-red-600"
+                      title={p.cancelReason}
+                    >
+                      Lý do: {p.cancelReason}
+                    </p>
+                  )}
                 </TableCell>
                 <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                   {formatVND(p.totalCost || 0)}
@@ -91,15 +99,29 @@ export function PeriodsTable() {
 
                     {/* Contextual actions */}
                     {p.status === 'DRAFT' && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleSubmitPeriod(p._id)}
-                        className="cursor-pointer h-8 text-xs flex items-center gap-1"
-                      >
-                        <ArrowUpRight className="size-3.5" />
-                        Gửi duyệt
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentRow(p)
+                            setOpen('cancelPeriod')
+                          }}
+                          className="cursor-pointer h-8 text-xs flex items-center gap-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <XCircle className="size-3.5" />
+                          Hủy kỳ
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSubmitPeriod(p._id)}
+                          className="cursor-pointer h-8 text-xs flex items-center gap-1"
+                        >
+                          <ArrowUpRight className="size-3.5" />
+                          Gửi duyệt
+                        </Button>
+                      </>
                     )}
 
                     {p.status === 'REVIEW' && (

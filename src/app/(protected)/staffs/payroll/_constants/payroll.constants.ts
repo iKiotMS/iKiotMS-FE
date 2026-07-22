@@ -37,6 +37,10 @@ export const STATUS_MAP: Record<
     label: 'Đã trả lương',
     className: 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-900/20 dark:border-green-800',
   },
+  CANCELLED: {
+    label: 'Đã hủy',
+    className: 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/20 dark:border-red-800',
+  },
 }
 
 export const WEEKDAYS = [

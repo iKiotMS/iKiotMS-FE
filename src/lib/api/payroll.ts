@@ -76,8 +76,19 @@ export const payrollApi = {
 
   // --- Periods ---
   createPeriod: async (payload: PeriodCreatePayload): Promise<PayrollPeriod> => {
-    const res = await client.post<{ success: boolean; data: PayrollPeriod }>('/payroll/periods', payload)
-    return res.data.data
+    const res = await client.post<{
+      success: boolean
+      data: {
+        payrollPeriod: PayrollPeriod
+        payslips: Payslip[]
+        summary: { totalNetSalary: number }
+      }
+    }>('/payroll/periods', payload)
+    return {
+      ...res.data.data.payrollPeriod,
+      payslips: res.data.data.payslips,
+      totalCost: res.data.data.summary.totalNetSalary,
+    }
   },
   getPeriods: async (params?: PayrollPeriodQueryParams): Promise<{
     data: PayrollPeriod[]
@@ -136,6 +147,13 @@ export const payrollApi = {
     const res = await client.post<{ success: boolean; data: PayrollPeriod }>(`/payroll/periods/${id}/return-to-draft`, {
       reason,
     })
+    return res.data.data
+  },
+  cancelPeriod: async (id: string, reason: string): Promise<PayrollPeriod> => {
+    const res = await client.post<{ success: boolean; data: PayrollPeriod }>(
+      `/payroll/periods/${id}/cancel`,
+      { reason }
+    )
     return res.data.data
   },
   approvePeriod: async (id: string): Promise<PayrollPeriod> => {

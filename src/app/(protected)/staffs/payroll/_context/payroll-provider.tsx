@@ -51,6 +51,7 @@ interface PayrollContextProps {
     data: PayslipAdjustFormValues
   ) => Promise<boolean>
   handleSubmitPeriod: (id: string) => Promise<boolean>
+  handleCancelPeriod: (id: string, reason: string) => Promise<boolean>
   handleReturnToDraft: (id: string, reason?: string) => Promise<boolean>
   handleApprovePeriod: (id: string) => Promise<boolean>
   handleMarkPaid: (
@@ -99,4 +100,3 @@ export function usePayroll() {
   if (!ctx) throw new Error('usePayroll must be used within <PayrollProvider>')
   return ctx
 }
-

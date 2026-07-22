@@ -128,6 +128,12 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
       toVietnamDateKey(previewData.periodStart) === selectedPeriod.periodStart &&
       toVietnamDateKey(previewData.periodEnd) === selectedPeriod.periodEnd
   )
+  const canCreateDraft = Boolean(
+    isPreviewCurrent &&
+      previewData &&
+      previewData.summary.generatedCount > 0 &&
+      previewData.summary.skippedCount === 0
+  )
 
   useEffect(() => {
     if (!open) return
@@ -416,9 +422,17 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                 </div>
 
                 {previewData.skipped?.length > 0 && (
-                  <div className="space-y-1.5 pt-2">
-                    <p className="text-xs font-semibold text-muted-foreground">Bỏ qua không tính lương ({previewData.skipped.length}):</p>
-                    <div className="bg-destructive/10 text-destructive text-xs rounded-lg p-2.5 space-y-1">
+                  <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                    <div>
+                      <p className="text-sm font-semibold text-destructive">
+                        Chưa thể tạo kỳ lương
+                      </p>
+                      <p className="mt-0.5 text-xs text-destructive">
+                        Còn {previewData.skipped.length} nhân viên chưa tính được. Hãy sửa cấu
+                        hình lương rồi xem trước lại.
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-xs text-destructive">
                       {previewData.skipped.map((skipItem: { userId: string; reason: string }, idx) => {
                         const skipStaff = staffs.find((s) => s._id === skipItem.userId)
 
@@ -433,9 +447,11 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                         }
 
                         return (
-                          <div key={idx} className="flex justify-between">
-                            <span className="font-semibold">{skipName}</span>
-                            <span>{skipItem.reason}</span>
+                          <div key={`${skipItem.userId}-${idx}`} className="flex gap-1">
+                            <span>•</span>
+                            <span>
+                              <strong>{skipName}:</strong> {skipItem.reason}
+                            </span>
                           </div>
                         )
                       })}
@@ -457,7 +473,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
               <Button
                 type="submit"
                 className="cursor-pointer"
-                disabled={!isPreviewCurrent || previewLoading}
+                disabled={!canCreateDraft || previewLoading}
               >
                 <Plus className="mr-2 size-4" />
                 Xác nhận tạo (Lưu nháp)

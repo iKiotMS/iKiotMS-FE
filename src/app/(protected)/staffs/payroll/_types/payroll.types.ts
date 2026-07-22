@@ -7,6 +7,7 @@ export type PayrollDialogType =
   | 'addPaysheet'
   | 'editPaysheet'
   | 'adjustPayslip'
+  | 'cancelPeriod'
   | 'returnDraft'
   | 'markPaid'
   | 'viewPayslipDetail'
@@ -41,6 +42,16 @@ export const periodCreateSchema = z.object({
 })
 
 export type PeriodCreateFormValues = z.infer<typeof periodCreateSchema>
+
+export const cancelPayrollPeriodSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(1, 'Lý do hủy kỳ lương là bắt buộc')
+    .max(500, 'Lý do không được vượt quá 500 ký tự'),
+})
+
+export type CancelPayrollPeriodFormValues = z.infer<typeof cancelPayrollPeriodSchema>
 
 export const manualCostSchema = z.object({
   type: z.enum(['BONUS', 'DEDUCTION']),
