@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import type { Supplier } from '@/types/supplier'
 import type { SupplierFormValues } from '../_types/supplier.types'
 import { supplierApi } from '@/lib/api/supplier'
+import type { SupplierPayDebtPayload } from '@/types/supplier'
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -99,5 +100,37 @@ export function useSuppliersMutations() {
     }
   }
 
-  return { suppliers, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany }
+  async function handleInitiateQr(
+    id: string,
+    amount: number,
+    note?: string,
+  ): Promise<{ qrUrl: string; paymentReference: string } | null> {
+    try {
+      return await supplierApi.initiateQr(id, amount, note)
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Không thể tạo mã QR thanh toán'))
+      return null
+    }
+  }
+
+  async function handlePayDebt(id: string, payload: SupplierPayDebtPayload): Promise<boolean> {
+    setIsLoading(true)
+    try {
+      const updated = await supplierApi.payDebt(id, payload)
+      setSuppliers((prev) => prev.map((s) => (s.id === id ? updated : s)))
+      toast.success(`Thanh toán ${payload.amount.toLocaleString('vi-VN')} ₫ thành công`)
+      return true
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Thanh toán công nợ thất bại'))
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function updateSupplierInList(updated: Supplier) {
+    setSuppliers((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+  }
+
+  return { suppliers, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany, handleInitiateQr, handlePayDebt, updateSupplierInList }
 }

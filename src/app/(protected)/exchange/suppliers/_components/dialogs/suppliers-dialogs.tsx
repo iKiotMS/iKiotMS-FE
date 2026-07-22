@@ -4,6 +4,7 @@
 import { useSuppliers } from '../../_context/suppliers-provider'
 import { SuppliersMutateDialog } from './suppliers-mutate-dialog'
 import { SuppliersDeleteDialog } from './suppliers-delete-dialog'
+import { SuppliersPayDebtDialog } from './suppliers-pay-debt-dialog'
 
 export function SuppliersDialogs() {
   const { open, setOpen, currentRow, setCurrentRow, selectedIds } = useSuppliers()
@@ -41,6 +42,16 @@ export function SuppliersDialogs() {
         }}
         currentRow={currentRow}
         selectedIds={selectedIds}
+      />
+      <SuppliersPayDebtDialog
+        open={open === 'payDebt'}
+        onOpenChange={(v) => {
+          if (!v) {
+            setOpen(null)
+            setCurrentRow(null)
+          }
+        }}
+        supplier={currentRow}
       />
     </>
   )
