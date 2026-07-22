@@ -18,9 +18,7 @@ type SuppliersContextType = {
   handleEdit: (id: string, data: SupplierFormValues) => Promise<boolean>
   handleDelete: (id: string) => Promise<boolean>
   handleDeleteMany: (ids: string[]) => Promise<boolean>
-  handleInitiateQr: (id: string, amount: number, note?: string) => Promise<{ qrUrl: string; paymentReference: string } | null>
   handlePayDebt: (id: string, payload: SupplierPayDebtPayload) => Promise<boolean>
-  updateSupplierInList: (updated: Supplier) => void
   selectedIds: string[]
   setSelectedIds: (ids: string[]) => void
   selectionVersion: number
@@ -29,7 +27,7 @@ type SuppliersContextType = {
 const SuppliersContext = React.createContext<SuppliersContextType | null>(null)
 
 export function SuppliersProvider({ children }: { children: React.ReactNode }) {
-  const { suppliers, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany, handleInitiateQr, handlePayDebt, updateSupplierInList } =
+  const { suppliers, isLoading, handleAdd, handleEdit, handleDelete, handleDeleteMany, handlePayDebt } =
     useSuppliersMutations()
   const [open, setOpen] = useState<SuppliersDialogType | null>(null)
   const [currentRow, setCurrentRow] = useState<Supplier | null>(null)
@@ -58,9 +56,7 @@ export function SuppliersProvider({ children }: { children: React.ReactNode }) {
         handleEdit,
         handleDelete,
         handleDeleteMany: handleDeleteManyWrapper,
-        handleInitiateQr,
         handlePayDebt,
-        updateSupplierInList,
         selectedIds,
         setSelectedIds,
         selectionVersion,
