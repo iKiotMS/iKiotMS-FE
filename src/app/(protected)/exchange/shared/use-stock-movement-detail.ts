@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { stockMovementApi } from "@/lib/api/stock-movement";
+import {
+  resolveItemImportPrice,
+  stockMovementApi,
+} from "@/lib/api/stock-movement";
 import {
   buildRetailPriceByItemId,
   getOpeningRowFieldErrors,
@@ -80,6 +83,10 @@ export function useOpeningEditor({
   const [openingProducts, setOpeningProducts] = useState<
     StockMovementProductItemOption[]
   >([]);
+  /** Catalog tenant — enrich hiển thị + search pick (IMPORT). */
+  const [catalogProducts, setCatalogProducts] = useState<
+    StockMovementProductItemOption[]
+  >([]);
   const [openingRowErrors, setOpeningRowErrors] = useState<
     OpeningRowFieldErrors[]
   >([]);
@@ -93,6 +100,7 @@ export function useOpeningEditor({
       setReceivedQtys({});
       setOpeningDetails([]);
       setOpeningProducts([]);
+      setCatalogProducts([]);
       setOpeningRowErrors([]);
       return;
     }
@@ -129,66 +137,102 @@ export function useOpeningEditor({
   }, [isExpanded, showReceiveForm, detail, enabled]);
 
   useEffect(() => {
-    if (!isExpanded || !enabled) return;
+    if (!isExpanded) {
+      setOpeningProducts([]);
+      setCatalogProducts([]);
+      return;
+    }
+
+    let cancelled = false;
 
     // EXPORT/RETURN OPENING: products at source
     if (
+      enabled &&
       detail.status === "OPENING" &&
       detail.fromLocationId &&
       detail.fromLocationType
     ) {
       stockMovementApi
         .getProductItemsAtSource(detail.fromLocationId, detail.fromLocationType)
-        .then(setOpeningProducts)
-        .catch(() => setOpeningProducts([]));
-      return;
+        .then((items) => {
+          if (!cancelled) setOpeningProducts(items);
+        })
+        .catch(() => {
+          if (!cancelled) setOpeningProducts([]);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
 
-    // IMPORT PENDING: products for destination (may include new SKUs)
-    if (
-      detail.movementType === "IMPORT" &&
-      detail.status === "PENDING" &&
-      detail.toLocationId &&
-      detail.toLocationType
-    ) {
-      stockMovementApi
-        .getProductItemsForDestination(detail.toLocationId, detail.toLocationType)
-        .then(setOpeningProducts)
-        .catch(() => setOpeningProducts([]));
+    // IMPORT: dropdown = SP thuộc NCC; catalog = enrich + tìm tất cả
+    if (detail.movementType === "IMPORT") {
+      const supplierId = detail.fromSupplierId?.trim();
+      Promise.all([
+        supplierId
+          ? stockMovementApi.getSupplierProductItems(supplierId)
+          : Promise.resolve([] as StockMovementProductItemOption[]),
+        stockMovementApi.getCatalogProductItems(),
+      ])
+        .then(([supplierItems, catalog]) => {
+          if (cancelled) return;
+          setOpeningProducts(supplierItems);
+          setCatalogProducts(catalog);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setOpeningProducts([]);
+          setCatalogProducts([]);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
+
+    setOpeningProducts([]);
+    setCatalogProducts([]);
+    return () => {
+      cancelled = true;
+    };
   }, [
     isExpanded,
     enabled,
     detail.status,
     detail.movementType,
+    detail.fromSupplierId,
     detail.fromLocationId,
     detail.fromLocationType,
-    detail.toLocationId,
-    detail.toLocationType,
   ]);
 
-  // Khi catalog có retailPrice → re-validate (khớp BE importPrice ≤ retailPrice)
+  // Khi catalog/NCC có retailPrice → re-validate
   useEffect(() => {
     if (!isExpanded || !enabled || !requireImportPrice) return;
-    if (openingDetails.length === 0 || openingProducts.length === 0) return;
+    if (openingDetails.length === 0) return;
+    const retailSource =
+      catalogProducts.length > 0 ? catalogProducts : openingProducts;
+    if (retailSource.length === 0) return;
     setOpeningRowErrors(
       getOpeningRowFieldErrors(openingDetails, {
         requireImportPrice: true,
-        retailPriceByItemId: buildRetailPriceByItemId(openingProducts),
+        retailPriceByItemId: buildRetailPriceByItemId(retailSource),
       }),
     );
-    // Chỉ re-chạy khi products load / đổi — không phụ thuộc mỗi lần edit row
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [isExpanded, enabled, requireImportPrice, openingProducts]);
+  }, [isExpanded, enabled, requireImportPrice, openingProducts, catalogProducts]);
 
   const getValidateOptions = useCallback(
-    (products: StockMovementProductItemOption[] = openingProducts) => ({
-      requireImportPrice,
-      retailPriceByItemId: requireImportPrice
-        ? buildRetailPriceByItemId(products)
-        : undefined,
-    }),
-    [openingProducts, requireImportPrice],
+    (products?: StockMovementProductItemOption[]) => {
+      const retailSource =
+        products ??
+        (catalogProducts.length > 0 ? catalogProducts : openingProducts);
+      return {
+        requireImportPrice,
+        retailPriceByItemId: requireImportPrice
+          ? buildRetailPriceByItemId(retailSource)
+          : undefined,
+      };
+    },
+    [openingProducts, catalogProducts, requireImportPrice],
   );
 
   const updateOpeningRow = (
@@ -211,6 +255,46 @@ export function useOpeningEditor({
     ]);
     setOpeningRowErrors((prev) => [...prev, {}]);
   };
+
+  const ensureOpeningProduct = useCallback(
+    (item: StockMovementProductItemOption) => {
+      // IMPORT: giữ openingProducts = SP NCC; hàng từ ô tìm gắn vào catalog
+      if (detail.movementType === "IMPORT") {
+        setCatalogProducts((prev) =>
+          prev.some((p) => p._id === item._id) ? prev : [...prev, item],
+        );
+        return;
+      }
+      setOpeningProducts((prev) =>
+        prev.some((p) => p._id === item._id) ? prev : [...prev, item],
+      );
+    },
+    [detail.movementType],
+  );
+
+  const pickOpeningProduct = useCallback(
+    (item: StockMovementProductItemOption) => {
+      ensureOpeningProduct(item);
+      const importPrice = Math.min(
+        Math.max(0, resolveItemImportPrice(item)),
+        1_000_000_000_000,
+      );
+      setOpeningDetails((prev) => {
+        const emptyIdx = prev.findIndex((row) => !row.productItemId);
+        const row: OpeningDetailRow = {
+          productItemId: item._id,
+          quantity: 1,
+          importPrice,
+          note: "",
+        };
+        if (emptyIdx >= 0) {
+          return prev.map((r, i) => (i === emptyIdx ? { ...r, ...row } : r));
+        }
+        return [...prev, row];
+      });
+    },
+    [ensureOpeningProduct],
+  );
 
   const removeOpeningRow = (idx: number) => {
     setOpeningDetails((prev) => {
@@ -256,6 +340,7 @@ export function useOpeningEditor({
   return {
     openingDetails,
     openingProducts,
+    catalogProducts,
     openingRowErrors,
     receivedQtys,
     setReceivedQtys,
@@ -264,8 +349,9 @@ export function useOpeningEditor({
     isActionLoading,
     updateOpeningRow,
     addOpeningRow,
+    pickOpeningProduct,
+    ensureOpeningProduct,
     removeOpeningRow,
-    buildOpeningPayload,
     validateOpening,
     runAction,
   };

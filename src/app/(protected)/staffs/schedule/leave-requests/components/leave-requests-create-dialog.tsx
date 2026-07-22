@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,40 +42,64 @@ import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useLeaveRequests } from "./leave-requests-provider";
 
-const emergencyLeaveSchema = z
-  .object({
-    userId: z.string().min(1, "Vui lòng chọn nhân viên"),
-    reason: z.string().min(3, "Lý do nghỉ tối thiểu 3 ký tự"),
-    startDate: z.string().min(1, "Vui lòng chọn ngày bắt đầu"),
-    startTime: z.string().min(1, "Vui lòng chọn giờ bắt đầu"),
-    endDate: z.string().min(1, "Vui lòng chọn ngày kết thúc"),
-    endTime: z.string().min(1, "Vui lòng chọn giờ kết thúc"),
-    approveImmediately: z.boolean(),
-    paidLeaveDays: z.number().min(0, "Không được âm"),
-    unpaidLeaveDays: z.number().min(0, "Không được âm"),
-    reviewNote: z.string().optional(),
-  })
-  .refine(
-    (values) =>
-      new Date(combineLeaveDateTime(values.startDate, values.startTime)) <=
-      new Date(combineLeaveDateTime(values.endDate, values.endTime)),
-    {
-      message: "Thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc",
-      path: ["endTime"],
-    },
-  )
-  .refine(
-    (values) => {
-      if (!values.approveImmediately) return true;
-      return values.paidLeaveDays + values.unpaidLeaveDays > 0;
-    },
-    {
-      message: "Tổng ngày có lương + không lương phải lớn hơn 0",
-      path: ["paidLeaveDays"],
-    },
-  );
+const emergencyLeaveBaseSchema = z.object({
+  userId: z.string().min(1, "Vui lòng chọn nhân viên"),
+  reason: z.string().min(3, "Lý do nghỉ tối thiểu 3 ký tự"),
+  startDate: z.string().min(1, "Vui lòng chọn ngày bắt đầu"),
+  startTime: z.string().min(1, "Vui lòng chọn giờ bắt đầu"),
+  endDate: z.string().min(1, "Vui lòng chọn ngày kết thúc"),
+  endTime: z.string().min(1, "Vui lòng chọn giờ kết thúc"),
+  approveImmediately: z.boolean(),
+  paidLeaveDays: z.number().min(0, "Không được âm"),
+  unpaidLeaveDays: z.number().min(0, "Không được âm"),
+  reviewNote: z.string().optional(),
+});
 
-type EmergencyLeaveFormValues = z.infer<typeof emergencyLeaveSchema>;
+function buildEmergencyLeaveSchema(opts: {
+  allowedStaffIds: Set<string>;
+  totalDays: number;
+}) {
+  return emergencyLeaveBaseSchema
+    .refine(
+      (values) =>
+        new Date(combineLeaveDateTime(values.startDate, values.startTime)) <=
+        new Date(combineLeaveDateTime(values.endDate, values.endTime)),
+      {
+        message: "Thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc",
+        path: ["endTime"],
+      },
+    )
+    .refine(
+      (values) => {
+        if (!values.approveImmediately) return true;
+        return values.paidLeaveDays + values.unpaidLeaveDays > 0;
+      },
+      {
+        message: "Tổng ngày có lương + không lương phải lớn hơn 0",
+        path: ["paidLeaveDays"],
+      },
+    )
+    .superRefine((values, ctx) => {
+      if (!opts.allowedStaffIds.has(values.userId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["userId"],
+          message: "Vui lòng chọn nhân viên hợp lệ trong danh sách",
+        });
+      }
+      if (!values.approveImmediately) return;
+      const sum = values.paidLeaveDays + values.unpaidLeaveDays;
+      if (opts.totalDays > 0 && sum > opts.totalDays) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["paidLeaveDays"],
+          message: `Tổng ngày duyệt không được vượt quá ${opts.totalDays} ngày xin nghỉ`,
+        });
+      }
+    });
+}
+
+type EmergencyLeaveFormValues = z.infer<typeof emergencyLeaveBaseSchema>;
 
 const DEFAULT_START_TIME = "08:00";
 const DEFAULT_END_TIME = "17:00";
@@ -109,16 +133,41 @@ export function LeaveRequestsEmergencyDialog({
   const { handleCreateEmergency, staffOptions } = useLeaveRequests();
   const isBranchManager = user?.role === "BRANCH_MANAGER";
 
+  const allowedStaffIds = useMemo(
+    () => new Set(staffOptions.map((o) => o.value)),
+    [staffOptions],
+  );
+  const schemaRef = useRef(
+    buildEmergencyLeaveSchema({
+      allowedStaffIds,
+      totalDays: 1,
+    }),
+  );
+
   const form = useForm<EmergencyLeaveFormValues>({
-    resolver: zodResolver(emergencyLeaveSchema),
+    resolver: (values, context, options) =>
+      zodResolver(schemaRef.current)(values, context, options),
     defaultValues: buildEmptyValues(staffOptions),
   });
 
   const approveImmediately = form.watch("approveImmediately");
   const startDate = form.watch("startDate");
   const endDate = form.watch("endDate");
-  const totalDays = calculateLeaveDays(startDate || todayIsoDate(), endDate || todayIsoDate());
+  const userId = form.watch("userId");
+  const totalDays = calculateLeaveDays(
+    startDate || todayIsoDate(),
+    endDate || todayIsoDate(),
+  );
 
+  const emergencyLeaveSchema = useMemo(
+    () =>
+      buildEmergencyLeaveSchema({
+        allowedStaffIds,
+        totalDays,
+      }),
+    [allowedStaffIds, totalDays],
+  );
+  schemaRef.current = emergencyLeaveSchema;
   const [checkingSchedule, setCheckingSchedule] = useState(false);
   const [missingScheduleDates, setMissingScheduleDates] = useState<Date[]>([]);
   const [totalDaysInRange, setTotalDaysInRange] = useState(0);
@@ -136,11 +185,12 @@ export function LeaveRequestsEmergencyDialog({
     form.setValue("unpaidLeaveDays", 0);
   }, [approveImmediately, totalDays, form]);
 
-  // --- Schedule check: warn if selected employee has no schedule ---
-  const userId = form.watch("userId");
   useEffect(() => {
     if (!open || !startDate || !endDate || !userId) return;
-    if (new Date(combineLeaveDateTime(startDate, "00:00")) > new Date(combineLeaveDateTime(endDate, "23:59"))) {
+    if (
+      new Date(combineLeaveDateTime(startDate, "00:00")) >
+      new Date(combineLeaveDateTime(endDate, "23:59"))
+    ) {
       setMissingScheduleDates([]);
       return;
     }
@@ -149,12 +199,14 @@ export function LeaveRequestsEmergencyDialog({
     const timer = setTimeout(async () => {
       setCheckingSchedule(true);
       try {
-        const result = await workingScheduleApi.getList(
-          { userId, startDate, endDate, recordPerPage: 500 },
-        );
+        const result = await workingScheduleApi.getList({
+          userId,
+          startDate,
+          endDate,
+          recordPerPage: 500,
+        });
         if (cancelled) return;
 
-        // Compute which dates in range have no schedule for this user
         const scheduledDates = new Set(
           result.data.map((s) => s.workDate.slice(0, 10)),
         );
@@ -162,10 +214,9 @@ export function LeaveRequestsEmergencyDialog({
           start: parseISO(startDate),
           end: parseISO(endDate),
         });
-        const missing = allDates.filter(
-          (d) => !scheduledDates.has(format(d, "yyyy-MM-dd"))
+        setMissingScheduleDates(
+          allDates.filter((d) => !scheduledDates.has(format(d, "yyyy-MM-dd"))),
         );
-        setMissingScheduleDates(missing);
         setTotalDaysInRange(allDates.length);
       } catch {
         if (!cancelled) setMissingScheduleDates([]);
@@ -181,16 +232,6 @@ export function LeaveRequestsEmergencyDialog({
   }, [open, userId, startDate, endDate]);
 
   async function onSubmit(values: EmergencyLeaveFormValues) {
-    if (
-      values.approveImmediately &&
-      values.paidLeaveDays + values.unpaidLeaveDays > totalDays
-    ) {
-      form.setError("paidLeaveDays", {
-        message: `Tổng ngày duyệt không được vượt quá ${totalDays} ngày xin nghỉ`,
-      });
-      return;
-    }
-
     try {
       await handleCreateEmergency(
         {
@@ -214,6 +255,11 @@ export function LeaveRequestsEmergencyDialog({
       // toast handled in provider
     }
   }
+
+  const scheduleWarning =
+    missingScheduleDates.length > 0 && !checkingSchedule
+      ? getScheduleWarningData(missingScheduleDates, totalDaysInRange)
+      : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -309,30 +355,25 @@ export function LeaveRequestsEmergencyDialog({
               />
             </div>
 
-            {missingScheduleDates.length > 0 && !checkingSchedule && (() => {
-              const warningData = getScheduleWarningData(missingScheduleDates, totalDaysInRange);
-              if (warningData.type === "none") return null;
-              
-              return (
+            {scheduleWarning && scheduleWarning.type !== "none" && (
                 <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-400">
                   <TriangleAlert className="mt-0.5 size-4 shrink-0" />
                   <p>
-                    {warningData.type === "all" && "Nhân viên này không có lịch làm việc trong toàn bộ khoảng ngày đã chọn."}
-                    {warningData.type === "summary" && (
+                    {scheduleWarning.type === "all" && "Nhân viên này không có lịch làm việc trong toàn bộ khoảng ngày đã chọn."}
+                    {scheduleWarning.type === "summary" && (
                       <>
-                        Có <span className="font-medium">{warningData.missingCount}/{warningData.totalCount}</span> ngày nhân viên này không có lịch làm việc.
+                        Có <span className="font-medium">{scheduleWarning.missingCount}/{scheduleWarning.totalCount}</span> ngày nhân viên này không có lịch làm việc.
                       </>
                     )}
-                    {warningData.type === "detailed" && (
+                    {scheduleWarning.type === "detailed" && (
                       <>
                         Nhân viên này không có lịch làm việc vào:{" "}
-                        <span className="font-medium">{warningData.formattedRanges}</span>
+                        <span className="font-medium">{scheduleWarning.formattedRanges}</span>
                       </>
                     )}
                   </p>
                 </div>
-              );
-            })()}
+            )}
 
             <FormField
               control={form.control}

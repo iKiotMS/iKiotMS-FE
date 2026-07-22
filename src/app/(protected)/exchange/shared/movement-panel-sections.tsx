@@ -1,36 +1,29 @@
 "use client";
 
-import type { Dispatch, MouseEvent, SetStateAction } from "react";
+import {
+  type Dispatch,
+  type MouseEvent,
+  type SetStateAction,
+  useMemo,
+} from "react";
 import { CheckCircle, PackageCheck, Undo2, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
 import {
   FieldError,
   MoneyCell,
+  MoneyInput,
+  ProductPickerField,
+  ProductSummary,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import {
   formatMoneyVnd,
-  parseImportPriceInput,
   type OpeningRowFieldErrors,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import { resolveItemImportPrice } from "@/lib/api/stock-movement";
 import type { OpeningDetailRow } from "@/app/(protected)/exchange/shared/use-stock-movement-detail";
+import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { cn } from "@/lib/utils";
 import type {
   StockMovement,
@@ -43,100 +36,183 @@ export function MovementDetailsTable({
   mode,
   detail,
   canEditOpening,
-  isOpening,
   isReceived,
   isInTransit,
   showReceiveForm,
   showReceivedColumn,
   openingDetails,
   openingProducts,
+  catalogProducts = [],
   openingRowErrors,
   updateOpeningRow,
   removeOpeningRow,
+  pickOpeningProduct,
+  ensureOpeningProduct,
   receivedQtys,
   setReceivedQtys,
   totalValue,
   totalQty,
   openingTotalQty,
+  /** IMPORT: catalog = TO tìm all; list = WH chỉ trong SP NCC (openingProducts). */
+  importSearchScope = "catalog",
 }: {
   mode: Mode;
   detail: StockMovement;
   canEditOpening: boolean;
-  isOpening: boolean;
   isReceived: boolean;
   isInTransit: boolean;
   showReceiveForm: boolean;
   showReceivedColumn: boolean;
   openingDetails: OpeningDetailRow[];
   openingProducts: StockMovementProductItemOption[];
+  /** Catalog tenant — enrich hiển thị (IMPORT); không dùng làm list dropdown NCC. */
+  catalogProducts?: StockMovementProductItemOption[];
   openingRowErrors: OpeningRowFieldErrors[];
   updateOpeningRow: (idx: number, patch: Partial<OpeningDetailRow>) => void;
   removeOpeningRow: (idx: number) => void;
+  pickOpeningProduct?: (item: StockMovementProductItemOption) => void;
+  ensureOpeningProduct?: (item: StockMovementProductItemOption) => void;
   receivedQtys: Record<string, number>;
   setReceivedQtys: Dispatch<SetStateAction<Record<string, number>>>;
   totalValue: number;
   totalQty: number;
   openingTotalQty: number;
+  importSearchScope?: "catalog" | "list";
 }) {
   const getQty = (id: string, original: number) =>
     receivedQtys[id] ?? original;
 
-  /** Hiện giá + thành tiền cho IMPORT và chuyển kho. */
-  const showPriceCols = true;
+  const productById = useMemo(() => {
+    const map = new Map<string, StockMovementProductItemOption>();
+    for (const p of catalogProducts) map.set(p._id, p);
+    for (const p of openingProducts) map.set(p._id, p);
+    return map;
+  }, [catalogProducts, openingProducts]);
+
+  const usedIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of openingDetails) if (d.productItemId) set.add(d.productItemId);
+    return set;
+  }, [openingDetails]);
 
   return (
     <>
-      <div className="mb-4 overflow-x-auto rounded-md border">
-        <Table className="min-w-[56rem] table-fixed">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[28%]">Hàng hóa</TableHead>
-              <TableHead className="w-[12%] text-right">
-                {mode === "transfer" ? "SL yêu cầu" : "SL đặt"}
-              </TableHead>
-              {mode === "import" && showReceivedColumn && (
-                <TableHead className="w-[12%] text-right">SL thực nhận</TableHead>
+      {canEditOpening && pickOpeningProduct ? (
+        <MovementProductSearch
+          className="mb-3"
+          usedIds={usedIds}
+          onPick={pickOpeningProduct}
+          searchScope={mode === "import" ? importSearchScope : "list"}
+          poolProducts={openingProducts}
+          metaMode={mode === "import" ? "price" : "stock"}
+          placeholder={
+            mode === "import"
+              ? importSearchScope === "list"
+                ? "Tìm trong hàng của nhà cung cấp..."
+                : "Tìm hàng theo tên, mã, SKU..."
+              : "Tìm hàng tại nơi gửi (có tồn)..."
+          }
+        />
+      ) : null}
+
+      {(() => {
+        const qtyLabel = mode === "transfer" ? "SL yêu cầu" : "SL đặt";
+        const showImportReceived = mode === "import" && showReceivedColumn;
+        const showTransferReceived = mode === "transfer" && showReceivedColumn;
+        const gridClass = cn(
+          "grid min-w-[56rem] items-start gap-x-3 px-3",
+          canEditOpening
+            ? showImportReceived
+              ? "grid-cols-[minmax(0,1.55fr)_6.75rem_7rem_9.25rem_8.75rem_minmax(8rem,0.9fr)_2.5rem]"
+              : showTransferReceived
+                ? "grid-cols-[minmax(0,1.55fr)_6.75rem_9.25rem_8.75rem_7rem_minmax(8rem,0.9fr)_2.5rem]"
+                : "grid-cols-[minmax(0,1.55fr)_6.75rem_9.25rem_8.75rem_minmax(8rem,0.9fr)_2.5rem]"
+            : showImportReceived
+              ? "grid-cols-[minmax(0,1.55fr)_6.75rem_7rem_9.25rem_8.75rem_minmax(8rem,0.9fr)]"
+              : showTransferReceived
+                ? "grid-cols-[minmax(0,1.55fr)_6.75rem_9.25rem_8.75rem_7rem_minmax(8rem,0.9fr)]"
+                : "grid-cols-[minmax(0,1.55fr)_6.75rem_9.25rem_8.75rem_minmax(8rem,0.9fr)]",
+        );
+
+        return (
+          <div className="mb-4 overflow-x-auto rounded-md border">
+            <div
+              className={cn(
+                gridClass,
+                "border-b bg-muted/40 py-2.5 text-xs font-medium text-muted-foreground",
               )}
-              {showPriceCols && (
-                <>
-                  <TableHead className="w-[14%] text-right">Giá nhập</TableHead>
-                  <TableHead className="w-[14%] text-right">Thành tiền</TableHead>
+            >
+              <div>Hàng hóa</div>
+              <div className="text-right">{qtyLabel}</div>
+              {showImportReceived ? (
+                <div className="text-right">SL thực nhận</div>
+              ) : null}
+              <>
+                  <div className="text-right">Giá nhập</div>
+                  <div className="text-right">Thành tiền</div>
                 </>
-              )}
-              {mode === "transfer" && showReceivedColumn && (
-                <TableHead className="w-[12%] text-right">SL thực nhận</TableHead>
-              )}
-              <TableHead
-                className={
-                  canEditOpening
-                    ? mode === "import"
-                      ? "w-[16%]"
-                      : "w-[18%]"
-                    : "w-[20%]"
-                }
-              >
-                Ghi chú dòng
-              </TableHead>
-              {canEditOpening && <TableHead className="w-12" />}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              {showTransferReceived ? (
+                <div className="text-right">SL thực nhận</div>
+              ) : null}
+              <div>Ghi chú dòng</div>
+              {canEditOpening ? <div /> : null}
+            </div>
+
             {canEditOpening
               ? openingDetails.map((item, idx) => {
-                  const selected = openingProducts.find(
-                    (p) => p._id === item.productItemId,
+                  const fromDetail = detail.details.find(
+                    (d) => d.productItemId === item.productItemId,
                   );
+                  const selected = productById.get(item.productItemId);
+                  const fallback =
+                    !selected && item.productItemId
+                      ? {
+                          _id: item.productItemId,
+                          name: fromDetail?.productName || "Đang tải...",
+                          sku: fromDetail?.sku || "",
+                        }
+                      : undefined;
+                  const display = selected ?? fallback;
                   const rowErr = openingRowErrors[idx] ?? {};
                   const lineTotal = (item.importPrice ?? 0) * item.quantity;
+                  const pickerProducts = openingProducts.filter(
+                    (p) =>
+                      p._id === item.productItemId || !usedIds.has(p._id),
+                  );
+                  const selectedProduct = productById.get(item.productItemId);
+                  const stockMax =
+                    mode === "transfer" &&
+                    typeof selectedProduct?.stock === "number"
+                      ? selectedProduct.stock
+                      : undefined;
+
                   return (
-                    <TableRow key={`${item.productItemId || "new"}-${idx}`}>
-                      <TableCell className="align-top">
-                        <Select
+                    <div
+                      key={item.productItemId || "new-" + idx}
+                      className={cn(
+                        gridClass,
+                        "border-b py-2.5 last:border-b-0",
+                      )}
+                    >
+                      <div className="min-w-0 overflow-hidden">
+                        <ProductPickerField
+                          products={pickerProducts}
                           value={item.productItemId}
+                          displayProduct={
+                            display &&
+                            !pickerProducts.some((p) => p._id === display._id)
+                              ? display
+                              : undefined
+                          }
+                          metaMode={mode === "import" ? "price" : "stock"}
+                          placeholder={
+                            mode === "import" && openingProducts.length === 0
+                              ? "Chọn NCC có hàng hoặc dùng ô tìm"
+                              : "Chọn mặt hàng"
+                          }
                           onValueChange={(value) => {
-                            const product = openingProducts.find(
-                              (p) => p._id === value,
-                            );
+                            const product = productById.get(value);
+                            if (product) ensureOpeningProduct?.(product);
                             const nextQty =
                               mode === "transfer" &&
                               typeof product?.stock === "number"
@@ -154,88 +230,40 @@ export function MovementDetailsTable({
                               ),
                             });
                           }}
-                        >
-                          <SelectTrigger
-                            className={cn(
-                              "h-9 w-full",
-                              rowErr.productItemId && "border-destructive",
-                            )}
-                          >
-                            <SelectValue placeholder="Chọn mặt hàng">
-                              {selected
-                                ? `${selected.name}${selected.sku ? ` (${selected.sku})` : ""}`
-                                : undefined}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {openingProducts.map((product) => (
-                              <SelectItem key={product._id} value={product._id}>
-                                {product.name}
-                                {product.sku ? ` (${product.sku})` : ""}
-                                {typeof product.stock === "number"
-                                  ? ` · Tồn ${product.stock}`
-                                  : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                         <FieldError message={rowErr.productItemId} />
-                      </TableCell>
-                      <TableCell className="align-top">
-                        {(() => {
-                          const selectedProduct = openingProducts.find(
-                            (p) => p._id === item.productItemId,
-                          );
-                          const stockMax =
-                            mode === "transfer" &&
-                            typeof selectedProduct?.stock === "number"
-                              ? selectedProduct.stock
-                              : undefined;
-                          return (
-                            <QuantityStepper
-                              className="w-full"
-                              min={1}
-                              max={stockMax}
-                              value={item.quantity}
-                              onChange={(next) =>
-                                updateOpeningRow(idx, { quantity: next })
-                              }
-                            />
-                          );
-                        })()}
+                      </div>
+                      <div className="flex flex-col items-stretch">
+                        <QuantityStepper
+                          className="w-full max-w-none"
+                          min={1}
+                          max={stockMax}
+                          value={item.quantity}
+                          onChange={(next) =>
+                            updateOpeningRow(idx, { quantity: next })
+                          }
+                        />
                         <FieldError message={rowErr.quantity} />
-                      </TableCell>
-                      {showPriceCols && (
-                        <>
-                          <TableCell className="align-top">
-                            <Input
+                      </div>
+                      <>
+                          <div>
+                            <MoneyInput
                               className={cn(
-                                "h-9 w-full text-right tabular-nums",
+                                "h-9 w-full px-2.5 text-right",
                                 rowErr.importPrice && "border-destructive",
                               )}
-                              inputMode="numeric"
-                              value={
-                                item.importPrice > 0
-                                  ? String(item.importPrice)
-                                  : ""
+                              value={item.importPrice}
+                              onChange={(importPrice) =>
+                                updateOpeningRow(idx, { importPrice })
                               }
-                              placeholder="0"
-                              onChange={(e) => {
-                                updateOpeningRow(idx, {
-                                  importPrice: parseImportPriceInput(
-                                    e.target.value,
-                                  ),
-                                });
-                              }}
                             />
                             <FieldError message={rowErr.importPrice} />
-                          </TableCell>
-                          <TableCell className="align-middle overflow-hidden">
+                          </div>
+                          <div className="flex h-9 items-center justify-end">
                             <MoneyCell value={lineTotal} />
-                          </TableCell>
+                          </div>
                         </>
-                      )}
-                      <TableCell className="align-top">
+                      <div>
                         <Input
                           className="h-9 w-full"
                           value={item.note ?? ""}
@@ -244,8 +272,8 @@ export function MovementDetailsTable({
                           }
                           placeholder="Ghi chú dòng"
                         />
-                      </TableCell>
-                      <TableCell className="align-top">
+                      </div>
+                      <div className="flex h-9 items-center justify-center">
                         <Button
                           type="button"
                           variant="ghost"
@@ -256,35 +284,35 @@ export function MovementDetailsTable({
                         >
                           <Trash2 className="size-4" />
                         </Button>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   );
                 })
               : detail.details.map((item) => (
-                  <TableRow key={item.productItemId}>
-                    <TableCell>
-                      <div className="font-medium text-sm">
-                        {item.productName || "—"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.sku || item.productItemId}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                  <div
+                    key={item.productItemId}
+                    className={cn(gridClass, "border-b py-2.5 last:border-b-0")}
+                  >
+                    <div className="min-w-0 overflow-hidden">
+                      <ProductSummary
+                        name={item.productName}
+                        sku={item.sku}
+                        product={productById.get(item.productItemId)}
+                        metaMode={mode === "import" ? "price" : "stock"}
+                      />
+                    </div>
+                    <div className="flex h-9 items-center justify-end tabular-nums">
                       {item.quantity.toLocaleString("vi-VN")}
-                    </TableCell>
-                    {mode === "import" && isReceived && (
-                      <TableCell className="text-right tabular-nums">
+                    </div>
+                    {mode === "import" && isReceived ? (
+                      <div className="flex h-9 items-center justify-end tabular-nums">
                         {(item.receivedQuantity ?? 0).toLocaleString("vi-VN")}
-                      </TableCell>
-                    )}
-                    {mode === "import" && showReceiveForm && (
-                      <TableCell
-                        className="text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      </div>
+                    ) : null}
+                    {mode === "import" && showReceiveForm ? (
+                      <div onClick={(e) => e.stopPropagation()}>
                         <QuantityStepper
-                          className="w-full"
+                          className="w-full max-w-none"
                           min={0}
                           value={getQty(item.productItemId, item.quantity)}
                           onChange={(next) => {
@@ -294,32 +322,27 @@ export function MovementDetailsTable({
                             }));
                           }}
                         />
-                      </TableCell>
-                    )}
-                    {showPriceCols && (
-                      <>
-                        <TableCell className="overflow-hidden">
+                      </div>
+                    ) : null}
+                    <>
+                        <div className="flex h-9 items-center justify-end">
                           <MoneyCell value={item.importPrice ?? 0} />
-                        </TableCell>
-                        <TableCell className="overflow-hidden font-medium">
+                        </div>
+                        <div className="flex h-9 items-center justify-end font-medium">
                           <MoneyCell
                             value={(item.importPrice ?? 0) * item.quantity}
                           />
-                        </TableCell>
+                        </div>
                       </>
-                    )}
-                    {mode === "transfer" && isReceived && (
-                      <TableCell className="text-right tabular-nums">
+                    {mode === "transfer" && isReceived ? (
+                      <div className="flex h-9 items-center justify-end tabular-nums">
                         {(item.receivedQuantity ?? 0).toLocaleString("vi-VN")}
-                      </TableCell>
-                    )}
-                    {mode === "transfer" && isInTransit && showReceiveForm && (
-                      <TableCell
-                        className="text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      </div>
+                    ) : null}
+                    {mode === "transfer" && isInTransit && showReceiveForm ? (
+                      <div onClick={(e) => e.stopPropagation()}>
                         <QuantityStepper
-                          className="w-full"
+                          className="w-full max-w-none"
                           min={0}
                           value={getQty(item.productItemId, item.quantity)}
                           onChange={(next) => {
@@ -329,26 +352,31 @@ export function MovementDetailsTable({
                             }));
                           }}
                         />
-                      </TableCell>
-                    )}
-                    <TableCell className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                      </div>
+                    ) : null}
+                    <div className="flex min-h-9 items-center break-words text-sm text-muted-foreground whitespace-normal">
                       {item.note || "Không có"}
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 ))}
-            {mode === "transfer" && (
-              <TableRow className="bg-muted/30">
-                <TableCell className="font-semibold">Tổng cộng</TableCell>
-                <TableCell className="text-right tabular-nums font-bold">
+
+            {mode === "transfer" ? (
+              <div
+                className={cn(
+                  gridClass,
+                  "bg-muted/30 py-2.5 text-sm font-semibold",
+                )}
+              >
+                <div>Tổng cộng</div>
+                <div className="text-right tabular-nums">
                   {(canEditOpening ? openingTotalQty : totalQty).toLocaleString(
                     "vi-VN",
                   )}
-                </TableCell>
-                {showReceivedColumn && <TableCell />}
-                {showPriceCols && (
-                  <>
-                    <TableCell />
-                    <TableCell className="overflow-hidden font-bold">
+                </div>
+                {showReceivedColumn ? <div /> : null}
+                <>
+                    <div />
+                    <div className="text-right">
                       <MoneyCell
                         value={
                           canEditOpening
@@ -364,22 +392,21 @@ export function MovementDetailsTable({
                               )
                         }
                       />
-                    </TableCell>
+                    </div>
                   </>
-                )}
-                <TableCell />
-                {canEditOpening && <TableCell />}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                <div />
+                {canEditOpening ? <div /> : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })()}
 
-      <div className="mb-4 flex justify-end">
-        <div className="text-right">
+<div className="mb-4 flex justify-end px-1">
+        <div className="min-w-0 max-w-full text-right">
           <p className="text-sm text-muted-foreground">Tổng giá trị đơn</p>
           <p
-            className="text-xl font-bold truncate"
+            className="max-w-full truncate text-xl font-bold tabular-nums"
             title={formatMoneyVnd(totalValue)}
           >
             {formatMoneyVnd(totalValue)}

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link2, Loader2, Package, Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,18 +37,21 @@ import {
   resolveItemImportPrice,
   stockMovementApi,
 } from "@/lib/api/stock-movement";
-import { getApiErrorMessage } from "@/lib/api/staff-mapper";
 import {
   filterLocationsByAuthScope,
   getEffectiveLocationScope,
 } from "@/app/(protected)/exchange/shared/auth-scope";
 import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
 import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
+import {
+  canSearchImportCatalog,
+} from "@/app/(protected)/exchange/shared/product-item-search";
+import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { useAuthStore } from "@/store/auth-store";
 import {
   DetailLineCard,
   MoneyInput,
-  ProductSelect,
+  ProductPickerField,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
 import {
@@ -113,40 +116,21 @@ function isPriceOverRetail(price?: number, retail?: number) {
   );
 }
 
-function productMetaLine(item: StockMovementProductItemOption) {
-  const parts = [
-    item.sku ? `SKU: ${item.sku}` : null,
-    typeof item.costPrice === "number"
-      ? `Giá vốn ${formatMoneyVnd(item.costPrice)}`
-      : null,
-    typeof item.retailPrice === "number"
-      ? `Giá bán ${formatMoneyVnd(item.retailPrice)}`
-      : null,
-  ].filter(Boolean);
-  return parts.join(" · ") || "—";
-}
-
 function ImportDetailLine({
   form,
   index,
   product,
   lineProducts,
-  mismatched,
-  isLinking,
   canRemove,
   onRemove,
-  onAttach,
   onPick,
 }: {
   form: UseFormReturn<ImportFormValues>;
   index: number;
   product?: StockMovementProductItemOption;
   lineProducts: StockMovementProductItemOption[];
-  mismatched: boolean;
-  isLinking: boolean;
   canRemove: boolean;
   onRemove: () => void;
-  onAttach: () => void;
   onPick: (item: StockMovementProductItemOption) => void;
 }) {
   const importPrice = useWatch({
@@ -164,20 +148,17 @@ function ImportDetailLine({
       index={index}
       canRemove={canRemove}
       onRemove={onRemove}
-      className={cn(
-        (mismatched || priceOver) && "border-destructive/60",
-        mismatched && "bg-destructive/5",
-      )}
+      className={cn(priceOver && "border-destructive/60")}
     >
       <FormField
         control={form.control}
         name={`details.${index}.productItemId`}
         render={({ field }) => (
-          <FormItem className="gap-1.5">
+          <FormItem className="min-w-0 gap-1.5">
             <FormLabel className="text-xs leading-none">
               Hàng hóa <span className="text-destructive">*</span>
             </FormLabel>
-            <ProductSelect
+            <ProductPickerField
               products={lineProducts}
               value={field.value}
               displayProduct={displayOrphan}
@@ -194,25 +175,6 @@ function ImportDetailLine({
         )}
       />
 
-      {mismatched && (
-        <div className="flex flex-col gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-destructive">
-            Hàng chưa thuộc nhà cung cấp đã chọn.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="destructive"
-            className="shrink-0 cursor-pointer"
-            disabled={isLinking}
-            onClick={onAttach}
-          >
-            <Link2 className="mr-1.5 size-3.5" />
-            {isLinking ? "Đang gắn..." : "Thêm nhà cung cấp"}
-          </Button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[8.5rem_minmax(12rem,1.25fr)_minmax(10rem,1fr)]">
         <FormField
           control={form.control}
@@ -224,7 +186,7 @@ function ImportDetailLine({
               </FormLabel>
               <FormControl>
                 <QuantityStepper
-                  className="h-9 w-full"
+                  className="h-9 w-full min-w-0"
                   min={1}
                   value={Number.isFinite(field.value) ? field.value : 1}
                   onChange={field.onChange}
@@ -293,6 +255,7 @@ export function ImportsCreateDialog({
     [locationKey],
   );
   const { role, locationId: lockedLocationId } = effectiveScope;
+  const searchAllCatalog = canSearchImportCatalog(role);
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
@@ -326,22 +289,10 @@ export function ImportsCreateDialog({
     () => new Map<string, StockMovementProductItemOption>(),
   );
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
-  const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    StockMovementProductItemOption[]
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const searchSeq = useRef(0);
 
   const visibleLocations = useMemo(
     () => filterLocationsByAuthScope(locations, effectiveScope),
     [locations, effectiveScope],
-  );
-
-  const linkedIds = useMemo(
-    () => new Set(supplierProducts.map((p) => p._id)),
-    [supplierProducts],
   );
 
   const productById = useMemo(() => {
@@ -366,16 +317,15 @@ export function ImportsCreateDialog({
   );
 
   const canSubmit = useMemo(() => {
-    if (!details.length || isOptionsLoading || linkingItemId) return false;
+    if (!details.length || isOptionsLoading) return false;
     for (const d of details) {
       if (!d.productItemId) return false;
-      if (!linkedIds.has(d.productItemId)) return false;
       if (isPriceOverRetail(d.importPrice, productById.get(d.productItemId)?.retailPrice)) {
         return false;
       }
     }
     return true;
-  }, [details, isOptionsLoading, linkingItemId, linkedIds, productById]);
+  }, [details, isOptionsLoading, productById]);
 
   const cacheProduct = useCallback((item: StockMovementProductItemOption) => {
     setExtraById((prev) => {
@@ -384,11 +334,6 @@ export function ImportsCreateDialog({
       next.set(item._id, item);
       return next;
     });
-  }, []);
-
-  const clearSearch = useCallback(() => {
-    setSearchQuery("");
-    setSearchResults([]);
   }, []);
 
   const applyProduct = useCallback(
@@ -441,8 +386,7 @@ export function ImportsCreateDialog({
     });
     setSupplierProducts([]);
     setExtraById(new Map());
-    clearSearch();
-  }, [open, form, lockedLocationId, clearSearch]);
+  }, [open, form, lockedLocationId]);
 
   useEffect(() => {
     if (!open) return;
@@ -480,74 +424,9 @@ export function ImportsCreateDialog({
     };
   }, [open, fromSupplierId]);
 
-  useEffect(() => {
-    if (!open || !fromSupplierId) {
-      setSearchResults([]);
-      return;
-    }
-    const q = searchQuery.trim();
-    if (q.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const seq = ++searchSeq.current;
-    const timer = setTimeout(() => {
-      setIsSearching(true);
-      void stockMovementApi
-        .searchProductItems(q)
-        .then((items) => {
-          if (seq !== searchSeq.current) return;
-          setSearchResults(items);
-        })
-        .catch(() => {
-          if (seq !== searchSeq.current) return;
-          setSearchResults([]);
-          toast.error("Không thể tìm hàng hóa");
-        })
-        .finally(() => {
-          if (seq === searchSeq.current) setIsSearching(false);
-        });
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [open, fromSupplierId, searchQuery]);
-
-  const handleAttachSupplier = useCallback(
-    async (itemId: string) => {
-      if (!fromSupplierId) return;
-      setLinkingItemId(itemId);
-      try {
-        await stockMovementApi.attachSupplierToProductItem(
-          itemId,
-          fromSupplierId,
-        );
-        const item = productById.get(itemId);
-        if (item) {
-          setSupplierProducts((prev) =>
-            prev.some((p) => p._id === itemId) ? prev : [...prev, item],
-          );
-        }
-        toast.success("Đã gắn nhà cung cấp vào hàng hóa");
-      } catch (error) {
-        toast.error(getApiErrorMessage(error) || "Không thể gắn nhà cung cấp");
-      } finally {
-        setLinkingItemId(null);
-      }
-    },
-    [fromSupplierId, productById],
-  );
-
   async function onSubmit(data: ImportFormValues) {
     if (role === "BRANCH_MANAGER") {
       toast.error("Chi nhánh không được tạo đơn nhập hàng");
-      return;
-    }
-    if (data.details.some((d) => d.productItemId && !linkedIds.has(d.productItemId))) {
-      toast.error(
-        "Có hàng chưa thuộc nhà cung cấp. Hãy gắn NCC hoặc đổi hàng trước khi tạo đơn.",
-      );
       return;
     }
     for (const d of data.details) {
@@ -593,8 +472,6 @@ export function ImportsCreateDialog({
     }
   }
 
-  const showSearchPanel = !!fromSupplierId && searchQuery.trim().length >= 2;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -618,7 +495,6 @@ export function ImportsCreateDialog({
                         field.onChange(v);
                         form.setValue("details", [{ ...EMPTY_DETAIL }]);
                         setExtraById(new Map());
-                        clearSearch();
                       }}
                       value={field.value}
                     >
@@ -695,72 +571,24 @@ export function ImportsCreateDialog({
             <Separator />
 
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Tìm hàng khác</h3>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={!fromSupplierId}
-                  placeholder={
-                    fromSupplierId
-                      ? "Tìm theo tên, mã, SKU..."
-                      : "Chọn nhà cung cấp trước"
-                  }
-                  className="h-10 pl-9"
-                />
-                {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                )}
-              </div>
-
-              {showSearchPanel && (
-                <div className="max-h-56 overflow-y-auto rounded-lg border bg-background">
-                  {searchResults.length === 0 ? (
-                    <p className="px-3 py-4 text-sm text-muted-foreground">
-                      {isSearching ? "Đang tìm..." : "Không tìm thấy hàng hóa phù hợp"}
-                    </p>
-                  ) : (
-                    <ul className="divide-y">
-                      {searchResults.map((item) => {
-                        const already = usedIds.has(item._id);
-                        return (
-                          <li key={item._id}>
-                            <button
-                              type="button"
-                              disabled={already}
-                              onClick={() => {
-                                applyProduct(item);
-                                clearSearch();
-                              }}
-                              className={cn(
-                                "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors",
-                                already
-                                  ? "cursor-not-allowed opacity-50"
-                                  : "cursor-pointer hover:bg-muted/60",
-                              )}
-                            >
-                              <Package className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium">
-                                  {item.name}
-                                </span>
-                                <span className="mt-0.5 block text-xs text-muted-foreground">
-                                  {productMetaLine(item)}
-                                  {!linkedIds.has(item._id)
-                                    ? " · Chưa thuộc NCC"
-                                    : ""}
-                                  {already ? " · Đã thêm" : ""}
-                                </span>
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              )}
+              <h3 className="text-sm font-semibold">
+                {searchAllCatalog ? "Tìm hàng khác" : "Tìm trong hàng NCC"}
+              </h3>
+              <MovementProductSearch
+                usedIds={usedIds}
+                onPick={(item) => applyProduct(item)}
+                searchScope={searchAllCatalog ? "catalog" : "list"}
+                poolProducts={supplierProducts}
+                disabled={!fromSupplierId}
+                metaMode="price"
+                placeholder={
+                  !fromSupplierId
+                    ? "Chọn nhà cung cấp trước"
+                    : searchAllCatalog
+                      ? "Tìm theo tên, mã, SKU (toàn catalog)..."
+                      : "Tìm theo tên, SKU trong hàng của NCC..."
+                }
+              />
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <h3 className="text-sm font-semibold">
@@ -792,8 +620,6 @@ export function ImportsCreateDialog({
                     index={idx}
                     product={product}
                     lineProducts={lineProducts}
-                    mismatched={!!itemId && !linkedIds.has(itemId)}
-                    isLinking={linkingItemId === itemId}
                     canRemove
                     onRemove={() => {
                       remove(idx);
@@ -805,7 +631,6 @@ export function ImportsCreateDialog({
                         return next;
                       });
                     }}
-                    onAttach={() => void handleAttachSupplier(itemId)}
                     onPick={(item) => applyProduct(item, idx)}
                   />
                 );

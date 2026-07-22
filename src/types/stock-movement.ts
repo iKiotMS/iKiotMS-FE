@@ -143,6 +143,10 @@ export interface StockMovementProductItemOption {
   productId?: string;
   costPrice?: number;
   retailPrice?: number;
+  /** Thumbnail URL (item hoặc product) */
+  imageUrl?: string;
+  /** Thuộc tính biến thể (Màu, dung lượng, …) */
+  productDetails?: Array<{ name: string; value: string }>;
   /** Id NCC đã gắn với biến thể (ProductItem.suppliers) */
   supplierIds?: string[];
   /** Có bản ghi tồn kho tại location đang chọn */

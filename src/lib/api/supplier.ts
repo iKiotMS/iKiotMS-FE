@@ -50,7 +50,7 @@ export const supplierApi = {
     await client.delete(`/suppliers/${id}`)
   },
 
-  // Thanh toán công nợ: backend giảm outstandingDebt và tạo bản ghi CashFlow (chi).
+  // Thanh toán công nợ nhà cung cấp bằng tiền mặt (backend giảm outstandingDebt và tạo CashFlow chi).
   payDebt: async (id: string, payload: SupplierPayDebtPayload): Promise<Supplier> => {
     const res = await client.post<{ data: { supplier: SupplierDoc } }>(
       `/suppliers/${id}/payments`,

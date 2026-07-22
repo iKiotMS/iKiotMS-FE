@@ -2,7 +2,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { Mail, MapPin, Pencil, Phone, Trash2 } from "lucide-react";
+import { Mail, MapPin, Banknote, Pencil, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -161,7 +161,7 @@ export function SuppliersExpandedPanel({
         )}
       </div>
 
-      {(canDelete || canEdit) && (
+      {(canDelete || canEdit || supplier.outstandingDebt > 0) && (
         <>
           <Separator className="mt-4" />
           <div className="flex items-center justify-between mt-3">
@@ -182,20 +182,37 @@ export function SuppliersExpandedPanel({
             ) : (
               <span />
             )}
-            {canEdit && (
-              <Button
-                size="sm"
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentRow(supplier);
-                  setOpen("edit");
-                }}
-              >
-                <Pencil className="mr-2 size-4" />
-                Chỉnh sửa
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {supplier.outstandingDebt > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="cursor-pointer border-orange-400 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-500 dark:text-orange-400 dark:hover:bg-orange-950"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentRow(supplier);
+                    setOpen("payDebt");
+                  }}
+                >
+                  <Banknote className="mr-2 size-4" />
+                  Thanh toán
+                </Button>
+              )}
+              {canEdit && (
+                <Button
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentRow(supplier);
+                    setOpen("edit");
+                  }}
+                >
+                  <Pencil className="mr-2 size-4" />
+                  Chỉnh sửa
+                </Button>
+              )}
+            </div>
           </div>
         </>
       )}

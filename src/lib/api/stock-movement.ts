@@ -64,6 +64,11 @@ type ApiLocation = {
   name?: string;
 };
 
+type ApiProductImage = {
+  url?: string;
+  isThumbnail?: boolean;
+};
+
 type ApiProductItem = {
   _id: string;
   productName?: string;
@@ -72,12 +77,15 @@ type ApiProductItem = {
   costPrice?: number;
   retailPrice?: number;
   stock?: number;
+  images?: ApiProductImage[];
+  productDetails?: Array<{ name?: string; value?: string }>;
   suppliers?: Array<string | { _id?: string; id?: string }>;
 };
 
 type ApiProduct = {
   _id?: string;
   name?: string;
+  images?: ApiProductImage[];
   items?: ApiProductItem[];
   productItems?: ApiProductItem[];
 };
@@ -241,6 +249,31 @@ function resolveSupplierIds(
     .filter(Boolean);
 }
 
+function resolveProductImageUrl(
+  item?: { images?: ApiProductImage[] },
+  product?: { images?: ApiProductImage[] },
+): string | undefined {
+  const fromItem =
+    item?.images?.find((i) => i.isThumbnail)?.url ?? item?.images?.[0]?.url;
+  if (fromItem) return fromItem;
+  return (
+    product?.images?.find((i) => i.isThumbnail)?.url ?? product?.images?.[0]?.url
+  );
+}
+
+function mapProductDetails(
+  details?: Array<{ name?: string; value?: string }>,
+): Array<{ name: string; value: string }> | undefined {
+  if (!details?.length) return undefined;
+  const mapped = details
+    .map((d) => ({
+      name: d.name?.trim() ?? "",
+      value: d.value?.trim() ?? "",
+    }))
+    .filter((d) => d.name && d.value);
+  return mapped.length ? mapped : undefined;
+}
+
 function mapApiProductsToItemOptions(
   products: ApiProduct[],
 ): StockMovementProductItemOption[] {
@@ -253,6 +286,8 @@ function mapApiProductsToItemOptions(
         sku: item.sku ?? "",
         costPrice: item.costPrice ?? item.retailPrice ?? 0,
         retailPrice: item.retailPrice,
+        imageUrl: resolveProductImageUrl(item, product),
+        productDetails: mapProductDetails(item.productDetails),
         supplierIds: resolveSupplierIds(item.suppliers),
         stock: item.stock,
       }),
@@ -356,6 +391,8 @@ async function fetchSupplierProductItemOptions(
           sku: item.sku ?? "",
           costPrice: item.costPrice ?? item.retailPrice ?? 0,
           retailPrice: item.retailPrice,
+          imageUrl: resolveProductImageUrl(item, detail),
+          productDetails: mapProductDetails(item.productDetails),
           supplierIds: ids,
         });
       }
@@ -384,13 +421,6 @@ export function resolveItemImportPrice(
     return Math.min(cost, item.retailPrice);
   }
   return cost;
-}
-
-async function attachSupplierToProductItem(
-  itemId: string,
-  supplierId: string,
-): Promise<void> {
-  await client.post(`/products/items/${itemId}/suppliers`, { supplierId });
 }
 
 async function getProductLookup(): Promise<ProductLookup> {
@@ -572,40 +602,6 @@ export const stockMovementApi = {
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
-  createReturn: async (
-    payload: Omit<CreateExportPayload, "movementType"> & {
-      movementType?: "RETURN";
-    },
-  ): Promise<StockMovement> => {
-    const response = await client.post("/stock-movements", {
-      ...payload,
-      movementType: "RETURN",
-    });
-    return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
-  },
-
-  /** Create ADJUST then approve (payload: productItemId + receivedQuantity only). */
-  executeAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
-    const createBody: CreateAdjustPayload = {
-      ...payload,
-      details: payload.details.map((d) => ({
-        productItemId: d.productItemId,
-        receivedQuantity: d.receivedQuantity,
-        note: d.note,
-      })),
-    };
-    const createResponse = await client.post("/stock-movements", createBody);
-    const created = await safeEnrichMovement(
-      mapMovement(createResponse.data?.data as ApiMovement),
-    );
-    const approveResponse = await client.patch(
-      `/stock-movements/${created._id}/approve-adjust`,
-    );
-    return safeEnrichMovement(
-      mapMovement(approveResponse.data?.data as ApiMovement),
-    );
-  },
-
   createAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
     const createBody: CreateAdjustPayload = {
       ...payload,
@@ -755,8 +751,6 @@ export const stockMovementApi = {
     });
     return res.items;
   },
-  attachSupplierToProductItem,
-  resolveItemImportPrice,
 
   /** Sản phẩm kèm cờ có tại location (nhập hàng) */
   getProductItemsForDestination: async (

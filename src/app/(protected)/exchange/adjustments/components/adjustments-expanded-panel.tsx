@@ -18,13 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -35,7 +28,12 @@ import {
 import { MovementDetailHeader } from "@/app/(protected)/exchange/shared/movement-detail-header";
 import { MovementOrderNote } from "@/app/(protected)/exchange/shared/movement-order-note";
 import { CancelConfirmDialog } from "@/app/(protected)/exchange/shared/cancel-confirm-dialog";
-import { InfoItem } from "@/app/(protected)/exchange/shared/form-fields";
+import {
+  InfoItem,
+  ProductPickerField,
+  ProductSummary,
+} from "@/app/(protected)/exchange/shared/form-fields";
+import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
 import { useStockMovementDetail } from "@/app/(protected)/exchange/shared/use-stock-movement-detail";
 import { getAuthScope } from "@/app/(protected)/exchange/shared/auth-scope";
@@ -113,8 +111,6 @@ export function AdjustmentsExpandedPanel({
   const isTenantOwner = authScope.role === "TENANT_OWNER";
   const canActAsFrom = isTenantOwner || matchesFromLocation;
   const canEditPending = isPending && canActAsFrom;
-  const canApprove = isPending && canActAsFrom;
-  const canCancelPending = isPending && canActAsFrom;
 
   useEffect(() => {
     if (!isExpanded || !isPending) {
@@ -273,6 +269,36 @@ export function AdjustmentsExpandedPanel({
 
       <MovementOrderNote note={detail.note} />
 
+      {canEditPending ? (
+        <MovementProductSearch
+          className="mb-3"
+          usedIds={
+            new Set(editRows.map((r) => r.productItemId).filter(Boolean))
+          }
+          onPick={(item) => {
+            setEditRows((prev) => {
+              if (prev.some((r) => r.productItemId === item._id)) return prev;
+              const emptyIdx = prev.findIndex((r) => !r.productItemId);
+              const row = {
+                productItemId: item._id,
+                quantity: item.stock ?? 0,
+                receivedQuantity:
+                  typeof item.stock === "number" ? item.stock : 0,
+                note: "",
+              };
+              if (emptyIdx >= 0) {
+                return prev.map((r, i) => (i === emptyIdx ? row : r));
+              }
+              return [...prev, row];
+            });
+          }}
+          searchScope="list"
+          poolProducts={products}
+          metaMode="stock"
+          placeholder="Tìm hàng tại kho / chi nhánh đang điều chỉnh..."
+        />
+      ) : null}
+
       <div className="mb-4 rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
@@ -288,8 +314,14 @@ export function AdjustmentsExpandedPanel({
           <TableBody>
             {canEditPending
               ? editRows.map((row, idx) => {
-                  const selected = products.find(
-                    (p) => p._id === row.productItemId,
+                  const usedIds = new Set(
+                    editRows
+                      .map((r) => r.productItemId)
+                      .filter(Boolean),
+                  );
+                  const pickerProducts = products.filter(
+                    (p) =>
+                      p._id === row.productItemId || !usedIds.has(p._id),
                   );
                   const diff = getAdjustQtyChange(
                     row.quantity,
@@ -297,9 +329,12 @@ export function AdjustmentsExpandedPanel({
                   );
                   return (
                     <TableRow key={`${row.productItemId || "new"}-${idx}`}>
-                      <TableCell>
-                        <Select
+                      <TableCell className="max-w-0 min-w-[14rem] align-top whitespace-normal overflow-hidden">
+                        <ProductPickerField
+                          products={pickerProducts}
                           value={row.productItemId}
+                          metaMode="stock"
+                          placeholder="Chọn mặt hàng"
                           onValueChange={(value) => {
                             const p = products.find((x) => x._id === value);
                             setEditRows((prev) =>
@@ -318,33 +353,14 @@ export function AdjustmentsExpandedPanel({
                               ),
                             );
                           }}
-                        >
-                          <SelectTrigger className="h-9 w-full min-w-[12rem]">
-                            <SelectValue placeholder="Chọn mặt hàng">
-                              {selected
-                                ? `${selected.name}${selected.sku ? ` (${selected.sku})` : ""}`
-                                : undefined}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((p) => (
-                              <SelectItem key={p._id} value={p._id}>
-                                {p.name}
-                                {p.sku ? ` (${p.sku})` : ""}
-                                {typeof p.stock === "number"
-                                  ? ` · Tồn ${p.stock}`
-                                  : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="align-top text-right tabular-nums">
                         {row.quantity.toLocaleString("vi-VN")}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="align-top whitespace-normal">
                         <QuantityStepper
-                          className="w-full"
+                          className="ml-auto"
                           min={0}
                           value={row.receivedQuantity}
                           onChange={(next) =>
@@ -401,15 +417,18 @@ export function AdjustmentsExpandedPanel({
                     item.quantity,
                     item.receivedQuantity,
                   );
+                  const product = products.find(
+                    (p) => p._id === item.productItemId,
+                  );
                   return (
                     <TableRow key={item.productItemId}>
-                      <TableCell>
-                        <div className="font-medium text-sm">
-                          {item.productName || "—"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {item.sku || item.productItemId}
-                        </div>
+                      <TableCell className="align-top min-w-[14rem]">
+                        <ProductSummary
+                          name={item.productName}
+                          sku={item.sku}
+                          product={product}
+                          metaMode="stock"
+                        />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {item.quantity.toLocaleString("vi-VN")}
@@ -429,7 +448,7 @@ export function AdjustmentsExpandedPanel({
             <TableRow className="bg-muted/30">
               <TableCell
                 className="font-semibold"
-                colSpan={canEditPending ? 3 : 3}
+                colSpan={3}
               >
                 Tổng thay đổi
               </TableCell>
@@ -477,7 +496,7 @@ export function AdjustmentsExpandedPanel({
         </div>
       )}
 
-      {canApprove && (
+      {canEditPending && (
         <div className="flex gap-3">
           <Button
             className="flex-1 cursor-pointer"
@@ -487,17 +506,15 @@ export function AdjustmentsExpandedPanel({
             <CheckCircle className="mr-2 size-4" />
             Duyệt điều chỉnh
           </Button>
-          {canCancelPending && (
-            <Button
-              variant="outline"
-              className="flex-1 cursor-pointer"
-              onClick={() => setCancelConfirmOpen(true)}
-              disabled={isActionLoading}
-            >
-              <XCircle className="mr-2 size-4" />
-              Huỷ phiếu
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={() => setCancelConfirmOpen(true)}
+            disabled={isActionLoading}
+          >
+            <XCircle className="mr-2 size-4" />
+            Huỷ phiếu
+          </Button>
         </div>
       )}
 

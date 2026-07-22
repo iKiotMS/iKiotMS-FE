@@ -1,7 +1,7 @@
 // [UI Types – Supplier]
 import { z } from 'zod'
 
-export type SuppliersDialogType = 'add' | 'edit' | 'delete' | 'deleteMany'
+export type SuppliersDialogType = 'add' | 'edit' | 'delete' | 'deleteMany' | 'payDebt'
 
 export const supplierFormSchema = z.object({
   supplierName: z.string().min(1, 'Tên nhà cung cấp là bắt buộc'),
