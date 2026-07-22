@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Calculator, Plus, RefreshCw } from 'lucide-react'
+import {
+  Calculator,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,7 +28,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { usePayroll } from '../../_context/payroll-provider'
 import { periodCreateSchema, type PeriodCreateFormValues } from '../../_types/payroll.types'
@@ -30,10 +37,29 @@ import { formatVND } from '../../_constants/payroll.constants'
 import type { Payslip, PreviewResult } from '@/types/payroll'
 import { toast } from 'sonner'
 import { PayrollPayslipDetailDialog } from './payroll-payslip-detail-dialog'
+const vietnamDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+// BE lưu instant UTC. Khi lấy ngày nghiệp vụ phải đổi instant về ngày Việt Nam;
+// không được cắt `toISOString()` vì 00:00 Việt Nam là 17:00 UTC ngày hôm trước.
+const toVietnamDateKey = (dateStr: string) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
+
+  const parts = vietnamDateFormatter.formatToParts(new Date(dateStr))
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return year && month && day ? `${year}-${month}-${day}` : dateStr
+}
+
 // Helper to format ISO date string to DD/MM/YYYY (Vietnam locale)
 const formatDMY = (dateStr: string) => {
   if (!dateStr) return ''
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const match = toVietnamDateKey(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/)
   return match ? `${match[3]}/${match[2]}/${match[1]}` : dateStr
 }
 type PayrollPeriodDialogProps = {
@@ -46,17 +72,11 @@ const DEFAULT_PERIOD: PeriodCreateFormValues = {
   userIds: [],
 }
 
-function getPayrollPeriod(payrollMonth: string, periodStartDay = 1) {
+function getPayrollPeriod(payrollMonth: string) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)) return null
   const [year, month] = payrollMonth.split('-').map(Number)
-  const periodStart =
-    periodStartDay === 1
-      ? new Date(Date.UTC(year, month - 1, 1))
-      : new Date(Date.UTC(year, month - 2, periodStartDay))
-  const nextPeriodStart =
-    periodStartDay === 1
-      ? new Date(Date.UTC(year, month, 1))
-      : new Date(Date.UTC(year, month - 1, periodStartDay))
+  const periodStart = new Date(Date.UTC(year, month - 1, 1))
+  const nextPeriodStart = new Date(Date.UTC(year, month, 1))
 
   return {
     periodStart: periodStart.toISOString().slice(0, 10),
@@ -64,10 +84,10 @@ function getPayrollPeriod(payrollMonth: string, periodStartDay = 1) {
   }
 }
 
-function getLatestCompletedPayrollMonth(periodStartDay = 1) {
+function getLatestCompletedPayrollMonth() {
   const vietnamNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
   const currentMonth = `${vietnamNow.getUTCFullYear()}-${String(vietnamNow.getUTCMonth() + 1).padStart(2, '0')}`
-  const currentPeriod = getPayrollPeriod(currentMonth, periodStartDay)
+  const currentPeriod = getPayrollPeriod(currentMonth)
   const vietnamToday = vietnamNow.toISOString().slice(0, 10)
   if (currentPeriod && currentPeriod.periodEnd < vietnamToday) return currentMonth
 
@@ -77,9 +97,20 @@ function getLatestCompletedPayrollMonth(periodStartDay = 1) {
   return `${previousMonth.getUTCFullYear()}-${String(previousMonth.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+function formatPayrollMonth(payrollMonth: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)) return 'Chọn tháng lương'
+  const [year, month] = payrollMonth.split('-')
+
+  return `Tháng ${month}/${year}`
+}
+
 export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogProps) {
   const { handleCreatePeriod, staffs, settings } = usePayroll()
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(() =>
+    Number(getLatestCompletedPayrollMonth().slice(0, 4))
+  )
   const [previewData, setPreviewData] = useState<PreviewResult | null>(null)
   const [activePreviewSlip, setActivePreviewSlip] = useState<Payslip | null>(null)
 
@@ -89,28 +120,28 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
   })
 
   const payrollMonth = useWatch({ control: form.control, name: 'payrollMonth' })
-  const latestCompletedPayrollMonth = getLatestCompletedPayrollMonth(settings?.periodStartDay ?? 1)
-  const selectedPeriod = getPayrollPeriod(payrollMonth, settings?.periodStartDay ?? 1)
+  const latestCompletedPayrollMonth = getLatestCompletedPayrollMonth()
+  const selectedPeriod = getPayrollPeriod(payrollMonth)
   const isPreviewCurrent = Boolean(
     previewData &&
       selectedPeriod &&
-      previewData.periodStart.slice(0, 10) === selectedPeriod.periodStart &&
-      previewData.periodEnd.slice(0, 10) === selectedPeriod.periodEnd
+      toVietnamDateKey(previewData.periodStart) === selectedPeriod.periodStart &&
+      toVietnamDateKey(previewData.periodEnd) === selectedPeriod.periodEnd
   )
 
   useEffect(() => {
     if (!open) return
     form.reset({
       ...DEFAULT_PERIOD,
-      payrollMonth: getLatestCompletedPayrollMonth(settings?.periodStartDay ?? 1),
+      payrollMonth: getLatestCompletedPayrollMonth(),
     })
     const resetPreviewId = window.setTimeout(() => setPreviewData(null), 0)
     return () => window.clearTimeout(resetPreviewId)
-  }, [open, form, settings?.periodStartDay])
+  }, [open, form])
 
   async function handlePreview() {
     const selectedMonth = form.getValues('payrollMonth')
-    const previewPeriod = getPayrollPeriod(selectedMonth, settings?.periodStartDay ?? 1)
+    const previewPeriod = getPayrollPeriod(selectedMonth)
     if (!previewPeriod) {
       toast.error('Vui lòng chọn tháng lương')
       return
@@ -168,9 +199,82 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tháng lương</FormLabel>
-                    <FormControl>
-                      <Input type="month" max={latestCompletedPayrollMonth} {...field} />
-                    </FormControl>
+                    <Popover
+                      open={monthPickerOpen}
+                      onOpenChange={(nextOpen) => {
+                        setMonthPickerOpen(nextOpen)
+                        if (nextOpen) {
+                          const selectedMonth = /^\d{4}-\d{2}$/.test(field.value)
+                            ? field.value
+                            : latestCompletedPayrollMonth
+                          setPickerYear(Number(selectedMonth.slice(0, 4)))
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            <CalendarDays className="mr-2 size-4" />
+                            {formatPayrollMonth(field.value)}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-3" align="start">
+                        <div className="mb-3 flex items-center justify-between">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Năm trước"
+                            onClick={() => setPickerYear((year) => year - 1)}
+                          >
+                            <ChevronLeft className="size-4" />
+                          </Button>
+                          <span className="text-sm font-semibold">Năm {pickerYear}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Năm sau"
+                            disabled={
+                              pickerYear >= Number(latestCompletedPayrollMonth.slice(0, 4))
+                            }
+                            onClick={() => setPickerYear((year) => year + 1)}
+                          >
+                            <ChevronRight className="size-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          {Array.from({ length: 12 }, (_, monthIndex) => {
+                            const month = String(monthIndex + 1).padStart(2, '0')
+                            const monthValue = `${pickerYear}-${month}`
+                            const isSelected = field.value === monthValue
+                            const isDisabled = monthValue > latestCompletedPayrollMonth
+
+                            return (
+                              <Button
+                                key={monthValue}
+                                type="button"
+                                variant={isSelected ? 'default' : 'ghost'}
+                                className="h-10"
+                                disabled={isDisabled}
+                                onClick={() => {
+                                  field.onChange(monthValue)
+                                  setMonthPickerOpen(false)
+                                }}
+                              >
+                                Tháng {monthIndex + 1}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -184,7 +288,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                     : 'Chọn tháng lương để xem khoảng thời gian'}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Theo ngày bắt đầu kỳ: ngày {settings?.periodStartDay ?? 1} hàng tháng
+                  Tính từ ngày 1 đến ngày cuối tháng
                 </p>
               </div>
             </div>
