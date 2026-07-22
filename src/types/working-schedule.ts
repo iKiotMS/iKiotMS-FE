@@ -90,8 +90,8 @@ export interface ApiWorkingSchedule {
       };
   shiftTemplateId: ShiftTemplate | string;
   workDate: string;
-  startAt: string;
-  endAt: string;
+  startAt?: string;
+  endAt?: string;
   scheduleType?: ScheduleType | string;
   dayInfo?: ScheduleDayInfo;
   status: ScheduleStatus | "DELETED";
@@ -125,6 +125,8 @@ export interface WorkingSchedule {
   shiftName: string;
   startTime: string;
   endTime: string;
+  startAt?: string;
+  endAt?: string;
   workDate: string;
   scheduleType: ScheduleType;
   dayInfo?: ScheduleDayInfo;

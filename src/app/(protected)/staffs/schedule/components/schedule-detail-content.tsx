@@ -33,6 +33,8 @@ import {
 import type { ScheduleAssignee, WorkingSchedule } from "@/types/working-schedule";
 import { cn } from "@/lib/utils";
 import { ScheduleStaffAvatar } from "./schedule-staff-avatar";
+import { ManualCheckoutDialog } from "./manual-checkout-dialog";
+import { CreateManualAttendanceDialog } from "./create-manual-attendance-dialog";
 
 function InfoItem({
   icon,
@@ -72,7 +74,21 @@ const STATUS_ACCENT: Record<
   },
 };
 
-function AssigneeAttendanceCard({ assignee }: { assignee: ScheduleAssignee }) {
+function AssigneeAttendanceCard({
+  assignee,
+  canManualCheckout,
+  onAttendanceUpdated,
+  scheduleId,
+  canCreateManualAttendance,
+  canMarkAbsent,
+}: {
+  assignee: ScheduleAssignee;
+  canManualCheckout: boolean;
+  onAttendanceUpdated?: () => Promise<void> | void;
+  scheduleId: string;
+  canCreateManualAttendance: boolean;
+  canMarkAbsent: boolean;
+}) {
   const attendanceStatus = getAttendanceStatusDisplay(assignee.attendance?.status);
 
   return (
@@ -148,6 +164,39 @@ function AssigneeAttendanceCard({ assignee }: { assignee: ScheduleAssignee }) {
           </div>
         )}
       </div>
+      {canManualCheckout &&
+        assignee.attendance.status === "CHECKED_IN" &&
+        assignee.attendance._id && (
+          <div className="flex justify-end border-t pt-3">
+            <ManualCheckoutDialog
+              attendanceId={assignee.attendance._id}
+              checkinAt={assignee.attendance.actualCheckinAt}
+              onSaved={onAttendanceUpdated ?? (() => undefined)}
+            />
+          </div>
+        )}
+      {canManualCheckout &&
+        assignee.attendance.status === "NOT_CHECKED_IN" &&
+        (canCreateManualAttendance || canMarkAbsent) && (
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+          {canCreateManualAttendance && (
+            <CreateManualAttendanceDialog
+              scheduleId={scheduleId}
+              userId={assignee.userId}
+              mode="attendance"
+              onSaved={onAttendanceUpdated ?? (() => undefined)}
+            />
+          )}
+          {canMarkAbsent && (
+            <CreateManualAttendanceDialog
+              scheduleId={scheduleId}
+              userId={assignee.userId}
+              mode="absent"
+              onSaved={onAttendanceUpdated ?? (() => undefined)}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -160,6 +209,8 @@ type ScheduleDetailContentProps = {
   readOnlyHint?: string;
   onEdit?: () => void;
   onDelete?: () => void;
+  canManualCheckout?: (assignee: ScheduleAssignee) => boolean;
+  onAttendanceUpdated?: () => Promise<void> | void;
 };
 
 export function ScheduleDetailContent({
@@ -170,6 +221,8 @@ export function ScheduleDetailContent({
   readOnlyHint,
   onEdit,
   onDelete,
+  canManualCheckout = () => false,
+  onAttendanceUpdated,
 }: ScheduleDetailContentProps) {
   const status = SCHEDULE_STATUS_MAP[data.status];
   const isLocked = isScheduleLocked(data.status);
@@ -329,7 +382,17 @@ export function ScheduleDetailContent({
             Chấm công theo nhân viên
           </div>
           {assignees.map((assignee) => (
-            <AssigneeAttendanceCard key={assignee.userId} assignee={assignee} />
+            <AssigneeAttendanceCard
+              key={assignee.userId}
+              assignee={assignee}
+              canManualCheckout={canManualCheckout(assignee)}
+              onAttendanceUpdated={onAttendanceUpdated}
+              scheduleId={data._id}
+              canCreateManualAttendance={Boolean(
+                data.startAt && new Date(data.startAt) <= new Date(),
+              )}
+              canMarkAbsent={Boolean(data.endAt && new Date(data.endAt) <= new Date())}
+            />
           ))}
         </div>
 

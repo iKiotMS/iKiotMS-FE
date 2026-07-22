@@ -104,6 +104,7 @@ type ScheduleContextType = {
     payload: CreateWorkingSchedulePayload,
   ) => Promise<void>;
   handleDelete: (id: string) => Promise<void>;
+  handleRemoveAssignee: (scheduleId: string, userId: string) => Promise<void>;
   handleCreateShiftTemplate: (
     payload: UpdateShiftTemplatePayload,
   ) => Promise<void>;
@@ -472,6 +473,20 @@ export function ScheduleProvider({
     }
   }
 
+  async function handleRemoveAssignee(scheduleId: string, userId: string) {
+    try {
+      await workingScheduleApi.removeAssignee(scheduleId, userId);
+      toast.success("Đã gỡ nhân viên khỏi ca làm việc");
+      setSelectedSchedule(null);
+      setSelectedAssigneeUserId(null);
+      setCurrentRow(null);
+      await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      throw error;
+    }
+  }
+
   async function handleCreateShiftTemplate(
     payload: UpdateShiftTemplatePayload,
   ) {
@@ -599,6 +614,7 @@ export function ScheduleProvider({
         handleAdd,
         handleEdit,
         handleDelete,
+        handleRemoveAssignee,
         handleCreateShiftTemplate,
         handleUpdateShiftTemplate,
         handleDeleteShiftTemplate,

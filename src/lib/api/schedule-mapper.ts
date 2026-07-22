@@ -186,6 +186,8 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     shiftName: shiftTemplate?.name ?? "—",
     startTime,
     endTime,
+    startAt: raw.startAt,
+    endAt: raw.endAt,
     workDate,
     scheduleType,
     dayInfo: raw.dayInfo
