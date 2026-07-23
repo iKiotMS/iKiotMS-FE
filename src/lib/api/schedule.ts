@@ -249,6 +249,18 @@ export const workingScheduleApi = {
     return workingScheduleApi.createBulk([payload]);
   },
 
+  update: async (
+    id: string,
+    payload: CreateWorkingSchedulePayload,
+  ): Promise<void> => {
+    await client.patch(`/working-schedules/${id}`, {
+      userId: normalizeBulkUserId(payload.userId),
+      shiftTemplateId: payload.shiftTemplateId,
+      workDate: payload.workDate,
+      scheduleType: payload.scheduleType ?? "NORMAL",
+    });
+  },
+
   remove: async (id: string): Promise<void> => {
     await client.delete(`/working-schedules/${id}`);
   },

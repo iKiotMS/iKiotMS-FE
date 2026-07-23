@@ -173,6 +173,8 @@ export interface PayrollPeriod {
   cancelReason?: string;
   createdAt?: string;
   updatedAt?: string;
+  needsRecalculation?: boolean;
+  attendanceChangedAt?: string;
 }
 
 export interface PeriodCreatePayload {

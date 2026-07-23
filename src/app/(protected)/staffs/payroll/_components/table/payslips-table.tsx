@@ -120,6 +120,9 @@ export function PayslipsTable() {
           <Badge variant="outline" className={`${statusStyle.className} border font-medium px-3 py-1 rounded-full text-xs`}>
             {statusStyle.label}
           </Badge>
+          {activePeriod.needsRecalculation && (
+            <Badge variant="destructive">Attendance đã đổi — cần tạo lại kỳ lương</Badge>
+          )}
 
           {/* DRAFT: can submit if has at least 1 payslip */}
           {isDraft && (
@@ -128,8 +131,8 @@ export function PayslipsTable() {
               size="sm"
               onClick={() => handleSubmitPeriod(activePeriod._id)}
               className="cursor-pointer"
-              disabled={payslips.length === 0}
-              title={payslips.length === 0 ? 'Phải có ít nhất một phiếu lương để gửi duyệt' : 'Gửi kỳ lương để phê duyệt'}
+              disabled={payslips.length === 0 || activePeriod.needsRecalculation}
+              title={activePeriod.needsRecalculation ? 'Hãy hủy và tạo lại kỳ lương sau khi attendance thay đổi' : payslips.length === 0 ? 'Phải có ít nhất một phiếu lương để gửi duyệt' : 'Gửi kỳ lương để phê duyệt'}
             >
               <ArrowUpRight className="mr-1.5 size-4" />
               Gửi yêu cầu duyệt

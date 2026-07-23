@@ -3,7 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar, XCircle } from 'lucide-react'
+import { Eye, CheckCircle2, ArrowUpRight, Ban, DollarSign, Calendar, XCircle, AlertTriangle } from 'lucide-react'
 import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
 
@@ -79,6 +79,11 @@ export function PeriodsTable() {
                   <Badge variant="outline" className={`${statusStyle.className} border font-medium px-2 py-0.5 rounded-full`}>
                     {statusStyle.label}
                   </Badge>
+                  {p.needsRecalculation && (
+                    <Badge variant="destructive" className="ml-1 gap-1">
+                      <AlertTriangle className="size-3" /> Cần tạo lại
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : '—'}
@@ -117,6 +122,8 @@ export function PeriodsTable() {
                           size="sm"
                           onClick={() => handleSubmitPeriod(p._id)}
                           className="cursor-pointer h-8 text-xs flex items-center gap-1"
+                          disabled={p.needsRecalculation}
+                          title={p.needsRecalculation ? 'Attendance đã thay đổi — hãy hủy và tạo lại kỳ lương' : undefined}
                         >
                           <ArrowUpRight className="size-3.5" />
                           Gửi duyệt
