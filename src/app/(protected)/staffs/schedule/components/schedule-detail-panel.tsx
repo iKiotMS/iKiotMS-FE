@@ -25,6 +25,7 @@ import {
   type CalendarScheduleEntry,
 } from "@/app/(protected)/staffs/shared/schedule-utils";
 import type { WorkingSchedule } from "@/types/working-schedule";
+import { AssigneeAttendanceCard } from "./assignee-attendance-card";
 import { ScheduleDayListItem } from "./schedule-day-list-item";
 import { ScheduleDetailContent } from "./schedule-detail-content";
 import { useSchedule } from "./schedule-provider";
@@ -181,12 +182,14 @@ export function ScheduleDetailPanel() {
   }
 
   async function handleAttendanceUpdated() {
-    if (!selectedSchedule) return;
-    const fresh = await fetchScheduleDetail(
-      selectedSchedule._id,
-      selectedAssigneeUserId,
-    );
-    if (fresh) setDetail(fresh);
+    if (!selectedSchedule && !selectedDayDate) return;
+    if (selectedSchedule) {
+      const fresh = await fetchScheduleDetail(
+        selectedSchedule._id,
+        selectedAssigneeUserId,
+      );
+      if (fresh) setDetail(fresh);
+    }
   }
 
   function canManualCheckoutAssignee(assigneeUserId: string) {
@@ -269,7 +272,7 @@ export function ScheduleDetailPanel() {
         {/* Body */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {showDayList && (
-            <div className="space-y-2 p-4">
+            <div className="space-y-4 p-4">
               {dayLeaveItems.map((leave) => (
                 <div
                   key={`${leave._id}-${leave.date}`}
@@ -322,18 +325,37 @@ export function ScheduleDetailPanel() {
                 </div>
               ) : (
                 dayEntries.map((entry) => (
-                  <ScheduleDayListItem
-                    key={entry.chipKey}
-                    entry={entry}
-                    isActive={
-                      selectedScheduleId === entry.schedule._id &&
-                      selectedAssigneeUserId === (entry.assignee?.userId ?? null)
-                    }
-                    onSelect={() => {
-                      setSelectedAssigneeUserId(entry.assignee?.userId ?? null);
-                      setSelectedSchedule(entry.schedule);
-                    }}
-                  />
+                  <div key={entry.chipKey} className="space-y-2">
+                    <ScheduleDayListItem
+                      entry={entry}
+                      isActive={
+                        selectedScheduleId === entry.schedule._id &&
+                        selectedAssigneeUserId === (entry.assignee?.userId ?? null)
+                      }
+                      onSelect={() => {
+                        setSelectedAssigneeUserId(entry.assignee?.userId ?? null);
+                        setSelectedSchedule(entry.schedule);
+                      }}
+                    />
+                    {entry.assignee && (
+                      <AssigneeAttendanceCard
+                        assignee={entry.assignee}
+                        canManualCheckout={canManualCheckoutAssignee(
+                          entry.assignee.userId,
+                        )}
+                        onAttendanceUpdated={handleAttendanceUpdated}
+                        scheduleId={entry.schedule._id}
+                        canCreateManualAttendance={Boolean(
+                          entry.schedule.startAt &&
+                            new Date(entry.schedule.startAt) <= new Date(),
+                        )}
+                        canMarkAbsent={Boolean(
+                          entry.schedule.endAt &&
+                            new Date(entry.schedule.endAt) <= new Date(),
+                        )}
+                      />
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -354,10 +376,6 @@ export function ScheduleDetailPanel() {
               readOnlyHint={readOnlyHint}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              canManualCheckout={(assignee) =>
-                canManualCheckoutAssignee(assignee.userId)
-              }
-              onAttendanceUpdated={handleAttendanceUpdated}
             />
           )}
         </div>

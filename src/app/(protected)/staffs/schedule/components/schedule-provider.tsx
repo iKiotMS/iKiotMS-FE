@@ -442,8 +442,7 @@ export function ScheduleProvider({
     payload: CreateWorkingSchedulePayload,
   ) {
     try {
-      await workingScheduleApi.remove(scheduleId);
-      await workingScheduleApi.create(payload);
+      await workingScheduleApi.update(scheduleId, payload);
       toast.success("Đã cập nhật lịch làm việc");
       setSelectedSchedule((prev) => (prev?._id === scheduleId ? null : prev));
       setSelectedAssigneeUserId(null);
