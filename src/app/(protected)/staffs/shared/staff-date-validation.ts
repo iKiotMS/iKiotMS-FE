@@ -8,6 +8,7 @@ import {
 
 export const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export const MIN_STAFF_AGE = 16;
+export const MAX_STAFF_AGE = 100;
 export const MIN_BIRTH_YEAR = 1900;
 export const MIN_HIRE_YEAR = 1970;
 export const MAX_HIRE_YEARS_AHEAD = 5;
@@ -60,7 +61,8 @@ export function validateOptionalDob(value?: string): {
     return { ok: false, message: "Ngày sinh không được ở tương lai" };
   }
 
-  if (dob.getFullYear() < MIN_BIRTH_YEAR) {
+  const birthYear = dob.getFullYear();
+  if (birthYear < MIN_BIRTH_YEAR) {
     return {
       ok: false,
       message: `Năm sinh phải từ ${MIN_BIRTH_YEAR} trở lên`,
@@ -72,6 +74,12 @@ export function validateOptionalDob(value?: string): {
     return {
       ok: false,
       message: `Nhân viên phải đủ ${MIN_STAFF_AGE} tuổi trở lên`,
+    };
+  }
+  if (age > MAX_STAFF_AGE) {
+    return {
+      ok: false,
+      message: `Năm sinh không hợp lệ (tuổi tối đa ${MAX_STAFF_AGE})`,
     };
   }
 

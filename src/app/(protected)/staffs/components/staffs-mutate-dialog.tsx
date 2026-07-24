@@ -50,6 +50,14 @@ import {
   validateOptionalDob,
   validateOptionalHireDate,
 } from "@/app/(protected)/staffs/shared/staff-date-validation";
+import {
+  normalizeStaffAddress,
+  normalizeStaffPersonName,
+  STAFF_ADDRESS_MAX_LENGTH,
+  STAFF_NAME_MAX_LENGTH,
+  validateStaffAddress,
+  validateStaffPersonName,
+} from "@/app/(protected)/staffs/shared/staff-name-address-validation";
 import { toDateInputValue } from "@/app/(protected)/staffs/shared/staff-format";
 import { CccdInput } from "./cccd-input";
 import { VietnamDateInput } from "./vietnam-date-input";
@@ -99,6 +107,9 @@ const hireDateInputBounds = getHireDateInputBounds();
 
 function applyStaffProfileValidation(
   data: {
+    lastName?: string;
+    firstName?: string;
+    address?: string;
     dob?: string;
     hireDate?: string;
     taxNumber?: string;
@@ -108,6 +119,33 @@ function applyStaffProfileValidation(
   ctx: z.RefinementCtx,
   opts?: { identificationRequired?: boolean },
 ) {
+  const lastNameError = validateStaffPersonName(data.lastName, "Họ");
+  if (lastNameError) {
+    ctx.addIssue({
+      code: "custom",
+      message: lastNameError,
+      path: ["lastName"],
+    });
+  }
+
+  const firstNameError = validateStaffPersonName(data.firstName, "Tên");
+  if (firstNameError) {
+    ctx.addIssue({
+      code: "custom",
+      message: firstNameError,
+      path: ["firstName"],
+    });
+  }
+
+  const addressError = validateStaffAddress(data.address);
+  if (addressError) {
+    ctx.addIssue({
+      code: "custom",
+      message: addressError,
+      path: ["address"],
+    });
+  }
+
   const dobResult = validateOptionalDob(data.dob);
   if (!dobResult.ok) {
     ctx.addIssue({
@@ -150,7 +188,7 @@ function applyStaffProfileValidation(
 
 const profileFieldsSchema = {
   identificationId: z.string().optional(),
-  address: z.string().max(255, "Địa chỉ tối đa 255 ký tự").optional(),
+  address: z.string().optional(),
   gender: z
     .string()
     .optional()
@@ -207,7 +245,7 @@ function buildProfilePayload(data: {
 }): StaffProfilePayload | undefined {
   const profile: StaffProfilePayload = {
     identificationId: parseIdentificationId(data.identificationId) || undefined,
-    address: data.address?.trim() || undefined,
+    address: normalizeStaffAddress(data.address) || undefined,
     gender: (data.gender as StaffGender) || undefined,
     dob: normalizeDateInput(data.dob),
     avatarUrl:
@@ -230,8 +268,8 @@ const PAYSHEET_NONE = "__none__";
 
 const createFormSchema = z
   .object({
-    firstName: z.string().trim().min(1, "Tên là bắt buộc").max(50, "Tên tối đa 50 ký tự"),
-    lastName: z.string().trim().min(1, "Họ là bắt buộc").max(50, "Họ tối đa 50 ký tự"),
+    firstName: z.string(),
+    lastName: z.string(),
     phoneNumber: z
       .string()
       .trim()
@@ -263,8 +301,8 @@ const createFormSchema = z
 
 const editFormSchema = z
   .object({
-    firstName: z.string().trim().min(1, "Tên là bắt buộc").max(50, "Tên tối đa 50 ký tự"),
-    lastName: z.string().trim().min(1, "Họ là bắt buộc").max(50, "Họ tối đa 50 ký tự"),
+    firstName: z.string(),
+    lastName: z.string(),
     email: optionalEmailSchema,
     role: z.enum(["STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
     branchId: z.string().optional(),
@@ -637,8 +675,8 @@ export function StaffsMutateDialog({
       if (isEdit && currentRow) {
         const editData = data as EditFormValues;
         const profilePayload: Parameters<typeof handleEdit>[1] = {
-          firstName: editData.firstName,
-          lastName: editData.lastName,
+          firstName: normalizeStaffPersonName(editData.firstName),
+          lastName: normalizeStaffPersonName(editData.lastName),
           email: editData.email || undefined,
           hireDate: normalizeDateInput(editData.hireDate),
           paySheetId: resolvePaySheetIdForApi(editData.paySheetId),
@@ -718,8 +756,8 @@ export function StaffsMutateDialog({
       } else {
         const createData = data as CreateFormValues;
         await handleAdd({
-          firstName: createData.firstName,
-          lastName: createData.lastName,
+          firstName: normalizeStaffPersonName(createData.firstName),
+          lastName: normalizeStaffPersonName(createData.lastName),
           phoneNumber: normalizeStaffPhoneNumber(createData.phoneNumber),
           email: createData.email || undefined,
           role: createData.role,
@@ -794,9 +832,21 @@ export function StaffsMutateDialog({
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Họ</FormLabel>
+                    <FormLabel>
+                      Họ <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="Nguyễn" {...field} />
+                      <Input
+                        placeholder="Nguyễn"
+                        maxLength={STAFF_NAME_MAX_LENGTH}
+                        {...field}
+                        onBlur={(event) => {
+                          field.onChange(
+                            normalizeStaffPersonName(event.target.value),
+                          );
+                          field.onBlur();
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -807,9 +857,21 @@ export function StaffsMutateDialog({
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tên</FormLabel>
+                    <FormLabel>
+                      Tên <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="An" {...field} />
+                      <Input
+                        placeholder="An"
+                        maxLength={STAFF_NAME_MAX_LENGTH}
+                        {...field}
+                        onBlur={(event) => {
+                          field.onChange(
+                            normalizeStaffPersonName(event.target.value),
+                          );
+                          field.onBlur();
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1124,7 +1186,17 @@ export function StaffsMutateDialog({
                 <FormItem>
                   <FormLabel>Địa chỉ</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ho Chi Minh City" {...field} />
+                    <Input
+                      placeholder="Ho Chi Minh City"
+                      maxLength={STAFF_ADDRESS_MAX_LENGTH}
+                      {...field}
+                      onBlur={(event) => {
+                        field.onChange(
+                          normalizeStaffAddress(event.target.value),
+                        );
+                        field.onBlur();
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
