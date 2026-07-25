@@ -5,10 +5,10 @@ export const rolePermissions = {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
   },
   brands: {
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
   },
   categories: {
-    write: new Set(["TENANT_OWNER", "SUPER_ADMIN"]),
+    write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
   },
   suppliers: {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
