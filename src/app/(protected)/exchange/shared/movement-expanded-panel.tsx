@@ -22,6 +22,7 @@ import { buildReceivePayload } from "@/app/(protected)/exchange/shared/qty";
 import { InfoItem } from "@/app/(protected)/exchange/shared/form-fields";
 import {
   buildRetailPriceByItemId,
+  buildStockByItemId,
   validateMovementDetails,
   validateReceiveDetails,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
@@ -277,37 +278,91 @@ export function MovementExpandedPanel({
     });
   };
 
-  const onTransferOpen = (e: React.MouseEvent) => {
+  const assertExportStockOk = async (
+    lines: { productItemId: string; quantity: number; importPrice?: number }[],
+  ): Promise<boolean> => {
+    if (
+      detail.movementType !== "EXPORT" &&
+      detail.movementType !== "RETURN"
+    ) {
+      return true;
+    }
+    let stockProducts = openingProducts;
+    if (
+      stockProducts.length === 0 &&
+      detail.fromLocationId &&
+      detail.fromLocationType
+    ) {
+      try {
+        stockProducts = await stockMovementApi.getProductItemsAtSource(
+          detail.fromLocationId,
+          detail.fromLocationType,
+        );
+      } catch {
+        // Để BE chặn nếu không tải được tồn.
+        return true;
+      }
+    }
+    const err = validateMovementDetails(lines, {
+      requireImportPrice: false,
+      stockByItemId: buildStockByItemId(stockProducts),
+    });
+    if (err) {
+      toast.error(err);
+      return false;
+    }
+    return true;
+  };
+
+  const onTransferOpen = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
+    const ok = await assertExportStockOk(
+      detail.details.map((item) => ({
+        productItemId: item.productItemId,
+        quantity: item.quantity,
+        importPrice: item.importPrice,
+      })),
+    );
+    if (!ok) return;
     void withRefresh(() => transferActions.handleOpen(detail._id));
   };
 
-  const onTransferSaveFromOpening = (e: React.MouseEvent) => {
+  const onTransferSaveFromOpening = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
     const { payload, ok } = validateOpening();
     if (!ok) return;
     const submitPayload = payload.filter((item) => item.productItemId);
+    if (!(await assertExportStockOk(submitPayload))) return;
     void withRefresh(() =>
       transferActions.handleSubmitFromOpening(detail._id, submitPayload),
     );
   };
 
-  const onTransferShipFromOpening = (e: React.MouseEvent) => {
+  const onTransferShipFromOpening = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
     const { payload, ok } = validateOpening();
     if (!ok) return;
     const submitPayload = payload.filter((item) => item.productItemId);
+    if (!(await assertExportStockOk(submitPayload))) return;
     void withRefresh(() =>
       transferActions.handleShipFromOpening(detail._id, submitPayload),
     );
   };
 
-  const onTransferShip = (e: React.MouseEvent) => {
+  const onTransferShip = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
+    const ok = await assertExportStockOk(
+      detail.details.map((item) => ({
+        productItemId: item.productItemId,
+        quantity: item.quantity,
+        importPrice: item.importPrice,
+      })),
+    );
+    if (!ok) return;
     void withRefresh(() => transferActions.handleShip(detail._id));
   };
 

@@ -35,6 +35,23 @@ export type OpeningRowFieldErrors = {
   importPrice?: string
 }
 
+/** productItemId → tồn nơi gửi (khớp BE _validateSourceStock). */
+export function buildStockByItemId(
+  products: { _id: string; stock?: number }[],
+): Record<string, number> {
+  const map: Record<string, number> = {}
+  for (const p of products) {
+    if (typeof p.stock === "number" && Number.isFinite(p.stock)) {
+      map[p._id] = p.stock
+    }
+  }
+  return map
+}
+
+export function formatStockExceedMessage(stock: number): string {
+  return `Số lượng không được vượt tồn kho (${new Intl.NumberFormat("vi-VN").format(stock)})`
+}
+
 /** Parse ô giá — chỉ lấy chữ số, clamp ≤ 1000 tỷ (tránh số quá lớn làm vỡ UI). */
 export function parseImportPriceInput(raw: string): number {
   const digits = raw.replace(/[^\d]/g, "").slice(0, 13)
@@ -70,6 +87,8 @@ export function getOpeningRowFieldErrors(
     requireImportPrice: boolean
     /** productItemId → giá bán (retailPrice) để chặn giá nhập > giá bán */
     retailPriceByItemId?: Record<string, number>
+    /** productItemId → tồn nơi gửi (EXPORT/RETURN) */
+    stockByItemId?: Record<string, number>
   },
 ): OpeningRowFieldErrors[] {
   const dupes = new Set(findDuplicateProductIds(details))
@@ -82,6 +101,15 @@ export function getOpeningRowFieldErrors(
     }
     if (!Number.isFinite(d.quantity) || d.quantity <= 0) {
       err.quantity = "Số lượng phải > 0"
+    } else if (
+      d.productItemId &&
+      options.stockByItemId &&
+      Object.prototype.hasOwnProperty.call(options.stockByItemId, d.productItemId)
+    ) {
+      const stock = options.stockByItemId[d.productItemId] ?? 0
+      if (d.quantity > stock) {
+        err.quantity = formatStockExceedMessage(stock)
+      }
     }
     if (options.requireImportPrice) {
       const price = d.importPrice ?? 0
@@ -111,6 +139,8 @@ export type MovementDetailValidateOptions = {
   requireImportPrice: boolean
   /** productItemId → retailPrice (khớp BE: importPrice ≤ retailPrice) */
   retailPriceByItemId?: Record<string, number>
+  /** productItemId → tồn nơi gửi (khớp BE _validateSourceStock) */
+  stockByItemId?: Record<string, number>
 }
 
 /** Build map giá bán từ danh sách product options (search / catalog). */

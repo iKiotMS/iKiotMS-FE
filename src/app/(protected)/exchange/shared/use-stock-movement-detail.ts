@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/stock-movement";
 import {
   buildRetailPriceByItemId,
+  buildStockByItemId,
   getOpeningRowFieldErrors,
   MAX_IMPORT_PRICE,
   type OpeningRowFieldErrors,
@@ -228,36 +229,50 @@ export function useOpeningEditor({
     detail.fromLocationType,
   ]);
 
-  // Khi catalog/NCC có retailPrice → re-validate
-  useEffect(() => {
-    if (!isExpanded || !enabled || !requireImportPrice) return;
-    if (openingDetails.length === 0) return;
-    const retailSource =
-      catalogProducts.length > 0 ? catalogProducts : openingProducts;
-    if (retailSource.length === 0) return;
-    setOpeningRowErrors(
-      getOpeningRowFieldErrors(openingDetails, {
-        requireImportPrice: true,
-        retailPriceByItemId: buildRetailPriceByItemId(retailSource),
-      }),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [isExpanded, enabled, requireImportPrice, openingProducts, catalogProducts]);
-
   const getValidateOptions = useCallback(
     (products?: StockMovementProductItemOption[]) => {
       const retailSource =
         products ??
         (catalogProducts.length > 0 ? catalogProducts : openingProducts);
+      const stockSource = products ?? openingProducts;
+      const isExportLike =
+        detail.movementType === "EXPORT" || detail.movementType === "RETURN";
       return {
         requireImportPrice,
         retailPriceByItemId: requireImportPrice
           ? buildRetailPriceByItemId(retailSource)
           : undefined,
+        stockByItemId: isExportLike
+          ? buildStockByItemId(stockSource)
+          : undefined,
       };
     },
-    [openingProducts, catalogProducts, requireImportPrice],
+    [
+      openingProducts,
+      catalogProducts,
+      requireImportPrice,
+      detail.movementType,
+    ],
   );
+
+  // Khi catalog/NCC có retailPrice hoặc tồn nguồn đổi → re-validate
+  useEffect(() => {
+    if (!isExpanded || !enabled) return;
+    if (openingDetails.length === 0) return;
+    const retailSource =
+      catalogProducts.length > 0 ? catalogProducts : openingProducts;
+    if (
+      requireImportPrice &&
+      retailSource.length === 0 &&
+      openingProducts.length === 0
+    ) {
+      return;
+    }
+    setOpeningRowErrors(
+      getOpeningRowFieldErrors(openingDetails, getValidateOptions()),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [isExpanded, enabled, requireImportPrice, openingProducts, catalogProducts]);
 
   const updateOpeningRow = (
     idx: number,

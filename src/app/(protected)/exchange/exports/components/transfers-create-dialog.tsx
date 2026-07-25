@@ -28,6 +28,7 @@ import { MovementProductSearch } from '@/app/(protected)/exchange/shared/movemen
 import {
   MAX_IMPORT_PRICE,
   formatMoneyVnd,
+  formatStockExceedMessage,
   refineDuplicateProducts,
 } from '@/app/(protected)/exchange/shared/movement-detail-validation'
 import type {
@@ -113,8 +114,25 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
           message: labels.sameLocationError,
           path: ['toLocationId'],
         })
-        .superRefine((data, ctx) => refineDuplicateProducts(data.details, ctx)),
-    [labels],
+        .superRefine((data, ctx) => {
+          refineDuplicateProducts(data.details, ctx)
+          const stockById = new Map(
+            products.map((p) => [p._id, p.stock] as const),
+          )
+          data.details.forEach((d, idx) => {
+            if (!d.productItemId || !stockById.has(d.productItemId)) return
+            const stock = stockById.get(d.productItemId)
+            if (typeof stock !== 'number' || !Number.isFinite(stock)) return
+            if (d.quantity > stock) {
+              ctx.addIssue({
+                code: 'custom',
+                message: formatStockExceedMessage(stock),
+                path: ['details', idx, 'quantity'],
+              })
+            }
+          })
+        }),
+    [labels, products],
   )
 
   const form = useForm<TransferFormValues>({
@@ -250,9 +268,12 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     }
     stockMovementApi
       .getProductItemsAtSource(fromLocationId, fromLocation.type)
-      .then(setProducts)
+      .then((items) => {
+        setProducts(items)
+        void form.trigger('details')
+      })
       .catch(() => toast.error(labels.loadProductsError))
-  }, [open, fromLocationId, fromLocation, labels.loadProductsError])
+  }, [open, fromLocationId, fromLocation, labels.loadProductsError, form])
 
   useEffect(() => {
     if (!open) return
@@ -277,6 +298,11 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   }
 
   async function onSubmit(data: TransferFormValues) {
+    if (data.fromLocationId === data.toLocationId) {
+      toast.error(labels.sameLocationError)
+      return
+    }
+
     const fromLoc = locations.find((l) => l._id === data.fromLocationId)
     const toLoc = locations.find((l) => l._id === data.toLocationId)
     if (
@@ -298,6 +324,16 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     ) {
       toast.error('Chuyển hàng chỉ được gửi tới chi nhánh khác')
       return
+    }
+
+    const stockById = new Map(products.map((p) => [p._id, p.stock] as const))
+    for (const d of data.details) {
+      if (!stockById.has(d.productItemId)) continue
+      const stock = stockById.get(d.productItemId)
+      if (typeof stock === 'number' && d.quantity > stock) {
+        toast.error(formatStockExceedMessage(stock))
+        return
+      }
     }
 
     // BR→WH phải RETURN; còn lại EXPORT (kể cả BR→BR)
