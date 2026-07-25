@@ -22,7 +22,13 @@ export function useCheckoutProducts(searchQuery: string) {
       if (typeof window !== "undefined") {
         const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
         const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
-        if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+        if (
+          activeSwitcherItemId &&
+          activeSwitcherItemType === "branch" &&
+          activeSwitcherItemId !== "all-branches" &&
+          activeSwitcherItemId !== "all-warehouses" &&
+          activeSwitcherItemId !== "all"
+        ) {
           return activeSwitcherItemId;
         }
       }

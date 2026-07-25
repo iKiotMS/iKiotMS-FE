@@ -201,17 +201,14 @@ export function BranchSwitcher() {
               side={isMobile ? "bottom" : "right"}
               sideOffset={4}
             >
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Chi nhánh
-              </DropdownMenuLabel>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuItem
                     onClick={() =>
                       handleSelect({
-                        id: "all-branches",
+                        id: "all",
                         name: "Tổng",
-                        address: "Chi nhánh",
+                        address: "Hệ thống",
                         type: "branch",
                       })
                     }
@@ -227,11 +224,15 @@ export function BranchSwitcher() {
                 </TooltipTrigger>
                 <TooltipContent side="right" align="center" className="p-3 max-w-xs z-[100]">
                   <div className="space-y-1">
-                    <p className="font-semibold text-sm">Tổng chi nhánh</p>
-                    <p className="text-white/80 text-xs">Xem dữ liệu tổng hợp của tất cả các chi nhánh</p>
+                    <p className="font-semibold text-sm">Tổng hệ thống</p>
+                    <p className="text-white/80 text-xs">Xem dữ liệu tổng hợp của toàn hệ thống</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Chi nhánh
+              </DropdownMenuLabel>
               {dbBranches.map((item) => (
                 <Tooltip key={item._id}>
                   <TooltipTrigger asChild>
@@ -327,34 +328,6 @@ export function BranchSwitcher() {
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 Kho hàng
               </DropdownMenuLabel>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      handleSelect({
-                        id: "all-warehouses",
-                        name: "Tổng",
-                        address: "Kho hàng",
-                        type: "warehouse",
-                      })
-                    }
-                    className="gap-2 p-2 cursor-pointer flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-6 items-center justify-center rounded-sm border">
-                        <Warehouse className="size-4 shrink-0" />
-                      </div>
-                      Tổng
-                    </div>
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center" className="p-3 max-w-xs z-[100]">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-sm">Tổng kho hàng</p>
-                    <p className="text-white/80 text-xs">Xem dữ liệu tổng hợp của tất cả các kho hàng</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
               {dbWarehouses.map((item) => (
                 <Tooltip key={item._id}>
                   <TooltipTrigger asChild>

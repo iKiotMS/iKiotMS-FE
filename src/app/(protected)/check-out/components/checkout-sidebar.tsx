@@ -102,6 +102,19 @@ export function CheckoutSidebar({
   const [isCustomerLoading, setIsCustomerLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [localPay, setLocalPay] = useState<string>("");
+
+  // Sync local pay input value with prop customerPay
+  useEffect(() => {
+    const numericLocal = parseInt(localPay.replace(/\D/g, ""), 10) || 0;
+    if (numericLocal !== customerPay) {
+      if (customerPay === 0) {
+        setLocalPay("");
+      } else {
+        setLocalPay(customerPay.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+      }
+    }
+  }, [customerPay, localPay]);
 
   // Search customer records dynamically from backend
   useEffect(() => {
@@ -471,10 +484,17 @@ export function CheckoutSidebar({
               <div className="relative">
                 <Coins className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  type="number"
-                  value={customerPay}
+                  type="text"
+                  inputMode="numeric"
+                  value={localPay}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value);
+                    const valStr = e.target.value;
+                    const clean = valStr.replace(/\D/g, "");
+                    const formatted = clean.startsWith("0") && clean.length > 1
+                      ? clean.replace(/^0+/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+                      : clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    setLocalPay(formatted);
+                    const val = parseInt(clean, 10);
                     onCustomerPayChange(isNaN(val) || val < 0 ? 0 : val);
                   }}
                   className="pl-8 h-10 text-right font-bold tabular-nums text-base text-foreground focus-visible:ring-primary"

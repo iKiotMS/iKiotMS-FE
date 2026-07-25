@@ -145,15 +145,11 @@ export function useBranchSwitcher() {
     }
 
     if (locationKey === "all") {
-      const savedId = typeof window !== "undefined" ? localStorage.getItem("activeSwitcherItemId") : null;
-      const savedType = typeof window !== "undefined" ? localStorage.getItem("activeSwitcherItemType") : null;
-      const isWarehouse = savedId === "all-warehouses" || savedType === "warehouse";
-
       setActiveItem({
-        id: isWarehouse ? "all-warehouses" : "all-branches",
+        id: "all",
         name: "Tổng",
-        address: isWarehouse ? "Kho hàng" : "Chi nhánh",
-        type: isWarehouse ? "warehouse" : "branch",
+        address: "Hệ thống",
+        type: "branch",
       });
       return;
     }
@@ -192,7 +188,7 @@ export function useBranchSwitcher() {
       return;
     }
     const key =
-      item.id === "all-branches" || item.id === "all-warehouses"
+      item.id === "all" || item.id === "all-branches" || item.id === "all-warehouses"
         ? "all"
         : `${item.type}-${item.id}`;
     setLocationKey(key);
@@ -323,9 +319,9 @@ export function useBranchSwitcher() {
 
       if (activeItem && activeItem.id === id) {
         handleSelect({
-          id: "all-branches",
+          id: "all",
           name: "Tổng",
-          address: "Chi nhánh",
+          address: "Hệ thống",
           type: "branch",
         });
       }

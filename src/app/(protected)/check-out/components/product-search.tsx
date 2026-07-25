@@ -8,6 +8,7 @@ import { useCheckoutProducts } from "../_hooks/use-checkout-products";
 import { productApi } from "@/lib/api/product";
 import { useAuthStore } from "@/store/auth-store";
 import { getCachedUser } from "@/lib/auth";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -52,9 +53,19 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       const cachedUser = getCachedUser() as any;
       if (cachedUser?.branchId) return cachedUser.branchId;
       if (typeof window !== "undefined") {
-        const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
-        const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
-        if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+        const activeSwitcherItemId = localStorage.getItem(
+          "activeSwitcherItemId",
+        );
+        const activeSwitcherItemType = localStorage.getItem(
+          "activeSwitcherItemType",
+        );
+        if (
+          activeSwitcherItemId &&
+          activeSwitcherItemType === "branch" &&
+          activeSwitcherItemId !== "all-branches" &&
+          activeSwitcherItemId !== "all-warehouses" &&
+          activeSwitcherItemId !== "all"
+        ) {
           return activeSwitcherItemId;
         }
       }
@@ -92,7 +103,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
               product.images?.[0]
             )?.url,
           })),
-        );
+        ).filter((item) => item.stock > 0);
         setQuickItems(flattened.slice(0, 5));
       })
       .catch((err) => {
@@ -209,9 +220,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     if (product.status !== "ACTIVE") {
       return; // Do not add inactive products
     }
+    if (product.stock <= 0) {
+      toast.warning(`Sản phẩm "${product.name}" đã hết hàng!`);
+      return;
+    }
     onProductSelect(product);
-    setQuery("");
-    setIsOpen(false);
   };
 
   return (

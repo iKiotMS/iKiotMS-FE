@@ -22,6 +22,7 @@ interface CartItem {
   unitPrice: number;
   discountAmount: number;
   imageUrl?: string;
+  stock: number;
 }
 
 interface CartItemsProps {

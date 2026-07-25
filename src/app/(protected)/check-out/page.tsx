@@ -39,6 +39,7 @@ interface CartItem {
   unitPrice: number;
   discountAmount: number;
   imageUrl?: string;
+  stock: number;
 }
 
 interface InvoiceState {
@@ -108,7 +109,13 @@ export default function CheckOutPage() {
     if (typeof window !== "undefined") {
       const activeSwitcherItemId = localStorage.getItem("activeSwitcherItemId");
       const activeSwitcherItemType = localStorage.getItem("activeSwitcherItemType");
-      if (activeSwitcherItemId && activeSwitcherItemType === "branch" && activeSwitcherItemId !== "all-branches") {
+      if (
+        activeSwitcherItemId &&
+        activeSwitcherItemType === "branch" &&
+        activeSwitcherItemId !== "all-branches" &&
+        activeSwitcherItemId !== "all-warehouses" &&
+        activeSwitcherItemId !== "all"
+      ) {
         return activeSwitcherItemId;
       }
     }
@@ -257,9 +264,16 @@ export default function CheckOutPage() {
 
     if (existingIndex > -1) {
       const updatedItems = [...activeInvoice.items];
-      updatedItems[existingIndex].quantity += 1;
+      const currentQty = updatedItems[existingIndex].quantity;
+      const stock = updatedItems[existingIndex].stock || product.stock;
+      if (currentQty + 1 > stock) {
+        updatedItems[existingIndex].quantity = stock;
+        toast.warning(`Chỉ có thể lấy tối đa ${stock} sản phẩm (vượt quá tồn kho)`);
+      } else {
+        updatedItems[existingIndex].quantity += 1;
+        toast.success(`Đã tăng số lượng ${product.name}`);
+      }
       updateActiveInvoice({ items: updatedItems });
-      toast.success(`Đã tăng số lượng ${product.name}`);
     } else {
       const newItem: CartItem = {
         productItemId: product.id,
@@ -271,6 +285,7 @@ export default function CheckOutPage() {
         unitPrice: product.retailPrice,
         discountAmount: 0,
         imageUrl: product.imageUrl,
+        stock: product.stock,
       };
       updateActiveInvoice({ items: [...activeInvoice.items, newItem] });
       toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
@@ -282,9 +297,17 @@ export default function CheckOutPage() {
     productItemId: string,
     quantity: number,
   ) => {
-    const updated = activeInvoice.items.map((item) =>
-      item.productItemId === productItemId ? { ...item, quantity } : item,
-    );
+    const updated = activeInvoice.items.map((item) => {
+      if (item.productItemId === productItemId) {
+        const stock = item.stock;
+        if (quantity > stock) {
+          toast.warning(`Chỉ có thể lấy tối đa ${stock} sản phẩm (vượt quá tồn kho)`);
+          return { ...item, quantity: stock };
+        }
+        return { ...item, quantity };
+      }
+      return item;
+    });
     updateActiveInvoice({ items: updated });
   };
 

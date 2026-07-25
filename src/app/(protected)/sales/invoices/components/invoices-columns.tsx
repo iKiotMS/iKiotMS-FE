@@ -255,9 +255,13 @@ export const invoicesColumns: ColumnDef<Invoice>[] = [
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.original.status;
-      const { label, variant } = STATUS_MAP[status];
+      const statusInfo = STATUS_MAP[status] || {
+        label: status || "Không xác định",
+        variant: "outline",
+      };
+      const { label, variant } = statusInfo;
       return (
-        <Badge variant={variant as "success" | "warning" | "error" | "info"}>
+        <Badge variant={variant as any}>
           {label}
         </Badge>
       );

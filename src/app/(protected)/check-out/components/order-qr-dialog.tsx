@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, CheckCircle2, Copy, Loader2, QrCode, XCircle } from "lucide-react";
+import {
+  Banknote,
+  CheckCircle2,
+  Copy,
+  Loader2,
+  QrCode,
+  XCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +34,9 @@ interface OrderQrDialogProps {
 }
 
 const formatVND = (value: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+    value,
+  );
 
 export function OrderQrDialog({
   open,
@@ -43,6 +52,21 @@ export function OrderQrDialog({
   const [isCashMode, setIsCashMode] = useState(false);
   const [customerPay, setCustomerPay] = useState(grandTotal);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localPay, setLocalPay] = useState<string>("");
+
+  // Sync local pay input value with customerPay
+  useEffect(() => {
+    const numericLocal = parseInt(localPay.replace(/\D/g, ""), 10) || 0;
+    if (numericLocal !== customerPay) {
+      if (customerPay === 0) {
+        setLocalPay("");
+      } else {
+        setLocalPay(
+          customerPay.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."),
+        );
+      }
+    }
+  }, [customerPay, localPay]);
 
   // Đơn đã chốt bằng tiền mặt: bỏ qua sự kiện order:paid dội về từ chính request này,
   // nếu không receipt sẽ hiện sai phương thức thanh toán.
@@ -94,7 +118,10 @@ export function OrderQrDialog({
     setIsSubmitting(true);
     paidOfflineRef.current = true;
     try {
-      await orderApi.payOffline(orderId, { paymentMethod: "CASH", customerPay });
+      await orderApi.payOffline(orderId, {
+        paymentMethod: "CASH",
+        customerPay,
+      });
       setStatus("paid");
       toast.success("Đã ghi nhận thanh toán tiền mặt!");
       setTimeout(() => {
@@ -104,8 +131,8 @@ export function OrderQrDialog({
     } catch (err) {
       paidOfflineRef.current = false;
       setIsSubmitting(false);
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data
-        ?.message;
+      const apiMessage = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
       toast.error(
         apiMessage ||
           (err instanceof Error ? err.message : "") ||
@@ -115,12 +142,17 @@ export function OrderQrDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && status !== "paid") onOpenChange(false); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v && status !== "paid") onOpenChange(false);
+      }}
+    >
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="size-5" />
-            Thanh toán QR SePay
+            Chuyển khoản
           </DialogTitle>
         </DialogHeader>
 
@@ -151,7 +183,9 @@ export function OrderQrDialog({
               {/* Reference code */}
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted border">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">Nội dung chuyển khoản</p>
+                  <p className="text-xs text-muted-foreground">
+                    Nội dung chuyển khoản
+                  </p>
                   <p className="font-mono font-bold text-base tracking-wider truncate">
                     {paymentReference}
                   </p>
@@ -182,18 +216,31 @@ export function OrderQrDialog({
                     </Label>
                     <Input
                       id="offline-customer-pay"
-                      type="number"
-                      min={grandTotal}
-                      step={1000}
-                      value={customerPay}
-                      onChange={(e) => setCustomerPay(Number(e.target.value))}
-                      className="tabular-nums"
+                      type="text"
+                      inputMode="numeric"
+                      value={localPay}
+                      onChange={(e) => {
+                        const valStr = e.target.value;
+                        const clean = valStr.replace(/\D/g, "");
+                        const formatted =
+                          clean.startsWith("0") && clean.length > 1
+                            ? clean
+                                .replace(/^0+/, "")
+                                .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+                            : clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        setLocalPay(formatted);
+                        const val = parseInt(clean, 10);
+                        setCustomerPay(isNaN(val) || val < 0 ? 0 : val);
+                      }}
+                      className="tabular-nums font-semibold"
                       autoFocus
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Tiền thối lại</span>
-                    <span className="font-bold tabular-nums">{formatVND(change)}</span>
+                    <span className="font-bold tabular-nums">
+                      {formatVND(change)}
+                    </span>
                   </div>
                   <Button
                     type="button"
@@ -221,7 +268,9 @@ export function OrderQrDialog({
               <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
                 Thanh toán thành công!
               </p>
-              <p className="text-sm text-muted-foreground">Đang in hóa đơn...</p>
+              <p className="text-sm text-muted-foreground">
+                Đang in hóa đơn...
+              </p>
             </div>
           )}
         </div>
