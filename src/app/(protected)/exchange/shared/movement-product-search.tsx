@@ -13,6 +13,8 @@ import type { StockMovementProductItemOption } from "@/types/stock-movement";
 
 export type MovementProductSearchScope = "catalog" | "list";
 
+const EMPTY_POOL: StockMovementProductItemOption[] = [];
+
 type MovementProductSearchProps = {
   usedIds: Set<string>;
   onPick: (item: StockMovementProductItemOption) => void;
@@ -26,15 +28,11 @@ type MovementProductSearchProps = {
   metaMode?: "price" | "stock" | "skuOnly";
 };
 
-/**
- * Ô tìm hàng dùng chung stock movement.
- * catalog = API toàn tenant (TO/WH nhập hàng); list = lọc poolProducts.
- */
 export function MovementProductSearch({
   usedIds,
   onPick,
   searchScope = "catalog",
-  poolProducts = [],
+  poolProducts = EMPTY_POOL,
   placeholder,
   disabled = false,
   className,

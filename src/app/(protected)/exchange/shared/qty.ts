@@ -1,8 +1,4 @@
-import type {
-  MovementType,
-  StockMovement,
-  StockMovementDetail,
-} from "@/types/stock-movement";
+import type { StockMovement, StockMovementDetail } from "@/types/stock-movement";
 
 /** Safe number parsing for spinner/keyboard number inputs. */
 export function parseNumberInput(value: string, fallback = 0): number {
@@ -12,17 +8,12 @@ export function parseNumberInput(value: string, fallback = 0): number {
 }
 
 /**
- * Receive qty: floor at 0. Doc + BE (after remove-cap): IMPORT/EXPORT/RETURN
- * đều cho phép receivedQuantity khác (kể cả >) quantity.
+ * Receive qty: floor at 0.
+ * IMPORT/EXPORT/RETURN đều cho phép receivedQuantity khác (kể cả >) quantity.
  */
 export function clampReceivedQuantity(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.trunc(value));
-}
-
-/** @deprecated Doc không còn cap theo loại phiếu — luôn false. */
-export function shouldCapReceivedQuantity(_movementType?: MovementType) {
-  return false;
 }
 
 export function parseReceivedInput(raw: string, fallback = 0) {

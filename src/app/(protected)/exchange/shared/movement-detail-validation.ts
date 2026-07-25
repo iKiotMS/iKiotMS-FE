@@ -130,14 +130,6 @@ export function buildRetailPriceByItemId(
   return map
 }
 
-/** EXPORT/RETURN: BE chỉ cần quantity > 0 (+ stock). IMPORT: cần importPrice ≤ retailPrice. */
-export function validateOpeningDetailsSubmit(
-  details: MovementDetailInput[],
-  options: MovementDetailValidateOptions,
-): string | null {
-  return validateMovementDetails(details, options)
-}
-
 /** Validate line items before create / update details. */
 export function validateMovementDetails(
   details: MovementDetailInput[],

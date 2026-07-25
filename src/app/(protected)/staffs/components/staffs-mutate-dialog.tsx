@@ -491,6 +491,12 @@ export function StaffsMutateDialog({
 
   useEffect(() => {
     if (!open) return;
+    const needsOccupiedLists =
+      selectedRole === "BRANCH_MANAGER" ||
+      selectedRole === "WAREHOUSE_MANAGER" ||
+      (isEdit && canPromoteRole);
+    if (!needsOccupiedLists) return;
+
     let cancelled = false;
 
     void Promise.all([
@@ -533,7 +539,7 @@ export function StaffsMutateDialog({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, selectedRole, isEdit, canPromoteRole]);
 
   useEffect(() => {
     if (!open) return;

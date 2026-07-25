@@ -157,11 +157,6 @@ export function StaffsProvider({
   const paySheetNameByIdRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
-    // if (!canFetch) {
-    //   setIsInitialLoading(false);
-    //   return;
-    // }
-
     const timer = setTimeout(() => {
       setListQuery((prev) => {
         if (prev.keyword === keywordInput) return prev;
@@ -170,7 +165,7 @@ export function StaffsProvider({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [keywordInput, canFetch]);
+  }, [keywordInput]);
 
   useEffect(() => {
     if (!canFetch) return;
@@ -216,7 +211,6 @@ export function StaffsProvider({
         paySheetNameByIdRef.current = new Map(
           options.map((option) => [option.value, option.label]),
         );
-        // Refresh labels nếu staff list đã load trước.
         setStaffs((prev) =>
           prev.map((staff) => {
             if (!staff.paySheetId) return staff;
@@ -239,9 +233,6 @@ export function StaffsProvider({
 
     setIsFetching(true);
     try {
-      // The global branch/warehouse switcher takes precedence over the page's own
-      // filter dropdowns — same reactive scoping products/checkout apply via
-      // locationKey — so switching branch immediately scopes the staff list.
       const [locationType, locationId] = locationKey.split("-");
       const branchId =
         locationKey !== "all" && locationType === "branch"
@@ -303,25 +294,9 @@ export function StaffsProvider({
     }
   }, [canFetch]);
 
-useEffect(() => {
-  const loadData = async () => {
-    setIsFetching(true);
-
-    try {
-      await Promise.all([
-        fetchStaffs(),
-        fetchRoles(),
-      ]);
-    } catch (error) {
-      console.error(error);
-      toast.error("Không thể tải dữ liệu");
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
-  loadData();
-}, [fetchStaffs, fetchRoles]);
+  useEffect(() => {
+    void Promise.all([fetchStaffs(), fetchRoles()]);
+  }, [fetchStaffs, fetchRoles]);
 
   function updateRoleFilter(role: StaffRole | "all") {
     setListQuery((prev) => ({ ...prev, role, page: 1 }));

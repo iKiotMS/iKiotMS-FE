@@ -19,8 +19,6 @@ import {
 import { safeImageSrc } from "@/app/(protected)/products/_constants/product.constants";
 import type { StockMovementProductItemOption } from "@/types/stock-movement";
 
-/* ─── atoms dùng chung dialog / expanded panel ─── */
-
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <p className="mt-1 text-xs text-destructive">{message}</p>;

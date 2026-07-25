@@ -172,11 +172,10 @@ export function MovementDetailsTable({
                   const display = selected ?? fallback;
                   const rowErr = openingRowErrors[idx] ?? {};
                   const lineTotal = (item.importPrice ?? 0) * item.quantity;
-                  const selectedProduct = productById.get(item.productItemId);
                   const stockMax =
                     mode === "transfer" &&
-                    typeof selectedProduct?.stock === "number"
-                      ? selectedProduct.stock
+                    typeof selected?.stock === "number"
+                      ? selected.stock
                       : undefined;
 
                   return (
@@ -189,7 +188,7 @@ export function MovementDetailsTable({
                     >
                       <div className="min-w-0 overflow-hidden">
                         <ProductLineDisplay
-                          product={selectedProduct ?? display}
+                          product={selected ?? display}
                           name={display?.name}
                           sku={display?.sku}
                           metaMode={mode === "import" ? "price" : "stock"}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   resolveItemImportPrice,
   stockMovementApi,
@@ -8,6 +9,7 @@ import {
 import {
   buildRetailPriceByItemId,
   getOpeningRowFieldErrors,
+  MAX_IMPORT_PRICE,
   type OpeningRowFieldErrors,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import type {
@@ -19,6 +21,7 @@ async function fetchMovement(id: string, fallback: StockMovement) {
   try {
     return await stockMovementApi.getById(id);
   } catch {
+    toast.error("Không tải được chi tiết phiếu");
     return fallback;
   }
 }
@@ -31,13 +34,15 @@ export function useStockMovementDetail(
   const [detail, setDetail] = useState(request);
   const [loading, setLoading] = useState(false);
 
+  const requestId = request._id;
+
   useEffect(() => {
     if (!isExpanded) return;
     let cancelled = false;
 
     async function load() {
       setLoading(true);
-      const next = await fetchMovement(request._id, request);
+      const next = await fetchMovement(requestId, request);
       if (!cancelled) {
         setDetail(next);
         setLoading(false);
@@ -48,13 +53,14 @@ export function useStockMovementDetail(
     return () => {
       cancelled = true;
     };
-  }, [isExpanded, request]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ refetch theo id/expand
+  }, [isExpanded, requestId]);
 
+  /** Soft refresh — không skeleton lại toàn panel (tránh nháy sau ship/receive). */
   const refreshDetail = useCallback(async () => {
-    setLoading(true);
-    setDetail(await fetchMovement(request._id, request));
-    setLoading(false);
-  }, [request]);
+    const next = await fetchMovement(requestId, request);
+    setDetail(next);
+  }, [requestId, request]);
 
   return { detail, loading, refreshDetail };
 }
@@ -110,31 +116,45 @@ export function useOpeningEditor({
       (detail.status === "OPENING" ||
         (detail.movementType === "IMPORT" && detail.status === "PENDING"));
 
-    if (canSeedDetails) {
-      setOpeningDetails((prev) => {
-        if (prev.length > 0) return prev;
-        return detail.details.map((item) => ({
-          productItemId: item.productItemId,
-          quantity: item.quantity,
-          importPrice: item.importPrice ?? 0,
-          note: item.note,
-        }));
-      });
-    }
+    if (!canSeedDetails) return;
 
-    if (
-      showReceiveForm &&
-      (detail.status === "IN_TRANSIT" ||
-        (detail.movementType === "IMPORT" && detail.status === "PENDING"))
-    ) {
-      setReceivedQtys((prev) => {
-        if (Object.keys(prev).length > 0) return prev;
-        return Object.fromEntries(
-          detail.details.map((item) => [item.productItemId, item.quantity]),
-        );
-      });
-    }
-  }, [isExpanded, showReceiveForm, detail, enabled]);
+    setOpeningDetails((prev) => {
+      if (prev.length > 0) return prev;
+      return detail.details.map((item) => ({
+        productItemId: item.productItemId,
+        quantity: item.quantity,
+        importPrice: item.importPrice ?? 0,
+        note: item.note,
+      }));
+    });
+  }, [
+    isExpanded,
+    enabled,
+    detail.status,
+    detail.movementType,
+    detail.details,
+  ]);
+
+  useEffect(() => {
+    if (!isExpanded || !showReceiveForm) return;
+    const canReceive =
+      detail.status === "IN_TRANSIT" ||
+      (detail.movementType === "IMPORT" && detail.status === "PENDING");
+    if (!canReceive) return;
+
+    setReceivedQtys((prev) => {
+      if (Object.keys(prev).length > 0) return prev;
+      return Object.fromEntries(
+        detail.details.map((item) => [item.productItemId, item.quantity]),
+      );
+    });
+  }, [
+    isExpanded,
+    showReceiveForm,
+    detail.status,
+    detail.movementType,
+    detail.details,
+  ]);
 
   useEffect(() => {
     if (!isExpanded) {
@@ -145,7 +165,7 @@ export function useOpeningEditor({
 
     let cancelled = false;
 
-    // EXPORT/RETURN OPENING: products at source
+    // EXPORT/RETURN OPENING (đang sửa): products at source
     if (
       enabled &&
       detail.status === "OPENING" &&
@@ -165,11 +185,15 @@ export function useOpeningEditor({
       };
     }
 
-    // IMPORT: dropdown = SP thuộc NCC; catalog = enrich + tìm tất cả
-    if (detail.movementType === "IMPORT") {
+    // IMPORT PENDING: catalog luôn load (kể cả người giao hàng — validate giá khi ship).
+    // SP NCC chỉ cần khi đang sửa dòng (enabled).
+    if (
+      detail.movementType === "IMPORT" &&
+      detail.status === "PENDING"
+    ) {
       const supplierId = detail.fromSupplierId?.trim();
       Promise.all([
-        supplierId
+        enabled && supplierId
           ? stockMovementApi.getSupplierProductItems(supplierId)
           : Promise.resolve([] as StockMovementProductItemOption[]),
         stockMovementApi.getCatalogProductItems(),
@@ -256,44 +280,42 @@ export function useOpeningEditor({
     setOpeningRowErrors((prev) => [...prev, {}]);
   };
 
-  const ensureOpeningProduct = useCallback(
+  const pickOpeningProduct = useCallback(
     (item: StockMovementProductItemOption) => {
-      // IMPORT: giữ openingProducts = SP NCC; hàng từ ô tìm gắn vào catalog
       if (detail.movementType === "IMPORT") {
         setCatalogProducts((prev) =>
           prev.some((p) => p._id === item._id) ? prev : [...prev, item],
         );
-        return;
+      } else {
+        setOpeningProducts((prev) =>
+          prev.some((p) => p._id === item._id) ? prev : [...prev, item],
+        );
       }
-      setOpeningProducts((prev) =>
-        prev.some((p) => p._id === item._id) ? prev : [...prev, item],
-      );
-    },
-    [detail.movementType],
-  );
 
-  const pickOpeningProduct = useCallback(
-    (item: StockMovementProductItemOption) => {
-      ensureOpeningProduct(item);
       const importPrice = Math.min(
         Math.max(0, resolveItemImportPrice(item)),
-        1_000_000_000_000,
+        MAX_IMPORT_PRICE,
       );
+      const row: OpeningDetailRow = {
+        productItemId: item._id,
+        quantity: 1,
+        importPrice,
+        note: "",
+      };
+
       setOpeningDetails((prev) => {
-        const emptyIdx = prev.findIndex((row) => !row.productItemId);
-        const row: OpeningDetailRow = {
-          productItemId: item._id,
-          quantity: 1,
-          importPrice,
-          note: "",
-        };
-        if (emptyIdx >= 0) {
-          return prev.map((r, i) => (i === emptyIdx ? { ...r, ...row } : r));
-        }
-        return [...prev, row];
+        const emptyIdx = prev.findIndex((r) => !r.productItemId);
+        const next =
+          emptyIdx >= 0
+            ? prev.map((r, i) => (i === emptyIdx ? { ...r, ...row } : r))
+            : [...prev, row];
+        setOpeningRowErrors(
+          getOpeningRowFieldErrors(next, getValidateOptions()),
+        );
+        return next;
       });
     },
-    [ensureOpeningProduct],
+    [detail.movementType, getValidateOptions],
   );
 
   const removeOpeningRow = (idx: number) => {

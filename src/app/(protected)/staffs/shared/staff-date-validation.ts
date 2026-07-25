@@ -30,10 +30,6 @@ export function parseDateInput(value?: string): Date | null {
     : null;
 }
 
-export function isValidDateInput(value?: string): boolean {
-  return parseDateInput(value) !== null;
-}
-
 export function validateOptionalDob(value?: string): {
   ok: boolean;
   message?: string;

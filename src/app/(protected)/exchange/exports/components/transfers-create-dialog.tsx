@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { stockMovementApi } from '@/lib/api/stock-movement'
+import { stockMovementApi, resolveItemImportPrice } from '@/lib/api/stock-movement'
 import {
   filterLocationsByAuthScope,
   getEffectiveLocationScope,
@@ -141,7 +141,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
       return
     }
     const importPrice = Math.min(
-      Math.max(0, item.costPrice ?? 0),
+      Math.max(0, resolveItemImportPrice(item)),
       MAX_IMPORT_PRICE,
     )
     const qty = 1

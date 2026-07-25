@@ -74,6 +74,25 @@ type EditRow = {
   note?: string;
 };
 
+/** null = hợp lệ; string = lỗi chặn lưu/duyệt. */
+function getAdjustRowsError(
+  editRows: EditRow[],
+  opts: { forApprove: boolean },
+): string | null {
+  const rows = editRows.filter((r) => r.productItemId);
+  if (rows.length === 0) return "Cần ít nhất 1 mặt hàng";
+  const ids = rows.map((r) => r.productItemId);
+  if (new Set(ids).size !== ids.length) {
+    return "Không được chọn trùng hàng hóa";
+  }
+  if (rows.every((r) => getAdjustQtyChange(r.quantity, r.receivedQuantity) === 0)) {
+    return opts.forApprove
+      ? "Không thể duyệt khi không có thay đổi tồn"
+      : "Tồn thực tế không thay đổi";
+  }
+  return null;
+}
+
 export function AdjustmentsExpandedPanel({
   request,
   isExpanded,
@@ -117,6 +136,7 @@ export function AdjustmentsExpandedPanel({
       setEditRows([]);
       return;
     }
+    // Seed theo phiếu (_id); không phụ thuộc cả object detail (tránh reset khi soft-refresh).
     setEditRows(
       detail.details.map((d) => ({
         productItemId: d.productItemId,
@@ -125,7 +145,8 @@ export function AdjustmentsExpandedPanel({
         note: d.note,
       })),
     );
-  }, [isExpanded, isPending, detail]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ seed khi đổi phiếu / expand
+  }, [isExpanded, isPending, detail._id]);
 
   useEffect(() => {
     if (!isExpanded || !canEditPending || !detail.fromLocationId) return;
@@ -162,20 +183,12 @@ export function AdjustmentsExpandedPanel({
   };
 
   const onSaveDetails = async () => {
+    const err = getAdjustRowsError(editRows, { forApprove: false });
+    if (err) {
+      toast.error(err);
+      return;
+    }
     const rows = editRows.filter((r) => r.productItemId);
-    if (rows.length === 0) {
-      toast.error("Cần ít nhất 1 mặt hàng");
-      return;
-    }
-    const ids = rows.map((r) => r.productItemId);
-    if (new Set(ids).size !== ids.length) {
-      toast.error("Không được chọn trùng hàng hóa");
-      return;
-    }
-    if (rows.every((r) => getAdjustQtyChange(r.quantity, r.receivedQuantity) === 0)) {
-      toast.error("Tồn thực tế không thay đổi");
-      return;
-    }
     await run(() =>
       handleUpdateDetails(
         detail._id,
@@ -189,22 +202,13 @@ export function AdjustmentsExpandedPanel({
   };
 
   const onApprove = async () => {
+    const err = getAdjustRowsError(editRows, { forApprove: true });
+    if (err) {
+      toast.error(err);
+      return;
+    }
     const rows = editRows.filter((r) => r.productItemId);
-    if (rows.length === 0) {
-      toast.error("Cần ít nhất 1 mặt hàng");
-      return;
-    }
-    const ids = rows.map((r) => r.productItemId);
-    if (new Set(ids).size !== ids.length) {
-      toast.error("Không được chọn trùng hàng hóa");
-      return;
-    }
-    if (rows.every((r) => getAdjustQtyChange(r.quantity, r.receivedQuantity) === 0)) {
-      toast.error("Không thể duyệt khi không có thay đổi tồn");
-      return;
-    }
 
-    // Doc: sửa nháp rồi duyệt — lưu editRows trước để BE duyệt đúng dữ liệu mới nhất.
     await run(async () => {
       await handleUpdateDetails(
         detail._id,

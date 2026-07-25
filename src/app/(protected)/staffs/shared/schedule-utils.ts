@@ -4,7 +4,6 @@ import type {
   ScheduleStatus,
   WorkingSchedule,
 } from "@/types/working-schedule";
-import { extractVietnamTimeFromIso } from "@/app/(protected)/staffs/shared/vietnam-datetime";
 
 export function isScheduleLocked(status: ScheduleStatus): boolean {
   return status === "COMPLETED";
@@ -16,11 +15,6 @@ export function isDeletedScheduleStatus(status?: string): boolean {
 
 export function isOvernightShift(startTime: string, endTime: string): boolean {
   return Boolean(startTime && endTime && startTime >= endTime);
-}
-
-/** @deprecated Dùng extractVietnamTimeFromIso — BE lưu giờ VN, không phải UTC wall clock. */
-export function extractUtcTimeFromIso(iso?: string): string {
-  return extractVietnamTimeFromIso(iso);
 }
 
 export function formatShiftTimeRange(startTime: string, endTime: string): string {

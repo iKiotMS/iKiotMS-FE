@@ -112,11 +112,47 @@ export function MovementExpandedPanel({
     isExpanded,
   );
 
-  const requireImportPrice = true; // IMPORT + chuyển kho đều hiện giá / thành tiền (UX)
-  const openingEnabled =
+  const locationKey = useAuthStore((s) => s.locationKey);
+  const effectiveScope = useMemo(
+    () => getEffectiveLocationScope(locationKey),
+    [locationKey],
+  );
+  const labels = transferActions?.labels;
+
+  const isDraft = detail.status === "DRAFT";
+  const isPending = detail.status === "PENDING";
+  const isOpening = detail.status === "OPENING";
+  const isClosed = detail.status === "CLOSED";
+  const isInTransit = detail.status === "IN_TRANSIT";
+  const isReceived = detail.status === "RECEIVED";
+
+  const isTenantOwner = effectiveScope.role === "TENANT_OWNER";
+  const matchesFromLocation = effectiveScope.locationId
+    ? detail.fromLocationId === effectiveScope.locationId &&
+      detail.fromLocationType === effectiveScope.locationType
+    : false;
+  const matchesToLocation = effectiveScope.locationId
+    ? detail.toLocationId === effectiveScope.locationId &&
+      detail.toLocationType === effectiveScope.locationType
+    : false;
+
+  const canActAsFromLocation = effectiveScope.locationId
+    ? matchesFromLocation
+    : isTenantOwner;
+  const canActAsToLocation = effectiveScope.locationId
+    ? matchesToLocation
+    : isTenantOwner;
+
+  const isSender = mode === "transfer" && canActAsFromLocation;
+  const isReceiver = mode === "transfer" && canActAsToLocation;
+
+  const canOpenDraft = mode === "transfer" && isDraft && isSender;
+  const canEditOpening =
     mode === "import"
-      ? detail.movementType === "IMPORT" && detail.status === "PENDING"
-      : true;
+      ? detail.movementType === "IMPORT" && isPending && canActAsToLocation
+      : isOpening && (isSender || isReceiver);
+
+  const requireImportPrice = true;
 
   const {
     openingDetails,
@@ -137,19 +173,13 @@ export function MovementExpandedPanel({
   } = useOpeningEditor({
     isExpanded,
     detail,
-    enabled: openingEnabled,
+    enabled: canEditOpening,
     requireImportPrice,
   });
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [returnConfirmOpen, setReturnConfirmOpen] = useState(false);
   const [returnReason, setReturnReason] = useState("");
-  const locationKey = useAuthStore((s) => s.locationKey);
-  const effectiveScope = useMemo(
-    () => getEffectiveLocationScope(locationKey),
-    [locationKey],
-  );
-  const labels = transferActions?.labels;
 
   const totalValue = detail.details.reduce(
     (sum, item) => sum + item.quantity * (item.importPrice ?? 0),
@@ -165,44 +195,8 @@ export function MovementExpandedPanel({
     0,
   );
 
-  const isDraft = detail.status === "DRAFT";
-  const isPending = detail.status === "PENDING";
-  const isOpening = detail.status === "OPENING";
-  const isClosed = detail.status === "CLOSED";
-  const isInTransit = detail.status === "IN_TRANSIT";
-  const isReceived = detail.status === "RECEIVED";
-
-  const isTenantOwner = effectiveScope.role === "TENANT_OWNER";
-  const matchesFromLocation = effectiveScope.locationId
-    ? detail.fromLocationId === effectiveScope.locationId &&
-      detail.fromLocationType === effectiveScope.locationType
-    : false;
-  const matchesToLocation = effectiveScope.locationId
-    ? detail.toLocationId === effectiveScope.locationId &&
-      detail.toLocationType === effectiveScope.locationType
-    : false;
-
-  // Tenant "all" → mọi location; BM/WM hoặc tenant đã switch → khớp locationKey/JWT.
-  const canActAsFromLocation = effectiveScope.locationId
-    ? matchesFromLocation
-    : isTenantOwner;
-  const canActAsToLocation = effectiveScope.locationId
-    ? matchesToLocation
-    : isTenantOwner;
-
-  const isSender = mode === "transfer" && canActAsFromLocation;
-  const isReceiver = mode === "transfer" && canActAsToLocation;
-
-  const canOpenDraft = mode === "transfer" && isDraft && isSender;
-  // Doc: IMPORT details — user at toLocation
-  const canEditOpening =
-    mode === "import"
-      ? detail.movementType === "IMPORT" && isPending && canActAsToLocation
-      : isOpening && (isSender || isReceiver);
   const canShipClosed = mode === "transfer" && isClosed && isSender;
 
-  // IMPORT: Giao hàng khi PENDING (cần fromLocation). Nhận hàng sau IN_TRANSIT;
-  // phiếu cũ không ship được → vẫn nhận từ PENDING (doc cho phép).
   const canShipImportPending =
     mode === "import" &&
     detail.movementType === "IMPORT" &&
@@ -216,7 +210,6 @@ export function MovementExpandedPanel({
         (isInTransit || (isPending && !canShipImportPending))
       : isInTransit && isReceiver;
 
-  // Người nhận (toLocation) trả hàng: IN_TRANSIT (nhận rồi trả) hoặc đã RECEIVED.
   const canReturnGoods =
     mode === "transfer" &&
     isReceiver &&
@@ -224,7 +217,6 @@ export function MovementExpandedPanel({
     !!transferActions?.handleReturnGoods &&
     (isReceived || isInTransit);
 
-  // Doc: cancel from fromLocation; không hủy RECEIVED / COMPLETED / CANCELLED.
   const canCancel =
     canActAsFromLocation &&
     !isReceived &&

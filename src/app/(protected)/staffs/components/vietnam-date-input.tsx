@@ -51,8 +51,12 @@ export const VietnamDateInput = React.forwardRef<
         if (iso) {
           setText(isoDateToViDisplay(iso));
           onChange(iso);
-        } else if (text.trim()) {
-          onChange(text.trim());
+        } else if (!text.trim()) {
+          onChange("");
+          setText("");
+        } else {
+          // Không ghi chuỗi lệch ISO vào form — khôi phục hiển thị từ value hiện tại.
+          setText(isoDateToViDisplay(value));
         }
         onBlur?.(event);
       }}
