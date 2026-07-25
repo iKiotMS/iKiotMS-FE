@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +11,6 @@ import { useProducts } from "../../_context/products-provider";
 import {
   formatVND,
   safeImageSrc,
-  STATUS_MAP,
 } from "../../_constants/product.constants";
 import type {
   Product,
@@ -289,26 +287,7 @@ export function ProductsExpandedPanel({
                         </span>
                         <span>{item.warrantyPeriod}</span>
                       </div>
-                    )}
-                    {item.productDetails && item.productDetails.length > 0 && (
-                      <div className="col-span-2 flex flex-col gap-0.5">
-                        <span className="text-xs text-muted-foreground">
-                          Thuộc tính
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {item.productDetails.map((d, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="outline"
-                              className="max-w-[150px] truncate text-xs font-normal"
-                              title={`${d.name}: ${d.value}`}
-                            >
-                              {d.name}: {d.value}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    )}                
                   </div>
                 </div>
                 <Separator />
