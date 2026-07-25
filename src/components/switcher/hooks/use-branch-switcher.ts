@@ -145,11 +145,15 @@ export function useBranchSwitcher() {
     }
 
     if (locationKey === "all") {
+      const savedId = typeof window !== "undefined" ? localStorage.getItem("activeSwitcherItemId") : null;
+      const savedType = typeof window !== "undefined" ? localStorage.getItem("activeSwitcherItemType") : null;
+      const isWarehouse = savedId === "all-warehouses" || savedType === "warehouse";
+
       setActiveItem({
-        id: "all-branches",
+        id: isWarehouse ? "all-warehouses" : "all-branches",
         name: "Tổng",
-        address: "all",
-        type: "branch",
+        address: isWarehouse ? "Kho hàng" : "Chi nhánh",
+        type: isWarehouse ? "warehouse" : "branch",
       });
       return;
     }
@@ -187,7 +191,10 @@ export function useBranchSwitcher() {
       toast.warning(`Chi nhánh/kho hàng "${item.name}" đã bị ngừng hoạt động!`);
       return;
     }
-    const key = item.id === "all-branches" ? "all" : `${item.type}-${item.id}`;
+    const key =
+      item.id === "all-branches" || item.id === "all-warehouses"
+        ? "all"
+        : `${item.type}-${item.id}`;
     setLocationKey(key);
     // Backward compatibility:
     localStorage.setItem("activeSwitcherItemId", item.id);
@@ -202,6 +209,13 @@ export function useBranchSwitcher() {
         phoneNumber: values.phoneNumber ? [values.phoneNumber] : ["0000000000"],
         address: values.address,
         email: values.email || undefined,
+        attendanceTakingLocation:
+          values.latitude !== undefined && values.longitude !== undefined
+            ? {
+                latitude: values.latitude,
+                longitude: values.longitude,
+              }
+            : undefined,
       };
       const newBranch = await branchApi.create(payload);
       toast.success(`Đã tạo chi nhánh "${newBranch.name}" thành công!`);
@@ -223,6 +237,13 @@ export function useBranchSwitcher() {
         address: values.address,
         email: values.email || undefined,
         status: values.status as any,
+        attendanceTakingLocation:
+          values.latitude !== undefined && values.longitude !== undefined
+            ? {
+                latitude: values.latitude,
+                longitude: values.longitude,
+              }
+            : undefined,
       };
       const updated = await branchApi.update(editingBranch._id, payload);
       toast.success(`Đã cập nhật chi nhánh "${updated.name}" thành công!`);
@@ -242,6 +263,13 @@ export function useBranchSwitcher() {
       const payload = {
         name: values.name,
         address: values.address,
+        attendanceTakingLocation:
+          values.latitude !== undefined && values.longitude !== undefined
+            ? {
+                latitude: values.latitude,
+                longitude: values.longitude,
+              }
+            : undefined,
       };
       const newWarehouse = await warehouseApi.create(payload);
       toast.success(`Đã tạo kho hàng "${newWarehouse.name}" thành công!`);
@@ -261,6 +289,13 @@ export function useBranchSwitcher() {
         name: values.name,
         address: values.address,
         status: values.status as any,
+        attendanceTakingLocation:
+          values.latitude !== undefined && values.longitude !== undefined
+            ? {
+                latitude: values.latitude,
+                longitude: values.longitude,
+              }
+            : undefined,
       };
       const updated = await warehouseApi.update(editingWarehouse._id, payload);
       toast.success(`Đã cập nhật kho hàng "${updated.name}" thành công!`);
@@ -290,7 +325,7 @@ export function useBranchSwitcher() {
         handleSelect({
           id: "all-branches",
           name: "Tổng",
-          address: "all",
+          address: "Chi nhánh",
           type: "branch",
         });
       }

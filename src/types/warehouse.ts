@@ -5,6 +5,12 @@ export interface Warehouse {
   name: string;
   address?: string;
   status: WarehouseStatus;
+  attendanceTakingLocation?: {
+    latitude: number;
+    longitude: number;
+    allowedRadiusMeters?: number;
+    maxAccuracyMeters?: number;
+  };
   createdAt: string;
   updatedAt?: string;
 }
@@ -31,10 +37,18 @@ export interface WarehouseListResponse {
 export interface WarehouseCreatePayload {
   name: string;
   address?: string;
+  attendanceTakingLocation?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface WarehouseUpdatePayload {
   name?: string;
   address?: string;
   status?: WarehouseStatus;
+  attendanceTakingLocation?: {
+    latitude: number;
+    longitude: number;
+  };
 }

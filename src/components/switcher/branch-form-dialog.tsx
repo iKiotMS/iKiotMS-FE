@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { SWITCHER_STATUS_OPTIONS } from "./constants/status"
+import { AddressMapPicker } from "./address-map-picker"
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,8 @@ const branchFormSchema = z.object({
   email: z.string().email({
     message: "Email không hợp lệ.",
   }).optional().or(z.literal("")),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 })
 
 export type BranchFormValues = z.infer<typeof branchFormSchema>
@@ -72,6 +75,8 @@ export function BranchFormDialog({
       address: "",
       phoneNumber: "",
       email: "",
+      latitude: undefined,
+      longitude: undefined,
       ...defaultValues,
     },
   })
@@ -84,6 +89,8 @@ export function BranchFormDialog({
         address: "",
         phoneNumber: "",
         email: "",
+        latitude: undefined,
+        longitude: undefined,
         ...defaultValues,
       })
     }
@@ -96,7 +103,7 @@ export function BranchFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title || "Thêm chi nhánh mới"}</DialogTitle>
           <DialogDescription>
@@ -149,7 +156,16 @@ export function BranchFormDialog({
                 <FormItem>
                   <FormLabel>Địa chỉ</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nhập địa chỉ chi nhánh" {...field} />
+                    <AddressMapPicker
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      initialLat={form.getValues("latitude")}
+                      initialLng={form.getValues("longitude")}
+                      onCoordinateChange={(coords) => {
+                        form.setValue("latitude", coords?.lat);
+                        form.setValue("longitude", coords?.lng);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

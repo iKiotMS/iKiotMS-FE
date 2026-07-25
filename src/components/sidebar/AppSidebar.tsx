@@ -12,6 +12,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { filterHrNavItems } from "@/app/(protected)/staffs/shared/nav-hr-permissions";
 import { useAuthStore } from "@/store/auth-store";
@@ -68,10 +69,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarHeader>
 
-      <SidebarContent>
-        {navGroups.map((group) => (
-          <NavMain key={group.label} label={group.label} items={group.items} />
-        ))}
+      <SidebarContent className="overflow-hidden">
+        <ScrollArea className="h-full">
+          {navGroups.map((group) => (
+            <NavMain key={group.label} label={group.label} items={group.items} />
+          ))}
+        </ScrollArea>
       </SidebarContent>
 
       <SidebarFooter>

@@ -7,6 +7,12 @@ export interface Branch {
   address?: string;
   email?: string;
   status: BranchStatus;
+  attendanceTakingLocation?: {
+    latitude: number;
+    longitude: number;
+    allowedRadiusMeters?: number;
+    maxAccuracyMeters?: number;
+  };
   createdAt: string;
   updatedAt?: string;
 }
@@ -35,6 +41,10 @@ export interface BranchCreatePayload {
   phoneNumber: string[];
   address?: string;
   email?: string;
+  attendanceTakingLocation?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface BranchUpdatePayload {
@@ -43,4 +53,8 @@ export interface BranchUpdatePayload {
   address?: string;
   email?: string;
   status?: BranchStatus;
+  attendanceTakingLocation?: {
+    latitude: number;
+    longitude: number;
+  };
 }
