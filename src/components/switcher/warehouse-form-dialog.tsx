@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { SWITCHER_STATUS_OPTIONS } from "./constants/status"
+import { AddressMapPicker } from "./address-map-picker"
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,8 @@ const warehouseFormSchema = z.object({
     message: "Trạng thái là bắt buộc.",
   }),
   address: z.string(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 })
 
 export type WarehouseFormValues = z.infer<typeof warehouseFormSchema>
@@ -64,6 +67,8 @@ export function WarehouseFormDialog({
       name: "",
       status: "ACTIVE",
       address: "",
+      latitude: undefined,
+      longitude: undefined,
       ...defaultValues,
     },
   })
@@ -74,6 +79,8 @@ export function WarehouseFormDialog({
         name: "",
         status: "ACTIVE",
         address: "",
+        latitude: undefined,
+        longitude: undefined,
         ...defaultValues,
       })
     }
@@ -86,7 +93,7 @@ export function WarehouseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title || "Thêm kho hàng mới"}</DialogTitle>
           <DialogDescription>
@@ -139,7 +146,16 @@ export function WarehouseFormDialog({
                 <FormItem>
                   <FormLabel>Địa chỉ</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nhập địa chỉ kho hàng" {...field} />
+                    <AddressMapPicker
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      initialLat={form.getValues("latitude")}
+                      initialLng={form.getValues("longitude")}
+                      onCoordinateChange={(coords) => {
+                        form.setValue("latitude", coords?.lat);
+                        form.setValue("longitude", coords?.lng);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

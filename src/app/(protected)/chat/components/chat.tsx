@@ -1,25 +1,30 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Sparkles, ShieldAlert, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState } from "react";
+import {
+  Sparkles,
+  ShieldAlert,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { useAuthStore } from "@/store/auth-store"
-import { canUseAIChat } from "@/components/sidebar/constants/role-permissions"
-import { ChatSidebar } from "./chat-sidebar"
-import { ChatHeader } from "./chat-header"
-import { MessageList } from "./message-list"
-import { MessageInput } from "./message-input"
-import { useAIChat } from "../hooks/use-ai-chat"
-import { cn } from "@/lib/utils"
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuthStore } from "@/store/auth-store";
+import { canUseAIChat } from "@/components/sidebar/constants/role-permissions";
+import { ChatSidebar } from "./chat-sidebar";
+import { ChatHeader } from "./chat-header";
+import { MessageList } from "./message-list";
+import { MessageInput } from "./message-input";
+import { useAIChat } from "../hooks/use-ai-chat";
+import { cn } from "@/lib/utils";
 
 export function Chat() {
-  const { user } = useAuthStore()
+  const { user } = useAuthStore();
   const {
     conversations,
     activeConversationId,
     messages,
-    isLoadingConversations,
     isLoadingMessages,
     isSending,
     sendMessage,
@@ -27,13 +32,13 @@ export function Chat() {
     deleteSession,
     renameSession,
     setActiveConversationId,
-  } = useAIChat()
+  } = useAIChat();
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // 1. Role verification check
-  const isTenantOwner = canUseAIChat(user?.role)
+  const isTenantOwner = canUseAIChat(user?.role);
 
   if (!isTenantOwner) {
     return (
@@ -45,15 +50,18 @@ export function Chat() {
           Quyền truy cập bị từ chối
         </h3>
         <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-          Tính năng Trợ lý AI (AI Chat Assistant) yêu cầu quyền truy cập của **Chủ cửa hàng (Role: TENANT_OWNER)** để có thể đọc các báo cáo doanh thu và thông tin kinh doanh nhạy cảm. Tài khoản của bạn hiện tại không có quyền này.
+          Tính năng Trợ lý AI (AI Chat Assistant) yêu cầu quyền truy cập của
+          **Chủ cửa hàng (Role: TENANT_OWNER)** để có thể đọc các báo cáo doanh
+          thu và thông tin kinh doanh nhạy cảm. Tài khoản của bạn hiện tại không
+          có quyền này.
         </p>
       </div>
-    )
+    );
   }
 
   const handleSelectSuggestion = (prompt: string) => {
-    sendMessage(prompt)
-  }
+    sendMessage(prompt);
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -67,12 +75,16 @@ export function Chat() {
         )}
 
         {/* Conversations Sidebar - Responsive & Animatable width */}
-        <div className={cn(
-          "bg-background flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden relative h-full",
-          isSidebarCollapsed ? "w-0 border-r-0" : "w-[270px] border-r",
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          "lg:relative fixed inset-y-0 left-0 z-50"
-        )}>
+        <div
+          className={cn(
+            "bg-background flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden relative h-full",
+            isSidebarCollapsed ? "w-0 border-r-0" : "w-[270px] border-r",
+            isSidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full lg:translate-x-0",
+            "lg:relative fixed inset-y-0 left-0 z-50",
+          )}
+        >
           {/* Mobile close button */}
           {isSidebarOpen && (
             <button
@@ -87,8 +99,8 @@ export function Chat() {
             conversations={conversations}
             activeConversationId={activeConversationId}
             onSelectConversation={(id) => {
-              setActiveConversationId(id)
-              setIsSidebarOpen(false)
+              setActiveConversationId(id);
+              setIsSidebarOpen(false);
             }}
             onStartNewConversation={startNewSession}
             onDeleteConversation={deleteSession}
@@ -99,7 +111,6 @@ export function Chat() {
 
         {/* Chat Panel - Flexible Width */}
         <div className="flex-1 flex flex-col min-w-0 bg-background/50 backdrop-blur-md relative h-full">
-          
           {/* Sidebar Toggle Button for Desktop - Placed next to sidebar header in chat area */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -141,8 +152,8 @@ export function Chat() {
                   onSendMessage={sendMessage}
                   disabled={isSending || isLoadingMessages}
                   placeholder={
-                    activeConversationId 
-                      ? "Nhập tin nhắn để tiếp tục cuộc trò chuyện..." 
+                    activeConversationId
+                      ? "Nhập tin nhắn để tiếp tục cuộc trò chuyện..."
                       : "Hỏi trợ lý AI về sản phẩm, doanh thu, hoặc xu hướng thị trường..."
                   }
                 />
@@ -152,5 +163,5 @@ export function Chat() {
         </div>
       </div>
     </TooltipProvider>
-  )
+  );
 }
