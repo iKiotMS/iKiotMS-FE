@@ -32,6 +32,7 @@ import {
   InfoItem,
   ProductLineDisplay,
   ProductSummary,
+  resolveDetailProductOption,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { QuantityStepper } from "@/app/(protected)/exchange/shared/quantity-stepper";
@@ -395,8 +396,9 @@ export function AdjustmentsExpandedPanel({
                     item.quantity,
                     item.receivedQuantity,
                   );
-                  const product = products.find(
-                    (p) => p._id === item.productItemId,
+                  const product = resolveDetailProductOption(
+                    item,
+                    products.find((p) => p._id === item.productItemId),
                   );
                   return (
                     <TableRow key={item.productItemId}>

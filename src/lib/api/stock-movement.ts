@@ -25,8 +25,21 @@ type ApiRef =
       profile?: { firstName?: string; lastName?: string };
     };
 
+type ApiProductImage = {
+  url?: string;
+  isThumbnail?: boolean;
+};
+
+type ApiPopulatedProductItem = {
+  _id?: string;
+  sku?: string;
+  productName?: string;
+  images?: ApiProductImage[];
+  productId?: string | { _id?: string; images?: ApiProductImage[] };
+};
+
 type ApiMovementDetail = {
-  productItemId?: string | { _id?: string; sku?: string; productName?: string };
+  productItemId?: string | ApiPopulatedProductItem;
   quantity?: number;
   importPrice?: number;
   receivedQuantity?: number;
@@ -62,11 +75,6 @@ type ApiSupplier = {
 type ApiLocation = {
   _id: string;
   name?: string;
-};
-
-type ApiProductImage = {
-  url?: string;
-  isThumbnail?: boolean;
 };
 
 type ApiProductItem = {
@@ -129,10 +137,22 @@ function mapDetail(raw: ApiMovementDetail) {
   const productItemId =
     typeof productRef === "string" ? productRef : (productRef?._id ?? "");
 
+  const parentProduct =
+    typeof productRef === "object" &&
+    productRef &&
+    typeof productRef.productId === "object"
+      ? productRef.productId
+      : undefined;
+
   return {
     productItemId,
-    productName: typeof productRef === "string" ? "" : (productRef?.productName ?? ""),
+    productName:
+      typeof productRef === "string" ? "" : (productRef?.productName ?? ""),
     sku: typeof productRef === "string" ? "" : (productRef?.sku ?? ""),
+    imageUrl:
+      typeof productRef === "string"
+        ? undefined
+        : resolveProductImageUrl(productRef, parentProduct),
     quantity: raw.quantity ?? 0,
     importPrice: raw.importPrice ?? 0,
     receivedQuantity: raw.receivedQuantity ?? 0,

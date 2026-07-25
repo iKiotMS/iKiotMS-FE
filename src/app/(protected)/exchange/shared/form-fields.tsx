@@ -17,8 +17,31 @@ import {
   parseImportPriceInput,
 } from "@/app/(protected)/exchange/shared/movement-detail-validation";
 import { safeImageSrc } from "@/app/(protected)/products/_constants/product.constants";
-import type { StockMovementProductItemOption } from "@/types/stock-movement";
+import type {
+  StockMovementDetail,
+  StockMovementProductItemOption,
+} from "@/types/stock-movement";
 
+/** Gộp option từ map + imageUrl đã map từ chi tiết phiếu (không gọi API thêm). */
+export function resolveDetailProductOption(
+  item: Pick<
+    StockMovementDetail,
+    "productItemId" | "productName" | "sku" | "imageUrl"
+  >,
+  fromMap?: StockMovementProductItemOption,
+): StockMovementProductItemOption | undefined {
+  if (fromMap) {
+    if (fromMap.imageUrl || !item.imageUrl) return fromMap;
+    return { ...fromMap, imageUrl: item.imageUrl };
+  }
+  if (!item.productItemId) return undefined;
+  return {
+    _id: item.productItemId,
+    name: item.productName || "",
+    sku: item.sku || "",
+    imageUrl: item.imageUrl,
+  };
+}
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <p className="mt-1 text-xs text-destructive">{message}</p>;

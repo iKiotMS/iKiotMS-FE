@@ -16,6 +16,7 @@ import {
   MoneyInput,
   ProductLineDisplay,
   ProductSummary,
+  resolveDetailProductOption,
 } from "@/app/(protected)/exchange/shared/form-fields";
 import {
   formatMoneyVnd,
@@ -161,15 +162,18 @@ export function MovementDetailsTable({
                     (d) => d.productItemId === item.productItemId,
                   );
                   const selected = productById.get(item.productItemId);
-                  const fallback =
-                    !selected && item.productItemId
-                      ? {
-                          _id: item.productItemId,
-                          name: fromDetail?.productName || "Đang tải...",
-                          sku: fromDetail?.sku || "",
-                        }
-                      : undefined;
-                  const display = selected ?? fallback;
+                  const display = resolveDetailProductOption(
+                    {
+                      productItemId: item.productItemId,
+                      productName:
+                        fromDetail?.productName ||
+                        selected?.name ||
+                        "Đang tải...",
+                      sku: fromDetail?.sku || selected?.sku || "",
+                      imageUrl: fromDetail?.imageUrl,
+                    },
+                    selected,
+                  );
                   const rowErr = openingRowErrors[idx] ?? {};
                   const lineTotal = (item.importPrice ?? 0) * item.quantity;
                   const stockMax =
@@ -188,7 +192,7 @@ export function MovementDetailsTable({
                     >
                       <div className="min-w-0 overflow-hidden">
                         <ProductLineDisplay
-                          product={selected ?? display}
+                          product={display}
                           name={display?.name}
                           sku={display?.sku}
                           metaMode={mode === "import" ? "price" : "stock"}
@@ -259,7 +263,10 @@ export function MovementDetailsTable({
                       <ProductSummary
                         name={item.productName}
                         sku={item.sku}
-                        product={productById.get(item.productItemId)}
+                        product={resolveDetailProductOption(
+                          item,
+                          productById.get(item.productItemId),
+                        )}
                         metaMode={mode === "import" ? "price" : "stock"}
                       />
                     </div>

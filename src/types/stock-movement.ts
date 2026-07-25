@@ -16,6 +16,8 @@ export interface StockMovementDetail {
   productItemId: string;
   productName: string;
   sku: string;
+  /** Thumbnail từ populate chi tiết phiếu (item hoặc product cha) */
+  imageUrl?: string;
   quantity: number;
   importPrice: number;
   receivedQuantity: number;
