@@ -51,7 +51,7 @@ export type ProductFormValues = z.infer<typeof productFormSchema>
 
 // Schema cho form tạo/chỉnh sửa ProductItem (standalone)
 export const productItemFormSchema = z.object({
-  // Chỉ áp dụng khi tạo mới — BE không cho sửa productName qua PATCH item.
+  // Hỗ trợ cập nhật tên phiên bản qua PATCH item.
   useParentNameForItem: z.boolean(),
   itemProductName: z.string().optional(),
   productCode: z.string().min(1, 'Mã hàng là bắt buộc'),
