@@ -6,9 +6,11 @@ export const rolePermissions = {
   },
   brands: {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
+    view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF", "SUPER_ADMIN"]),
   },
   categories: {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
+    view: new Set(["TENANT_OWNER", "BRANCH_MANAGER", "WAREHOUSE_MANAGER", "STAFF", "SUPER_ADMIN"]),
   },
   suppliers: {
     write: new Set(["TENANT_OWNER", "SUPER_ADMIN", "WAREHOUSE_MANAGER"]),
@@ -75,31 +77,33 @@ export function canDeleteProduct(role?: string | null): boolean {
 // Brands
 export function canViewBrands(role?: string | null): boolean {
   if (!role) return false;
-  return rolePermissions.brands.write.has(role);
+  return rolePermissions.brands.view.has(role);
 }
 export function canCreateBrand(role?: string | null): boolean {
-  return canViewBrands(role);
+  if (!role) return false;
+  return rolePermissions.brands.write.has(role);
 }
 export function canUpdateBrand(role?: string | null): boolean {
-  return canViewBrands(role);
+  return canCreateBrand(role);
 }
 export function canDeleteBrand(role?: string | null): boolean {
-  return canViewBrands(role);
+  return canCreateBrand(role);
 }
 
 // Categories
 export function canViewCategories(role?: string | null): boolean {
   if (!role) return false;
-  return rolePermissions.categories.write.has(role);
+  return rolePermissions.categories.view.has(role);
 }
 export function canCreateCategory(role?: string | null): boolean {
-  return canViewCategories(role);
+  if (!role) return false;
+  return rolePermissions.categories.write.has(role);
 }
 export function canUpdateCategory(role?: string | null): boolean {
-  return canViewCategories(role);
+  return canCreateCategory(role);
 }
 export function canDeleteCategory(role?: string | null): boolean {
-  return canViewCategories(role);
+  return canCreateCategory(role);
 }
 
 // Suppliers
