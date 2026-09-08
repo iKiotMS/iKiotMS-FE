@@ -69,7 +69,7 @@ export function TransfersTable() {
   );
 
   const columnLabels: Record<string, string> = {
-    _id: "Mã yêu cầu",
+    id: "Mã yêu cầu",
     fromLocationName: labels.fromColumnHeader,
     toLocationName: labels.toColumnHeader,
     totalItems: "Số mặt hàng",

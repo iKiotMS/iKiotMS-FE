@@ -246,7 +246,7 @@ export function ProductsExpandedPanel({
                       <span className="text-xs text-muted-foreground">
                         Mã vạch
                       </span>
-                      <span className="font-mono">{item.barcode || "—"}</span>
+                      <span className="font-mono">{item.barcode || "-"}</span>
                     </div>
 
                     <div className="flex flex-col gap-0.5">

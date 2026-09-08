@@ -75,11 +75,11 @@ export const adjustmentsColumns: ColumnDef<StockMovement>[] = [
     size: 50,
   },
   {
-    accessorKey: "_id",
+    accessorKey: "id",
     header: "Mã phiếu",
     cell: ({ row }) => (
       <span className="font-mono text-xs text-muted-foreground">
-        #{String(row.getValue("_id")).slice(-6).toUpperCase()}
+        #{String(row.getValue("id")).slice(-6).toUpperCase()}
       </span>
     ),
   },
@@ -90,7 +90,7 @@ export const adjustmentsColumns: ColumnDef<StockMovement>[] = [
       const r = row.original;
       return (
         <div className="flex flex-col">
-          <span className="text-sm font-medium">{r.fromLocationName ?? "—"}</span>
+          <span className="text-sm font-medium">{r.fromLocationName ?? "-"}</span>
           <span className="text-xs text-muted-foreground">
             {r.fromLocationType === "warehouse" ? "Kho" : "Chi nhánh"}
           </span>

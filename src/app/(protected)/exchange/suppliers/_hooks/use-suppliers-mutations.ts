@@ -17,7 +17,7 @@ export function useSuppliersMutations() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Tải danh sách khi mount — chỉ dùng một setter duy nhất trong `.then()`.
+  // Tải danh sách khi mount - chỉ dùng một setter duy nhất trong `.then()`.
   useEffect(() => {
     supplierApi
       .getList({ limit: 100 })

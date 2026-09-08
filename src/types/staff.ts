@@ -1,7 +1,15 @@
-export type StaffRole =
-  | "BRANCH_MANAGER"
-  | "WAREHOUSE_MANAGER"
-  | "STAFF";
+/**
+ * A role is a **row the shop owner created**, not one of three fixed values.
+ *
+ * The rewritten backend replaced `User.role` (BRANCH_MANAGER | WAREHOUSE_MANAGER | STAFF)
+ * with `User.roleId` pointing at a tenant-owned `Role` the owner defines and grants
+ * permissions to - see `GET /roles`. So there is no union to enumerate here any more, and
+ * what a screen shows is the role's own name.
+ */
+export interface StaffRoleRef {
+  id: string;
+  name: string;
+}
 
 export type StaffStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
@@ -22,7 +30,7 @@ export interface StaffLeaveBalance {
 }
 
 export interface Staff {
-  _id: string;
+  id: string;
   tenantId: string;
   branchId: string;
   branchName: string;
@@ -33,7 +41,8 @@ export interface Staff {
   fullName: string;
   phoneNumber: string;
   email?: string;
-  role: StaffRole;
+  roleId: string | null;
+  roleName: string;
   status: StaffStatus;
   joinedAt: string;
   /** Assigned paysheet from User.paySheetId (POST/PATCH /staff). */
@@ -56,9 +65,9 @@ export interface StaffListResponse {
 
 export interface StaffListQuery {
   page: number;
-  recordPerPage: number;
-  keyword: string;
-  role: StaffRole | "all";
+  limit: number;
+  search: string;
+  roleId: string | "all";
   status: StaffStatus | "all";
   branchId: string;
   warehouseId: string;
@@ -66,12 +75,12 @@ export interface StaffListQuery {
 
 export interface StaffQueryParams {
   page?: number;
-  recordPerPage?: number;
-  role?: StaffRole;
+  limit?: number;
+  roleId?: string;
   status?: StaffStatus;
   branchId?: string | null;
   warehouseId?: string | null;
-  keyword?: string;
+  search?: string;
 }
 
 export interface StaffProfilePayload {
@@ -88,10 +97,10 @@ export interface CreateStaffPayload {
   lastName: string;
   phoneNumber: string;
   email?: string;
-  role: StaffRole;
+  roleId: string;
   branchId?: string | null;
   warehouseId?: string | null;
-  /** Optional — createStaffDTO accepts paySheetId. */
+  /** Optional - createStaffDTO accepts paySheetId. */
   paySheetId?: string | null;
   hireDate?: string;
   profile?: StaffProfilePayload;
@@ -101,13 +110,15 @@ export interface CreateStaffPayload {
 
 export interface UpdateStaffPayload {
   firstName?: string;
+  /** The tenant role this account holds - `PATCH /users/:id` accepts it. */
+  roleId?: string;
   lastName?: string;
   email?: string;
-  /** Không gửi qua PATCH /staff — đổi manager dùng API gán Branch/Warehouse. */
+  /** Không gửi qua PATCH /staff - đổi manager dùng API gán Branch/Warehouse. */
   branchId?: string | null;
   warehouseId?: string | null;
   /**
-   * PATCH /staff data.paySheetId — ObjectId string, or null to remove assignment
+   * PATCH /staff data.paySheetId - ObjectId string, or null to remove assignment
    * (OpenAPI UpdateStaffRequest).
    */
   paySheetId?: string | null;
@@ -126,6 +137,7 @@ export interface StaffManagerActionPayload {
 }
 
 export interface StaffRoleOption {
-  value: StaffRole;
+  /** The role row id - what `POST /users` and `?roleId=` want. */
+  value: string;
   label: string;
 }

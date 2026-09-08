@@ -81,13 +81,13 @@ export function StaffsLeaveBalanceDialog({
     try {
       if (hasBalance) {
         await staffApi.updateAnnualLeaveDays(
-          currentRow._id,
+          currentRow.id,
           Number(values.annualLeaveDays),
         );
         toast.success("Đã cập nhật ngày phép năm");
       } else {
         await staffApi.createLeaveBalance(
-          currentRow._id,
+          currentRow.id,
           Number(values.annualLeaveDays),
         );
         toast.success("Đã khởi tạo ngày phép năm");
@@ -108,7 +108,7 @@ export function StaffsLeaveBalanceDialog({
           </DialogTitle>
           <DialogDescription>
             {currentRow
-              ? `${currentRow.fullName} · còn ${currentRow.leaveBalance?.remainingDays ?? "—"}/${currentRow.leaveBalance?.annualLeaveDays ?? "—"} ngày`
+              ? `${currentRow.fullName} · còn ${currentRow.leaveBalance?.remainingDays ?? "-"}/${currentRow.leaveBalance?.annualLeaveDays ?? "-"} ngày`
               : "Thiết lập số ngày phép năm cho nhân viên"}
           </DialogDescription>
         </DialogHeader>

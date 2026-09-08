@@ -69,7 +69,7 @@ export function LeaveRequestsTable() {
   const targetId = params.id as string | undefined;
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [keywordInput, setKeywordInput] = useState(listQuery.keyword);
+  const [keywordInput, setKeywordInput] = useState(listQuery.search);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [rowSelection, setRowSelection] = useState({});
 
@@ -83,17 +83,17 @@ export function LeaveRequestsTable() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (keywordInput !== listQuery.keyword) {
+      if (keywordInput !== listQuery.search) {
         updateKeywordFilter(keywordInput);
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [keywordInput, listQuery.keyword, updateKeywordFilter]);
+  }, [keywordInput, listQuery.search, updateKeywordFilter]);
 
   const table = useReactTable({
     data: leaveRequests,
     columns,
-    getRowId: (row) => row._id,
+    getRowId: (row) => row.id,
     pageCount: totalPages,
     manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
@@ -108,16 +108,16 @@ export function LeaveRequestsTable() {
       rowSelection,
       pagination: {
         pageIndex: listQuery.page - 1,
-        pageSize: listQuery.recordPerPage,
+        pageSize: listQuery.limit,
       },
     },
   });
 
   const isLoading = isInitialLoading || isFetching;
   const rangeStart =
-    total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
+    total === 0 ? 0 : (listQuery.page - 1) * listQuery.limit + 1;
   const rangeEnd = Math.min(
-    listQuery.page * listQuery.recordPerPage,
+    listQuery.page * listQuery.limit,
     total,
   );
 
@@ -282,11 +282,11 @@ export function LeaveRequestsTable() {
         <div className="flex items-center space-x-2">
           <Label className="text-sm font-medium">Hiển thị</Label>
           <Select
-            value={`${listQuery.recordPerPage}`}
+            value={`${listQuery.limit}`}
             onValueChange={(value) => updatePageSize(Number(value))}
           >
             <SelectTrigger className="w-20 cursor-pointer">
-              <SelectValue placeholder={listQuery.recordPerPage} />
+              <SelectValue placeholder={listQuery.limit} />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50].map((pageSize) => (

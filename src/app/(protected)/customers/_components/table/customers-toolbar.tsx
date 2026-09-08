@@ -85,7 +85,7 @@ export function CustomersToolbar({
             className="h-9 w-36 text-sm cursor-pointer"
             title="Từ ngày"
           />
-          <span className="text-muted-foreground text-sm">—</span>
+          <span className="text-muted-foreground text-sm">-</span>
           <Input
             type="date"
             value={dateTo}
@@ -118,7 +118,7 @@ export function CustomersToolbar({
             className="h-9 w-32 text-sm cursor-pointer [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             title="Tổng chi tiêu từ"
           />
-          <span className="text-muted-foreground text-sm">—</span>
+          <span className="text-muted-foreground text-sm">-</span>
           <Input
             type="number"
             placeholder="Đến"

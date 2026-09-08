@@ -40,7 +40,7 @@ export function StaffSearchSelect({
   const [query, setQuery] = useState("");
 
   const staffKey = useMemo(
-    () => staff.map((item) => item._id).join(","),
+    () => staff.map((item) => item.id).join(","),
     [staff],
   );
 
@@ -92,15 +92,15 @@ export function StaffSearchSelect({
         ) : (
           <ul className="p-1" role="listbox" aria-label={placeholder}>
             {filtered.map((item) => {
-              const isSelected = item._id === value;
+              const isSelected = item.id === value;
               return (
-                <li key={item._id}>
+                <li key={item.id}>
                   <button
                     type="button"
                     role="option"
                     aria-selected={isSelected}
                     disabled={!isInteractive}
-                    onClick={() => onChange(item._id)}
+                    onClick={() => onChange(item.id)}
                     className={cn(
                       "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors",
                       "hover:bg-accent hover:text-accent-foreground",

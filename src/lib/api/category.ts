@@ -9,12 +9,14 @@ import type {
   CategoryUpdatePayload,
 } from '@/types/category'
 
-// Backend trả về document Mongoose với `_id`; FE dùng `id`.
-type CategoryDoc = Omit<Category, 'id'> & { _id: string }
+// Kiểu phản hồi của API. Bản Express cũ trả document Mongo khoá `_id`; bản NestJS
+// trả `id`, nên phép ánh xạ dưới đây giờ là đồng nhất - giữ lại làm chỗ duy nhất phải
+// sửa nếu hình dạng phản hồi đổi lần nữa.
+type CategoryDoc = Omit<Category, 'id'> & { id: string }
 
 function mapCategory(doc: CategoryDoc): Category {
-  const { _id, ...rest } = doc
-  return { ...rest, id: _id, _id }
+  const { id, ...rest } = doc
+  return { ...rest, id }
 }
 
 export const categoryApi = {

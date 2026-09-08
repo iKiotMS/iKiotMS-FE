@@ -49,7 +49,7 @@ import { usePromotions } from '../../_context/promotions-provider'
 import { branchApi } from '@/lib/api/branch'
 import { categoryApi } from '@/lib/api/category'
 import { productApi } from '@/lib/api/product'
-import { getSessionRole, getSessionBranchId } from '@/lib/auth'
+import { getSessionBranchId } from '@/lib/auth'
 import { isoToVNDateInput } from '../../_shared/promotion-date'
 
 type Option = { value: string; label: string }
@@ -199,11 +199,15 @@ export function PromotionsMutateDialog({
   // picked yet must still show the multi-select (not silently mean "whole system").
   const [applyToAllBranches, setApplyToAllBranches] = useState(true)
 
-  // BRANCH_MANAGER may only ever scope a promotion to their own branch. The BE now
-  // also enforces this server-side (force-overrides branchIds on create/update), so
-  // this is UI convenience/defense-in-depth, not the sole guard.
-  const isBranchManager = getSessionRole() === 'BRANCH_MANAGER'
+  // Somebody posted at a branch scopes their promotion to that branch.
+  //
+  // The comment here used to claim the backend force-overrides `branchIds` on create and
+  // update. **It does not** - `PromotionService.create/update` take the list as given after
+  // only checking the branches exist, and the service header says the old branch-manager
+  // rule "goes with the role". So this is the only thing narrowing the scope, and it was
+  // keyed on a role nobody carries any more.
   const ownBranchId = getSessionBranchId()
+  const isBranchScoped = Boolean(ownBranchId)
   const ownBranchLabel = branchOptions.find((b) => b.value === ownBranchId)?.label
 
   const form = useForm<PromotionFormValues>({
@@ -215,7 +219,7 @@ export function PromotionsMutateDialog({
     if (!open) return
     branchApi
       .getList({ limit: 100 })
-      .then((res) => setBranchOptions(res.data.map((b) => ({ value: b._id, label: b.name }))))
+      .then((res) => setBranchOptions(res.data.map((b) => ({ value: b.id, label: b.name }))))
       .catch(() => setBranchOptions([]))
     categoryApi
       .getList({ limit: 200 })
@@ -227,11 +231,11 @@ export function PromotionsMutateDialog({
     if (!open) return
     if (isEdit && currentRow) {
       const branchIds = currentRow.branchIds ?? []
-      setApplyToAllBranches(isBranchManager ? false : branchIds.length === 0)
+      setApplyToAllBranches(isBranchScoped ? false : branchIds.length === 0)
       form.reset({
         promoName: currentRow.promoName,
         description: currentRow.description || '',
-        branchIds: isBranchManager && ownBranchId ? [ownBranchId] : branchIds,
+        branchIds: isBranchScoped && ownBranchId ? [ownBranchId] : branchIds,
         discountType: currentRow.discountType,
         discountValue: currentRow.discountValue,
         maxDiscountAmount: currentRow.maxDiscountAmount ?? null,
@@ -247,13 +251,13 @@ export function PromotionsMutateDialog({
         status: currentRow.status,
       })
     } else {
-      setApplyToAllBranches(!isBranchManager)
+      setApplyToAllBranches(!isBranchScoped)
       form.reset({
         ...EMPTY_VALUES,
-        branchIds: isBranchManager && ownBranchId ? [ownBranchId] : [],
+        branchIds: isBranchScoped && ownBranchId ? [ownBranchId] : [],
       })
     }
-  }, [open, isEdit, currentRow, form, isBranchManager, ownBranchId])
+  }, [open, isEdit, currentRow, form, isBranchScoped, ownBranchId])
 
   const discountType = form.watch('discountType')
   const applicableRuleType = form.watch('applicableRuleType')
@@ -277,7 +281,7 @@ export function PromotionsMutateDialog({
         setProductItemOptions(
           items.map((item) => ({
             value: item.id,
-            label: `${item.productName} — ${item.sku}`,
+            label: `${item.productName} - ${item.sku}`,
           })),
         ),
       )
@@ -437,7 +441,7 @@ export function PromotionsMutateDialog({
               />
               <FormItem>
                 <FormLabel>Áp dụng cho chi nhánh</FormLabel>
-                {isBranchManager ? (
+                {isBranchScoped ? (
                   <div className="flex items-center rounded-md border px-3 py-2 h-9">
                     <span className="text-sm font-normal text-muted-foreground">
                       Chi nhánh của bạn{ownBranchLabel ? `: ${ownBranchLabel}` : ''}
@@ -458,7 +462,7 @@ export function PromotionsMutateDialog({
               </FormItem>
             </div>
 
-            {!applyToAllBranches && !isBranchManager && (
+            {!applyToAllBranches && !isBranchScoped && (
               <FormField
                 control={form.control}
                 name="branchIds"

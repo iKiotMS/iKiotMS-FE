@@ -110,7 +110,7 @@ export function CustomersExpandedPanel({
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Số điện thoại</span>
-              <span>{customer.phone || '—'}</span>
+              <span>{customer.phone || '-'}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Giới tính</span>
@@ -123,7 +123,7 @@ export function CustomersExpandedPanel({
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Ngày sinh</span>
-              <span>{customer.dob || '—'}</span>
+              <span>{customer.dob || '-'}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Ngày tạo</span>

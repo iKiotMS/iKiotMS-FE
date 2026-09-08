@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -31,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Staff, StaffGender, StaffProfilePayload, StaffRole } from "@/types/staff";
+import type { Staff, StaffGender, StaffProfilePayload } from "@/types/staff";
 import type { PaySheetOption } from "@/types/paysheet";
 import { paySheetApi } from "@/lib/api/paysheet";
 import {
@@ -55,22 +56,14 @@ import { toDateInputValue } from "@/app/(protected)/staffs/shared/staff-format";
 import { CccdInput } from "./cccd-input";
 import { StaffAvatarField } from "./staff-avatar-field";
 import { uploadImage } from "@/lib/api/upload";
-import { branchApi } from "@/lib/api/branch";
 import { staffApi } from "@/lib/api/staff";
-import { warehouseApi } from "@/lib/api/warehouse";
-import { getApiErrorMessage } from "@/lib/api/staff-mapper";
 import { getSessionBranchId, getSessionRole } from "@/lib/auth";
 import {
   canAssignWarehouseOnStaffForm,
   canEditStaffRoleAndWorkplace,
-  canPromoteStaffToManager,
   shouldLockBranchOnCreate,
 } from "@/components/sidebar/constants/role-permissions";
-import { isManagerRole } from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import {
-  resolveBranchIdForRole,
-  resolveWarehouseIdForRole,
-  validateManagerWorkplace,
   validateStaffWorkplace,
 } from "@/app/(protected)/staffs/shared/staff-workplace";
 import { useStaffs } from "./staffs-provider";
@@ -164,24 +157,14 @@ const profileFieldsSchema = {
 };
 
 function applyWorkplaceValidation(
-  data: { role: StaffRole; branchId?: string; warehouseId?: string },
+  data: { branchId?: string; warehouseId?: string },
   ctx: z.RefinementCtx,
 ) {
-  const managerError = validateManagerWorkplace(
-    data.role,
-    data.branchId,
-    data.warehouseId,
-  );
-  if (managerError) {
-    ctx.addIssue({
-      code: "custom",
-      message: managerError.message,
-      path: [managerError.path],
-    });
-  }
-
+  // One rule for everybody now. The old backend had a per-role version of this - a
+  // BRANCH_MANAGER had to have a branch, a WAREHOUSE_MANAGER a warehouse - and those roles
+  // no longer exist; what survives is "exactly one workplace", which the backend enforces
+  // for every account.
   const workplaceError = validateStaffWorkplace(
-    data.role,
     data.branchId,
     data.warehouseId,
   );
@@ -240,7 +223,7 @@ const createFormSchema = z
         }
       }),
     email: optionalEmailSchema,
-    role: z.enum(["STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
+    roleId: z.string().min(1, "Vai trò là bắt buộc"),
     branchId: z.string().optional(),
     warehouseId: z.string().optional(),
     hireDate: z.string().optional(),
@@ -263,7 +246,7 @@ const editFormSchema = z
     firstName: z.string().trim().min(1, "Tên là bắt buộc").max(50, "Tên tối đa 50 ký tự"),
     lastName: z.string().trim().min(1, "Họ là bắt buộc").max(50, "Họ tối đa 50 ký tự"),
     email: optionalEmailSchema,
-    role: z.enum(["STAFF", "WAREHOUSE_MANAGER", "BRANCH_MANAGER"]),
+    roleId: z.string().min(1, "Vai trò là bắt buộc"),
     branchId: z.string().optional(),
     warehouseId: z.string().optional(),
     hireDate: z.string().optional(),
@@ -284,7 +267,7 @@ function getEditDefaults(staff: Staff): EditFormValues {
     firstName: staff.firstName ?? "",
     lastName: staff.lastName ?? "",
     email: staff.email ?? "",
-    role: staff.role,
+    roleId: staff.roleId ?? "",
     branchId: staff.branchId ?? "",
     warehouseId: staff.warehouseId ?? "",
     hireDate: toDateInputValue(staff.joinedAt),
@@ -304,7 +287,7 @@ const EMPTY_CREATE_VALUES: CreateFormValues = {
   lastName: "",
   phoneNumber: "",
   email: "",
-  role: "STAFF",
+  roleId: "",
   branchId: "",
   warehouseId: "",
   hireDate: "",
@@ -336,20 +319,14 @@ export function StaffsMutateDialog({
 }: StaffsMutateDialogProps) {
   const isEdit = !!currentRow;
   const userRole = getSessionRole();
-  const lockBranchOnCreate = shouldLockBranchOnCreate(userRole);
+  const lockBranchOnCreate = shouldLockBranchOnCreate(getSessionBranchId());
   const canAssignWarehouse = canAssignWarehouseOnStaffForm(userRole);
-  const canPromoteRole =
-    canPromoteStaffToManager(userRole) &&
-    isEdit &&
-    !!currentRow &&
-    currentRow.role === "STAFF";
-  const isEditingManager = isEdit && currentRow && isManagerRole(currentRow.role);
-  const canEditRoleWorkplace =
-    !isEdit ||
-    (currentRow &&
-      canEditStaffRoleAndWorkplace(userRole, currentRow.role));
+  // "Promoting to manager" was a role change. Running a location is an appointment now
+  // (`PATCH /branches/:id/manager`), so what is left here is simply whether this account
+  // may edit somebody's role and workplace at all.
+  const canEditRoleWorkplace = canEditStaffRoleAndWorkplace(userRole);
 
-  const { handleAdd, handleEdit, fetchStaffs, roleOptions, branchOptions, warehouseOptions, warehouseOptionsFailed } =
+  const { handleAdd, handleEdit, roleOptions, branchOptions, warehouseOptions, warehouseOptionsFailed } =
     useStaffs();
 
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
@@ -357,7 +334,7 @@ export function StaffsMutateDialog({
   const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [paySheetOptions, setPaySheetOptions] = useState<PaySheetOption[]>([]);
   const [paySheetOptionsFailed, setPaySheetOptionsFailed] = useState(false);
-  /** Chi nhánh / kho đã có quản lý ACTIVE — ẩn khi tạo/gán BM/WM. */
+  /** Chi nhánh / kho đã có quản lý ACTIVE - ẩn khi tạo/gán BM/WM. */
   const [occupiedBranchIds, setOccupiedBranchIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -365,7 +342,6 @@ export function StaffsMutateDialog({
     () => new Set(),
   );
   const avatarBlobUrlRef = useRef<string | null>(null);
-  const roleAtOpenRef = useRef<StaffRole | null>(null);
 
   const form = useForm<CreateFormValues | EditFormValues>({
     resolver: zodResolver(isEdit ? editFormSchema : createFormSchema),
@@ -374,7 +350,6 @@ export function StaffsMutateDialog({
     reValidateMode: "onSubmit",
   });
 
-  const selectedRole = form.watch("role");
   const selectedBranchId = form.watch("branchId");
   const selectedWarehouseId = form.watch("warehouseId");
   const watchedFirstName = form.watch("firstName");
@@ -382,7 +357,6 @@ export function StaffsMutateDialog({
   const avatarFullName = `${watchedLastName} ${watchedFirstName}`.trim();
 
   const visibleBranchOptions = useMemo(() => {
-    if (selectedRole !== "BRANCH_MANAGER") return branchOptions;
     return branchOptions.filter((option) => {
       if (isEdit && currentRow?.branchId === option.value) return true;
       return !occupiedBranchIds.has(option.value);
@@ -390,13 +364,11 @@ export function StaffsMutateDialog({
   }, [
     branchOptions,
     occupiedBranchIds,
-    selectedRole,
     isEdit,
     currentRow?.branchId,
   ]);
 
   const visibleWarehouseOptions = useMemo(() => {
-    if (selectedRole !== "WAREHOUSE_MANAGER") return warehouseOptions;
     return warehouseOptions.filter((option) => {
       if (isEdit && currentRow?.warehouseId === option.value) return true;
       return !occupiedWarehouseIds.has(option.value);
@@ -404,7 +376,6 @@ export function StaffsMutateDialog({
   }, [
     warehouseOptions,
     occupiedWarehouseIds,
-    selectedRole,
     isEdit,
     currentRow?.warehouseId,
   ]);
@@ -453,18 +424,11 @@ export function StaffsMutateDialog({
     let cancelled = false;
 
     void Promise.all([
-      staffApi.getList({
-        role: "BRANCH_MANAGER",
-        status: "ACTIVE",
-        page: 1,
-        recordPerPage: 100,
-      }),
-      staffApi.getList({
-        role: "WAREHOUSE_MANAGER",
-        status: "ACTIVE",
-        page: 1,
-        recordPerPage: 100,
-      }),
+      // Which locations already have somebody running them. There is no manager *role*
+      // to filter on any more, so this reads every active account and the caller matches
+      // them against Branch.managerId / Warehouse.managerId.
+      staffApi.getList({ status: "ACTIVE", page: 1, limit: 100 }),
+      staffApi.getList({ status: "ACTIVE", page: 1, limit: 100 }),
     ])
       .then(([branchManagers, warehouseManagers]) => {
         if (cancelled) return;
@@ -530,41 +494,10 @@ export function StaffsMutateDialog({
     };
   }, [open, isEdit, currentRow?.paySheetId, currentRow?.paySheetName]);
 
-  useEffect(() => {
-    if (!open) {
-      roleAtOpenRef.current = null;
-      return;
-    }
-
-    if (isEdit && currentRow) {
-      roleAtOpenRef.current = currentRow.role;
-      return;
-    }
-
-    roleAtOpenRef.current = null;
-  }, [open, isEdit, currentRow]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const isInitialRoleOnEdit =
-      roleAtOpenRef.current !== null &&
-      roleAtOpenRef.current === selectedRole;
-
-    if (isInitialRoleOnEdit) return;
-
-    if (selectedRole === "WAREHOUSE_MANAGER") {
-      form.setValue("branchId", "");
-    }
-    if (selectedRole === "BRANCH_MANAGER" || selectedRole === "STAFF") {
-      form.setValue("warehouseId", "");
-    }
-  }, [selectedRole, open, form]);
-
   // Bỏ chọn CN/kho đã có quản lý (trừ chính NV đang sửa).
   useEffect(() => {
     if (!open) return;
-    if (selectedRole === "BRANCH_MANAGER" && selectedBranchId) {
+    if (selectedBranchId) {
       const stillVisible = visibleBranchOptions.some(
         (option) => option.value === selectedBranchId,
       );
@@ -572,7 +505,7 @@ export function StaffsMutateDialog({
         form.setValue("branchId", "");
       }
     }
-    if (selectedRole === "WAREHOUSE_MANAGER" && selectedWarehouseId) {
+    if (selectedWarehouseId) {
       const stillVisible = visibleWarehouseOptions.some(
         (option) => option.value === selectedWarehouseId,
       );
@@ -582,7 +515,6 @@ export function StaffsMutateDialog({
     }
   }, [
     open,
-    selectedRole,
     selectedBranchId,
     selectedWarehouseId,
     visibleBranchOptions,
@@ -646,76 +578,20 @@ export function StaffsMutateDialog({
           accountNote: editData.accountNote?.trim() || "",
         };
 
-        const promotingToBranchManager =
-          canPromoteRole &&
-          currentRow.role === "STAFF" &&
-          editData.role === "BRANCH_MANAGER";
-        const promotingToWarehouseManager =
-          canPromoteRole &&
-          currentRow.role === "STAFF" &&
-          editData.role === "WAREHOUSE_MANAGER";
-
-        if (promotingToBranchManager) {
-          const branchId = resolveBranchIdForRole(
-            "BRANCH_MANAGER",
-            editData.branchId,
-          );
-          if (!branchId) {
-            toast.error("Quản lý chi nhánh cần chọn chi nhánh");
-            return;
-          }
-          try {
-            await staffApi.update(currentRow._id, {
-              ...profilePayload,
-              branchId,
-              warehouseId: null,
-            });
-            await branchApi.assignManager(branchId, currentRow._id);
-            toast.success("Đã thăng quản lý chi nhánh");
-            await fetchStaffs();
-          } catch (error) {
-            toast.error(getApiErrorMessage(error));
-            throw error;
-          }
-        } else if (promotingToWarehouseManager) {
-          const warehouseId = resolveWarehouseIdForRole(
-            "WAREHOUSE_MANAGER",
-            editData.warehouseId,
-          );
-          if (!warehouseId) {
-            toast.error("Quản lý kho cần chọn kho");
-            return;
-          }
-          try {
-            await staffApi.update(currentRow._id, {
-              ...profilePayload,
-              branchId: null,
-            });
-            await warehouseApi.assignManager(warehouseId, currentRow._id);
-            toast.success("Đã thăng quản lý kho");
-            await fetchStaffs();
-          } catch (error) {
-            toast.error(getApiErrorMessage(error));
-            throw error;
-          }
-        } else {
-          if (canEditRoleWorkplace && !isEditingManager) {
-            profilePayload.branchId = resolveBranchIdForRole(
-              editData.role,
-              editData.branchId,
-            );
-            if (editData.role === "STAFF") {
-              profilePayload.warehouseId = null;
-            } else if (canAssignWarehouse) {
-              profilePayload.warehouseId = resolveWarehouseIdForRole(
-                editData.role,
-                editData.warehouseId,
-              );
-            }
-          }
-
-          await handleEdit(currentRow._id, profilePayload);
+        // The "promote to manager" branches lived here, each one editing the person and
+        // then calling assignManager in the same submit. Promotion is not a thing a staff
+        // form does any more: the role is just another field, and appointing somebody to
+        // run a location is its own action (`PATCH /branches/:id/manager`), reachable from
+        // the branch and warehouse screens.
+        if (canEditRoleWorkplace) {
+          profilePayload.roleId = editData.roleId;
+          profilePayload.branchId = editData.branchId || null;
+          profilePayload.warehouseId = canAssignWarehouse
+            ? editData.warehouseId || null
+            : undefined;
         }
+
+        await handleEdit(currentRow.id, profilePayload);
       } else {
         const createData = data as CreateFormValues;
         await handleAdd({
@@ -723,17 +599,11 @@ export function StaffsMutateDialog({
           lastName: createData.lastName,
           phoneNumber: normalizeStaffPhoneNumber(createData.phoneNumber),
           email: createData.email || undefined,
-          role: createData.role,
-          branchId: resolveBranchIdForRole(createData.role, createData.branchId),
-          warehouseId:
-            createData.role === "STAFF"
-              ? null
-              : canAssignWarehouse
-                ? resolveWarehouseIdForRole(
-                    createData.role,
-                    createData.warehouseId,
-                  )
-                : undefined,
+          roleId: createData.roleId,
+          branchId: createData.branchId || null,
+          warehouseId: canAssignWarehouse
+            ? createData.warehouseId || null
+            : undefined,
           hireDate: normalizeDateInput(createData.hireDate),
           paySheetId: resolvePaySheetIdForApi(createData.paySheetId),
           profile: buildProfilePayload({
@@ -857,36 +727,51 @@ export function StaffsMutateDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="role"
+                name="roleId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Vai trò</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isEdit && !canPromoteRole}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="cursor-pointer w-full">
-                          <SelectValue placeholder="Chọn vai trò" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roleOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>
+                      Vai trò <span className="text-destructive">*</span>
+                    </FormLabel>
+                    {roleOptions.length === 0 ? (
+                      // `POST /users` bắt buộc roleId, nên một dropdown rỗng ở đây là ngõ
+                      // cụt: form không gửi được và không nói vì sao. Chỉ đúng chỗ cần đi.
+                      <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-sm">
+                        Cửa hàng chưa có vai trò nào. Hãy tạo vai trò ở{' '}
+                        <Link
+                          href="/staffs/roles"
+                          className="text-foreground font-medium underline underline-offset-4"
+                        >
+                          Nhân viên › Phân quyền
+                        </Link>{' '}
+                        trước khi thêm nhân viên.
+                      </p>
+                    ) : (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!canEditRoleWorkplace}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="cursor-pointer w-full">
+                            <SelectValue placeholder="Chọn vai trò" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roleOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {(selectedRole === "BRANCH_MANAGER" ||
-                selectedRole === "STAFF") && (
-                <FormField
+              <FormField
                   control={form.control}
                   name="branchId"
                   render={({ field }) => (
@@ -903,7 +788,7 @@ export function StaffsMutateDialog({
                           }}
                           value={field.value || ""}
                           disabled={
-                            Boolean(isEditingManager) ||
+                            !canEditRoleWorkplace ||
                             (lockBranchOnCreate && !isEdit)
                           }
                         >
@@ -925,21 +810,15 @@ export function StaffsMutateDialog({
                         </Select>
                       ) : (
                         <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
-                          {selectedRole === "BRANCH_MANAGER"
-                            ? branchOptions.length > 0
-                              ? "Tất cả chi nhánh đã có quản lý."
-                              : "Hiện chưa có chi nhánh nào trong hệ thống."
-                            : "Hiện chưa có chi nhánh nào trong hệ thống."}
+                          Hiện chưa có chi nhánh nào trong hệ thống.
                         </p>
                       )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
 
-              {canAssignWarehouse &&
-                selectedRole === "WAREHOUSE_MANAGER" && (
+              {canAssignWarehouse && (
                 <FormField
                   control={form.control}
                   name="warehouseId"
@@ -955,7 +834,7 @@ export function StaffsMutateDialog({
                             form.setValue("branchId", "");
                           }}
                           value={field.value || ""}
-                          disabled={Boolean(isEditingManager)}
+                          disabled={!canEditRoleWorkplace}
                         >
                           <FormControl>
                             <SelectTrigger className="cursor-pointer w-full">

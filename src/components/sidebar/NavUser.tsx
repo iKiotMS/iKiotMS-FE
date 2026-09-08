@@ -35,9 +35,9 @@ export function NavUser({
   role,
 }: {
   user: {
-    name: string;
-    email: string;
-    avatar: string;
+    name?: string | null;
+    email?: string | null;
+    avatar?: string | null;
   };
   role?: string;
 }) {
@@ -52,9 +52,13 @@ export function NavUser({
     router.replace("/sign-in");
   };
 
+  const name = user.name?.trim() || "";
+  const email = user.email || "";
+
   const initials =
-    user.name
+    name
       .split(" ")
+      .filter(Boolean)
       .map((n) => n[0])
       .join("")
       .slice(0, 2)
@@ -70,15 +74,15 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarImage src={user.avatar ?? undefined} alt={name} />
                 <AvatarFallback className="rounded-lg">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate font-medium">{name}</span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {user.email}
+                  {email}
                 </span>
               </div>
               <EllipsisVertical className="ml-auto size-4" />
@@ -90,14 +94,14 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
-            {role !== "SUPER_ADMIN" && (
+            {role !== "ADMIN" && (
               <>
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{user.name}</span>
+                      <span className="truncate font-medium">{name}</span>
                       <span className="text-muted-foreground truncate text-xs">
-                        {user.email}
+                        {email}
                       </span>
                     </div>
                   </div>

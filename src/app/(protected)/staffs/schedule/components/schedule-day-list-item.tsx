@@ -10,7 +10,7 @@ import type { CalendarScheduleEntry } from "@/app/(protected)/staffs/shared/sche
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { ScheduleStaffAvatar } from "./schedule-staff-avatar";
 
-/** Hiển thị assignee-level trong day panel — mỗi entry là 1 người/1 ca. */
+/** Hiển thị assignee-level trong day panel - mỗi entry là 1 người/1 ca. */
 export function ScheduleDayListItem({
   entry,
   isActive,
@@ -59,7 +59,7 @@ export function ScheduleDayListItem({
         <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="size-3 shrink-0" />
           <span className="truncate">
-            {schedule.shiftName !== "—" ? `${schedule.shiftName} · ` : ""}
+            {schedule.shiftName !== "-" ? `${schedule.shiftName} · ` : ""}
             {formatShiftTimeRange(schedule.startTime, schedule.endTime)}
           </span>
         </div>
@@ -123,7 +123,7 @@ export function ScheduleGroupListItem({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <p className="truncate text-sm font-semibold">
-            {schedule.shiftName !== "—" ? schedule.shiftName : "Ca làm việc"}
+            {schedule.shiftName !== "-" ? schedule.shiftName : "Ca làm việc"}
           </p>
           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 shrink-0">
             {status.label}

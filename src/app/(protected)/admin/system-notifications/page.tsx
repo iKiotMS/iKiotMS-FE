@@ -71,7 +71,7 @@ export default function SystemNotificationsPage() {
       if (res.success) {
         setSystemNotifications((prev) =>
           prev.map((item) =>
-            item._id === id ? { ...item, isRead: true } : item,
+            item.id === id ? { ...item, isRead: true } : item,
           ),
         );
         decrementUnreadCount();
@@ -85,7 +85,7 @@ export default function SystemNotificationsPage() {
 
   const handleNotificationClick = async (notif: SystemNotification) => {
     if (!notif.isRead) {
-      await handleMarkAsRead(notif._id);
+      await handleMarkAsRead(notif.id);
     }
     if (notif.type === "SYSTEM_TICKET_CREATED" && notif.referenceId) {
       if (pathname === "/admin/tickets") {
@@ -125,10 +125,10 @@ export default function SystemNotificationsPage() {
   // Delete a single notification
   const handleDeleteOne = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    const target = systemNotifications.find((n) => n._id === id);
+    const target = systemNotifications.find((n) => n.id === id);
     const wasUnread = target && !target.isRead;
     // Optimistic
-    setSystemNotifications((prev) => prev.filter((n) => n._id !== id));
+    setSystemNotifications((prev) => prev.filter((n) => n.id !== id));
     if (wasUnread) decrementUnreadCount();
     try {
       await deleteSystemNotification(id);
@@ -241,7 +241,7 @@ export default function SystemNotificationsPage() {
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
             {systemNotifications.map((notif) => (
               <div
-                key={notif._id}
+                key={notif.id}
                 onClick={() => handleNotificationClick(notif)}
                 className={`group relative flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/30 ${
                   notif.isRead
@@ -266,9 +266,9 @@ export default function SystemNotificationsPage() {
                   <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
                     {new Date(notif.createdAt).toLocaleString("vi-VN")}
                   </span>
-                  {/* Delete button — visible on hover */}
+                  {/* Delete button - visible on hover */}
                   <button
-                    onClick={(e) => handleDeleteOne(e, notif._id)}
+                    onClick={(e) => handleDeleteOne(e, notif.id)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-1 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                     title="Xóa thông báo này"
                   >

@@ -40,7 +40,7 @@ export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: Payrol
   async function handleConfirm() {
     if (!currentRow) return
     setSubmitting(true)
-    const success = await handleMarkPaid(currentRow._id, {
+    const success = await handleMarkPaid(currentRow.id, {
       paymentReference: paymentReference || undefined,
       paymentNote: paymentNote || undefined,
     })
@@ -52,10 +52,10 @@ export function PayrollMarkPaidDialog({ open, onOpenChange, currentRow }: Payrol
 
   const periodStart = currentRow?.periodStart
     ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodStart))
-    : '—'
+    : '-'
   const periodEnd = currentRow?.periodEnd
     ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodEnd))
-    : '—'
+    : '-'
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

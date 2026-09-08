@@ -1,37 +1,44 @@
+import { getApiErrorBody, messageForCode } from "@/lib/api/error-codes";
 import type {
   Staff,
   StaffGender,
   StaffLeaveBalance,
   StaffProfile,
-  StaffRole,
   StaffStatus,
 } from "@/types/staff";
 
 export interface ApiBranchRef {
-  _id: string;
+  id: string;
   name?: string;
   address?: string;
 }
 
 export interface ApiStaffUser {
-  _id?: string;
   id?: string;
   tenantId?: string;
   email?: string;
   phoneNumber: string;
-  role: string;
+  roleId?: string | null;
+  role?: { id: string; name: string } | null;
   status: string;
   branchId?: string | ApiBranchRef | null;
-  warehouseId?: string | { _id: string; name?: string } | null;
+  warehouseId?: string | { id: string; name?: string } | null;
   branch?: string | ApiBranchRef | null;
-  warehouse?: string | { _id: string; name?: string } | null;
+  warehouse?: string | { id: string; name?: string } | null;
   profile?: StaffProfile & {
     firstName?: string;
     lastName?: string;
   };
   hireDate?: string;
   accountNote?: string;
-  paySheetId?: string | { _id?: string; name?: string } | null;
+  /**
+   * `paysheetId` with a lowercase `s` - that is how the column, `UpdateUserDto` and the
+   * response all spell it. This interface said `paySheetId`, so every staff row read the
+   * pay scheme as `undefined` and the column rendered empty. `paysheet` carries the name
+   * beside it, which is what the list actually displays.
+   */
+  paysheetId?: string | null;
+  paysheet?: { id?: string; name?: string } | null;
   leaveBalance?: {
     annualLeaveDays?: number;
     remainingDays?: number;
@@ -40,53 +47,47 @@ export interface ApiStaffUser {
   updatedAt: string;
 }
 
-const ROLE_LABELS: Record<StaffRole, string> = {
-  STAFF: "Nhân viên bán hàng",
-  WAREHOUSE_MANAGER: "Quản lý kho",
-  BRANCH_MANAGER: "Quản lý chi nhánh",
-};
-
 const GENDER_LABELS: Record<StaffGender, string> = {
   MALE: "Nam",
   FEMALE: "Nữ",
   OTHER: "Khác",
 };
 
-export function getStaffRoleLabel(role: StaffRole): string {
-  return ROLE_LABELS[role] ?? role;
+/**
+ * A role's display name.
+ *
+ * There used to be a fixed table of three here, because the old backend had exactly three
+ * roles. Roles are rows the shop owner creates now, so the name comes with the data and
+ * the only thing left to decide is what to show when a staff member has no role yet.
+ */
+export function getStaffRoleLabel(roleName?: string | null): string {
+  return roleName?.trim() || "Chưa phân quyền";
 }
 
 export function getStaffGenderLabel(gender?: StaffGender): string {
-  if (!gender) return "—";
+  if (!gender) return "-";
   return GENDER_LABELS[gender] ?? gender;
 }
 
 function resolveRefId(
-  ref?: string | { _id: string } | null,
+  ref?: string | { id: string } | null,
 ): string {
   if (!ref) return "";
-  return typeof ref === "string" ? ref : ref._id;
+  return typeof ref === "string" ? ref : ref.id;
 }
 
 function resolveRefName(
   ref?: string | ApiBranchRef | null,
 ): string {
-  if (!ref) return "—";
+  if (!ref) return "-";
   if (typeof ref === "string") return ref;
-  return ref.name ?? ref._id;
+  return ref.name ?? ref.id;
 }
 
 function mapStatus(status: string): StaffStatus {
   if (status === "ACTIVE") return "ACTIVE";
   if (status === "SUSPENDED") return "SUSPENDED";
   return "INACTIVE";
-}
-
-function mapRole(role: string): StaffRole {
-  if (role === "BRANCH_MANAGER" || role === "WAREHOUSE_MANAGER") {
-    return role;
-  }
-  return "STAFF";
 }
 
 function mapProfile(profile?: ApiStaffUser["profile"]): StaffProfile | undefined {
@@ -114,16 +115,16 @@ function mapLeaveBalance(
 }
 
 function resolvePaySheetId(
-  ref?: string | { _id?: string; name?: string } | null,
+  ref?: string | { id?: string; name?: string } | null,
 ): string | null | undefined {
   if (ref === null) return null;
   if (ref === undefined) return undefined;
   if (typeof ref === "string") return ref || null;
-  return ref._id ?? null;
+  return ref.id ?? null;
 }
 
 function resolvePaySheetName(
-  ref?: string | { _id?: string; name?: string } | null,
+  ref?: string | { id?: string; name?: string } | null,
 ): string | undefined {
   if (!ref || typeof ref === "string") return undefined;
   return ref.name?.trim() || undefined;
@@ -146,7 +147,7 @@ export function unwrapStaffPayload(payload: unknown): ApiStaffUser | null {
   }
   if (
     typeof body.phoneNumber === "string" ||
-    typeof body._id === "string" ||
+    typeof body.id === "string" ||
     typeof body.id === "string"
   ) {
     return body as unknown as ApiStaffUser;
@@ -159,10 +160,10 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
   const lastName = user.profile?.lastName ?? "";
   const branchRef = user.branchId ?? user.branch;
   const warehouseRef = user.warehouseId ?? user.warehouse;
-  const id = user._id ?? user.id ?? "";
+  const id = user.id ?? "";
 
   return {
-    _id: String(id),
+    id: String(id),
     tenantId: String(user.tenantId ?? ""),
     branchId: resolveRefId(branchRef),
     branchName: resolveRefName(branchRef),
@@ -173,11 +174,12 @@ export function mapStaffFromApi(user: ApiStaffUser): Staff {
     fullName: `${lastName} ${firstName}`.trim() || user.phoneNumber,
     phoneNumber: user.phoneNumber,
     email: user.email,
-    role: mapRole(user.role),
+    roleId: user.role?.id ?? user.roleId ?? null,
+    roleName: getStaffRoleLabel(user.role?.name),
     status: mapStatus(user.status),
     joinedAt: user.hireDate ?? user.createdAt,
-    paySheetId: resolvePaySheetId(user.paySheetId),
-    paySheetName: resolvePaySheetName(user.paySheetId),
+    paySheetId: resolvePaySheetId(user.paysheetId),
+    paySheetName: resolvePaySheetName(user.paysheet),
     profile: mapProfile(user.profile),
     accountNote: user.accountNote,
     leaveBalance: mapLeaveBalance(user.leaveBalance),
@@ -214,6 +216,11 @@ export function getApiFieldErrors(
 }
 
 export function getApiErrorMessage(error: unknown): string {
+  // `code` trước tiên: nó không đổi khi backend sửa câu chữ hoặc dịch sang tiếng Anh.
+  // Phần dưới là đường lùi cho backend cũ, vốn chỉ trả `message`.
+  const mapped = messageForCode(getApiErrorBody(error)?.code);
+  if (mapped) return mapped;
+
   if (typeof error === "object" && error !== null && "response" in error) {
     const data = (error as { response?: { data?: Record<string, unknown> } })
       .response?.data;

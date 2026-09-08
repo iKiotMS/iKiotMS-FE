@@ -25,7 +25,7 @@ export interface AttendanceLocation {
 }
 
 export interface AttendanceSummary {
-  _id?: string;
+  id?: string;
   status: AttendanceStatus;
   actualCheckinAt?: string | null;
   actualCheckoutAt?: string | null;
@@ -48,7 +48,7 @@ export interface ScheduleDayInfo {
 }
 
 export interface ShiftTemplate {
-  _id: string;
+  id: string;
   name: string;
   startTime: string;
   endTime: string;
@@ -63,7 +63,7 @@ export interface ShiftTemplateOption {
 }
 
 export interface ApiScheduleUser {
-  _id: string;
+  id: string;
   phoneNumber?: string;
   profile?: {
     firstName?: string;
@@ -71,20 +71,30 @@ export interface ApiScheduleUser {
     avatarUrl?: string;
   };
   role?: string;
-  branchId?: string | { _id: string };
-  warehouseId?: string | { _id: string };
+  branchId?: string | { id: string };
+  warehouseId?: string | { id: string };
   attendance?: AttendanceSummary | AttendanceDetail;
 }
 
-/** Raw response shape từ BE (userId là mảng nhân viên trong cùng ca). */
+/**
+ * Raw response shape từ BE.
+ *
+ * `assignedUsers` là mảng nhân viên trong cùng một ca - `WorkingSchedule` có bảng nối, nên
+ * một ca mang một danh sách người chứ không phải một `userId`. Trước đây khai là `userId`
+ * (tên của model Mongo cũ), mà API chưa bao giờ gửi khoá đó.
+ *
+ * `user` là khoá của `GET /working-schedules/:id/users/:userId` - endpoint đó trả về đúng
+ * một người thay cho cả danh sách.
+ */
 export interface ApiWorkingSchedule {
-  _id: string;
+  id: string;
   tenantId: string;
-  userId: ApiScheduleUser[] | ApiScheduleUser | string | string[];
+  assignedUsers?: ApiScheduleUser[] | ApiScheduleUser | string | string[];
+  user?: ApiScheduleUser;
   managedBy?:
     | string
     | {
-        _id: string;
+        id: string;
         phoneNumber?: string;
         profile?: { firstName?: string; lastName?: string };
       };
@@ -112,7 +122,7 @@ export interface ScheduleAssignee {
 
 /** Một ca làm (có thể nhiều nhân viên). */
 export interface WorkingSchedule {
-  _id: string;
+  id: string;
   tenantId: string;
   assignees: ScheduleAssignee[];
   managedById?: string;
@@ -137,7 +147,7 @@ export interface WorkingSchedule {
 
 export interface WorkingScheduleQueryParams {
   page?: number;
-  recordPerPage?: number;
+  limit?: number;
   userId?: string;
   startDate?: string;
   endDate?: string;
@@ -150,9 +160,8 @@ export interface WorkingScheduleListApiResponse {
   pagination?: {
     total: number;
     page: number;
-    recordPerPage: number;
+    limit: number;
     totalPages?: number;
-    totalPage?: number;
   };
 }
 

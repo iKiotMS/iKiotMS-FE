@@ -35,17 +35,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authenticated && user) {
       try {
-        const { getSocket, joinRoom } = require("@/lib/socket");
+        // Rooms are no longer joined from here. The backend puts the socket into
+        // `user:<id>`, `tenant:<id>` and `admin` itself, from the JWT it verified on
+        // connect - the old server let any client join any room by name, including
+        // "admin", so this was also how a socket could subscribe to broadcasts meant for
+        // the operators.
+        const { getSocket } = require("@/lib/socket");
         const socket = getSocket();
-        
-        if (user.tenantId) {
-          joinRoom(`tenant:${user.tenantId}`);
-        }
-        if (user.id) {
-          joinRoom(`user:${user.id}`);
-        }
-        if (user.role === "SUPER_ADMIN") {
-          joinRoom("admin");
+
+        if (user.role === "ADMIN") {
           
           // Fetch initial unread count & open tickets count
           const { useNotificationStore } = require("@/store/notification-store");

@@ -1,4 +1,5 @@
 import client from "./client";
+import { allows } from "@/components/sidebar/constants/role-permissions";
 import {
   extractCreatedLeaveRequest,
   extractHandoverPreview,
@@ -21,22 +22,35 @@ import type {
   ApiLeaveRequest,
 } from "@/types/leave-request";
 
+/**
+ * Which list endpoint this account may actually call.
+ *
+ * Each one needs its own permission - `/branches` wants `leaveRequests:readBR`,
+ * `/warehouses` wants `readWH`, the unscoped list wants `read_all`, and `/me` needs only
+ * `read_mine`. The old version picked by role name and fell through to the **tenant-wide**
+ * list for anything it did not recognise, so after the rename every staff account asked for
+ * the widest endpoint and got a 403 instead of their own leave. Widest-first, own last.
+ */
 function resolveListUrl(role?: string | null): string {
-  if (role === "STAFF") return "/leave-requests/me";
-  if (role === "BRANCH_MANAGER") return "/leave-requests/branches";
-  if (role === "WAREHOUSE_MANAGER") return "/leave-requests/warehouses";
-  return "/leave-requests";
+  if (allows(role, "leaveRequests", "read_all")) return "/leave-requests";
+  if (allows(role, "leaveRequests", "readBR")) return "/leave-requests/branches";
+  if (allows(role, "leaveRequests", "readWH")) return "/leave-requests/warehouses";
+  return "/leave-requests/me";
 }
 
 function buildQueryParams(params?: LeaveRequestQueryParams) {
   return {
     page: params?.page ?? 1,
-    recordPerPage: params?.recordPerPage ?? 10,
+    limit: params?.limit ?? 10,
     status: params?.status,
-    role: params?.role,
+    // No `role`: the backend has no such filter on any leave-request list, so it was
+    // being sent and dropped by the global whitelist.
     branchId: params?.branchId,
     warehouseId: params?.warehouseId,
-    keyword: params?.keyword?.trim() || undefined,
+    // `keyword`, not `search`. `QueryLeaveRequestDto` is the one list endpoint that kept
+    // the old name - it matches the reason text and the requester's name - so a `search`
+    // key was dropped by `whitelist: true` and the box filtered nothing.
+    keyword: params?.search?.trim() || undefined,
     startDate: params?.startDate ? toApiDate(params.startDate) : undefined,
     endDate: params?.endDate ? toApiDate(params.endDate) : undefined,
   };
@@ -55,21 +69,21 @@ function mapListResponse(
 ): LeaveRequestListResponse {
   const pagination = response?.pagination;
   const total = pagination?.total ?? response?.data?.length ?? 0;
-  const recordPerPage =
-    pagination?.recordPerPage ?? params?.recordPerPage ?? 10;
+  const limit =
+    pagination?.limit ?? params?.limit ?? 10;
 
   return {
     data: (response?.data ?? []).map(mapLeaveRequestFromApi),
     total,
     page: pagination?.page ?? params?.page ?? 1,
     totalPages:
-      pagination?.totalPage ?? Math.max(1, Math.ceil(total / recordPerPage)),
+      pagination?.totalPages ?? Math.max(1, Math.ceil(total / limit)),
   };
 }
 
 function mapCreatedResponse(data: unknown): LeaveRequest {
   const raw = extractCreatedLeaveRequest(data);
-  if (!raw?._id) {
+  if (!raw?.id) {
     throw new Error("Phản hồi tạo đơn nghỉ phép không hợp lệ");
   }
   return mapLeaveRequestFromApi(raw);
@@ -95,7 +109,8 @@ export const leaveRequestApi = {
       {
         params: {
           status: params?.status,
-          keyword: params?.keyword?.trim() || undefined,
+          // `QueryLeavePerDayDto` takes status + the date range and nothing else - this
+          // calendar view has no text search server-side, so the key is not sent.
           startDate: params?.startDate
             ? toApiDate(params.startDate)
             : undefined,
@@ -107,7 +122,7 @@ export const leaveRequestApi = {
     return (response.data?.data ?? []).map((item) => {
       const raw = item as ApiLeaveRequest & { date?: string };
       return {
-        _id: raw._id,
+        id: raw.id,
         date: (raw.date ?? raw.startDate ?? "").slice(0, 10),
         status: raw.status,
         reason: raw.reason,

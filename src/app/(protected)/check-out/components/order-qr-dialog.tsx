@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { getSocket, joinRoom } from "@/lib/socket";
+import { getSocket } from "@/lib/socket";
 import { orderApi } from "@/lib/api/order";
 
 interface OrderQrDialogProps {
@@ -58,11 +58,15 @@ export function OrderQrDialog({
     paidOfflineRef.current = false;
 
     const socket = getSocket();
-    const room = `order:${orderId}`;
 
-    joinRoom(room);
-
-    const handlePaid = () => {
+    // The old server broadcast to an `order:<id>` room the client joined itself; the
+    // rewrite only puts sockets into rooms it chose, so this arrives on `tenant:<id>`
+    // with the order id in the payload. Matching on it is not optional: every till in
+    // the shop now receives every `order:paid`, so an unfiltered handler would close
+    // this dialog - and report the sale as settled - the moment *another* cashier's
+    // customer paid.
+    const handlePaid = (payload?: { orderId?: string }) => {
+      if (payload?.orderId && payload.orderId !== orderId) return;
       if (paidOfflineRef.current) return;
       setStatus("paid");
       setTimeout(() => {

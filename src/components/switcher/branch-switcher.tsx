@@ -198,7 +198,7 @@ export function BranchSwitcher() {
               </DropdownMenuItem>
               {dbBranches.map((item) => (
                 <DropdownMenuItem
-                  key={item._id}
+                  key={item.id}
                   onClick={() => handleSelect(mapBranchToItem(item))}
                   className="group gap-2 p-2 cursor-pointer flex items-center justify-between"
                 >
@@ -252,7 +252,7 @@ export function BranchSwitcher() {
                         e.stopPropagation();
                         e.preventDefault();
                         setDeleteTarget({
-                          id: item._id,
+                          id: item.id,
                           name: item.name,
                           type: "branch",
                         });
@@ -284,7 +284,7 @@ export function BranchSwitcher() {
               </DropdownMenuLabel>
               {dbWarehouses.map((item) => (
                 <DropdownMenuItem
-                  key={item._id}
+                  key={item.id}
                   onClick={() => handleSelect(mapWarehouseToItem(item))}
                   className="group gap-2 p-2 cursor-pointer flex items-center justify-between"
                 >
@@ -325,7 +325,7 @@ export function BranchSwitcher() {
                         e.stopPropagation();
                         e.preventDefault();
                         setDeleteTarget({
-                          id: item._id,
+                          id: item.id,
                           name: item.name,
                           type: "warehouse",
                         });
@@ -387,7 +387,7 @@ export function BranchSwitcher() {
         onOpenChange={(open) => {
           if (!open) closeAssignManagerDialog();
         }}
-        initialBranchId={assignManagerBranch?._id}
+        initialBranchId={assignManagerBranch?.id}
         initialBranchName={assignManagerBranch?.name}
         onSuccess={handleAssignManagerSuccess}
       />

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/auth-store'
+import { locationFilter } from '@/lib/location-key'
 import {
   statsApi,
   type StatsOverview,
@@ -28,22 +29,13 @@ function toDateOnly(date: Date): string {
   return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 }
 
-function parseLocationKey(locationKey: string): { branchId?: string; warehouseId?: string } {
-  if (!locationKey || locationKey === 'all') return {}
-  const [type, id] = locationKey.split('-')
-  if (!id) return {}
-  if (type === 'branch') return { branchId: id }
-  if (type === 'warehouse') return { warehouseId: id }
-  return {}
-}
-
 export type TopProductsSortBy = 'quantity' | 'revenue'
 
 export type RevenueDateRange = { fromDate: string; toDate: string; groupBy: 'day' | 'month' }
 
 export function useDashboardStats(range: DashboardRange) {
   const locationKey = useAuthStore((state) => state.locationKey)
-  const { branchId, warehouseId } = parseLocationKey(locationKey)
+  const { branchId, warehouseId } = locationFilter(locationKey)
   const isWarehouse = Boolean(warehouseId)
 
   const [overview, setOverview] = useState<StatsOverview | null>(null)
@@ -67,7 +59,7 @@ export function useDashboardStats(range: DashboardRange) {
       const toDateStr = toDateOnly(toDate)
 
       // A warehouse has no sales/orders, so the order-based widgets don't apply.
-      // Only cashflow (imports) and inventory are meaningful — fetch just those
+      // Only cashflow (imports) and inventory are meaningful - fetch just those
       // and clear the rest so the UI can hide the sales sections.
       if (isWarehouse) {
         const [cashflowRes, inventoryRes] = await Promise.all([

@@ -94,7 +94,7 @@ export function PaysheetDetail() {
   } = usePayroll()
 
   const isEdit = activePaysheetId !== 'new'
-  const sheet = isEdit ? paysheets.find((p) => p._id === activePaysheetId) : null
+  const sheet = isEdit ? paysheets.find((p) => p.id === activePaysheetId) : null
 
   const form = useForm<PaysheetDetailFormValues>({
     resolver: zodResolver(paysheetDetailSchema),
@@ -202,7 +202,7 @@ export function PaysheetDetail() {
     }
 
     const success = isEdit && sheet
-      ? await handleEditPaysheet(sheet._id, payload)
+      ? await handleEditPaysheet(sheet.id, payload)
       : await handleAddPaysheet(payload)
 
     if (success) {

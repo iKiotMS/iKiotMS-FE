@@ -23,7 +23,6 @@ import { staffApi } from "@/lib/api/staff";
 import { getSessionRole, getSessionUserId } from "@/lib/auth";
 import {
   getApiErrorMessage,
-  getStaffRoleLabel,
 } from "@/lib/api/staff-mapper";
 import {
   canCreateSchedule,
@@ -228,7 +227,7 @@ export function ScheduleProvider({
           value: assignee.userId,
           label: assignee.staffName,
           branchId: assignee.branchId || "",
-          branchName: "—",
+          branchName: "-",
           phone: assignee.staffPhone || "",
         });
       });
@@ -245,7 +244,7 @@ export function ScheduleProvider({
     }
 
     try {
-      const res = await shiftTemplateApi.getList({ recordPerPage: 100 });
+      const res = await shiftTemplateApi.getList({ limit: 100 });
       const templates = res.data ?? [];
       setShiftTemplates(templates);
       setShiftTemplateOptions(mapShiftTemplatesToOptions(templates));
@@ -265,7 +264,7 @@ export function ScheduleProvider({
     setIsFetching(true);
     try {
       const baseParams = {
-        recordPerPage: 100,
+        limit: 100,
         userId: filters.userId === "all" ? undefined : filters.userId,
         status: filters.status === "all" ? undefined : filters.status,
         startDate: filters.startDate || undefined,
@@ -384,7 +383,7 @@ export function ScheduleProvider({
         if (!cancelled) setMonthHolidays(rows);
       })
       .catch(() => {
-        // BM/WM có thể không có holidays:read — fallback dayInfo trên schedule.
+        // BM/WM có thể không có holidays:read - fallback dayInfo trên schedule.
         if (!cancelled) setMonthHolidays([]);
       });
 
@@ -412,10 +411,10 @@ export function ScheduleProvider({
       .then((activeStaff) => {
         setStaffOptions(
           activeStaff.map((s) => ({
-            value: s._id,
-            label: `${s.fullName} (${getStaffRoleLabel(s.role)})`,
+            value: s.id,
+            label: `${s.fullName} (${s.roleName})`,
             branchId: s.branchId || "",
-            branchName: s.branchName || "—",
+            branchName: s.branchName || "-",
             phone: s.phoneNumber || "",
           })),
         );
@@ -444,9 +443,9 @@ export function ScheduleProvider({
       await workingScheduleApi.remove(scheduleId);
       await workingScheduleApi.create(payload);
       toast.success("Đã cập nhật lịch làm việc");
-      setSelectedSchedule((prev) => (prev?._id === scheduleId ? null : prev));
+      setSelectedSchedule((prev) => (prev?.id === scheduleId ? null : prev));
       setSelectedAssigneeUserId(null);
-      setCurrentRow((prev) => (prev?._id === scheduleId ? null : prev));
+      setCurrentRow((prev) => (prev?.id === scheduleId ? null : prev));
       await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -459,12 +458,12 @@ export function ScheduleProvider({
       await workingScheduleApi.remove(id);
       toast.success("Đã xóa lịch làm việc");
       setSelectedSchedule((prev) => {
-        if (prev?._id === id) {
+        if (prev?.id === id) {
           setSelectedAssigneeUserId(null);
         }
-        return prev?._id === id ? null : prev;
+        return prev?.id === id ? null : prev;
       });
-      setCurrentRow((prev) => (prev?._id === id ? null : prev));
+      setCurrentRow((prev) => (prev?.id === id ? null : prev));
       await Promise.all([fetchSchedules(), fetchCurrentSchedule()]);
     } catch (error) {
       toast.error(getApiErrorMessage(error));

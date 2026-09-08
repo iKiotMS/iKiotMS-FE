@@ -1,5 +1,5 @@
 // Mirror of backend src/constants/planFeatures.js (PLAN_FEATURES).
-// These are feature-flag keys used by checkPlanFeature — distinct from the
+// These are feature-flag keys used by checkPlanFeature - distinct from the
 // marketing bullet list (displayFeatures).
 export const PLAN_FEATURE_OPTIONS: { key: string; label: string }[] = [
   { key: "stock_movement", label: "Quản lý nhập/xuất hàng" },

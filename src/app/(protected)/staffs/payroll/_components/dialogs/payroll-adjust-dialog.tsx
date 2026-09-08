@@ -78,7 +78,7 @@ export function PayrollAdjustDialog({ open, onOpenChange, currentRow, currentPay
 
   async function onSubmit(data: PayslipAdjustFormValues) {
     if (!currentRow || !currentPayslip) return
-    const success = await handleAdjustPayslip(currentRow._id, currentPayslip._id, data)
+    const success = await handleAdjustPayslip(currentRow.id, currentPayslip.id, data)
     if (success) {
       onOpenChange(false)
     }

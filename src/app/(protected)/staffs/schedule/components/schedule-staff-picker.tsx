@@ -45,7 +45,7 @@ export function ScheduleStaffPicker({
     if (initialBranchId) return initialBranchId;
     return requireBranchFilter ? "" : ALL_BRANCHES;
   });
-  const [keyword, setKeyword] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!requireBranchFilter || branchFilter || !initialBranchId) return;
@@ -58,7 +58,7 @@ export function ScheduleStaffPicker({
       if (!option.branchId) continue;
       map.set(
         option.branchId,
-        option.branchName && option.branchName !== "—"
+        option.branchName && option.branchName !== "-"
           ? option.branchName
           : "Chi nhánh",
       );
@@ -69,7 +69,7 @@ export function ScheduleStaffPicker({
   }, [options]);
 
   const needsBranch = requireBranchFilter && !branchFilter;
-  const search = keyword.trim().toLowerCase();
+  const needle = search.trim().toLowerCase();
 
   const visibleOptions = useMemo(() => {
     if (needsBranch) return [];
@@ -81,13 +81,13 @@ export function ScheduleStaffPicker({
       ) {
         return false;
       }
-      if (!search) return true;
+      if (!needle) return true;
       return (
-        option.label.toLowerCase().includes(search) ||
-        option.phone.toLowerCase().includes(search)
+        option.label.toLowerCase().includes(needle) ||
+        option.phone.toLowerCase().includes(needle)
       );
     });
-  }, [options, branchFilter, needsBranch, search]);
+  }, [options, branchFilter, needsBranch, needle]);
 
   const selectedSet = useMemo(() => new Set(value), [value]);
   const visibleIds = useMemo(
@@ -157,8 +157,8 @@ export function ScheduleStaffPicker({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Tìm tên hoặc SĐT"
             className="h-9 pl-9"
           />

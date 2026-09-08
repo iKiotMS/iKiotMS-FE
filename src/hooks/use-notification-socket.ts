@@ -16,7 +16,7 @@ export function useNotificationSocket() {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Room đã được AuthGuard join sẵn — ở đây chỉ lắng nghe.
+    // Room đã được AuthGuard join sẵn - ở đây chỉ lắng nghe.
     const socket = getSocket();
 
     const handle = (notification: AppNotification) => {

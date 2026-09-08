@@ -1,5 +1,5 @@
 export interface CashDrawerUserRef {
-  _id: string;
+  id: string;
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -10,12 +10,12 @@ export interface CashDrawerUserRef {
 }
 
 export interface CashDrawerBranchRef {
-  _id: string;
+  id: string;
   name: string;
 }
 
 export interface CashDrawerShiftLog {
-  _id?: string;
+  id?: string;
   staffId: string | CashDrawerUserRef;
   amount: number;
   nextStaffId?: string | CashDrawerUserRef | null;
@@ -24,7 +24,7 @@ export interface CashDrawerShiftLog {
 }
 
 export interface CashDrawerSession {
-  _id: string;
+  id: string;
   tenantId: string;
   branchId: string | CashDrawerBranchRef;
   businessDate: string;
@@ -49,6 +49,12 @@ export interface OpenSessionPayload {
 }
 
 export interface ShiftLogPayload {
+  /**
+   * `START` takes the drawer, `END` hands it back. The server defaults to `END`, which is
+   * why omitting it worked for the "báo cáo cuối ca" screen - but the sequence check wants
+   * a `START` first, and there was no way to express one from here.
+   */
+  type?: "START" | "END";
   amount: number;
   nextStaffId?: string;
   note?: string;

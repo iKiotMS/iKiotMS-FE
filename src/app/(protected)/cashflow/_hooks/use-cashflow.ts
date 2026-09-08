@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/auth-store'
+import { locationFilter } from '@/lib/location-key'
 import { statsApi, type Cashflow, type CashflowList } from '@/lib/api/stats'
 
 export type CashflowRange = '7d' | '30d' | '90d' | '12m'
@@ -23,21 +24,9 @@ function toDateOnly(date: Date): string {
   return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 }
 
-function parseLocationKey(locationKey: string): {
-  branchId?: string
-  warehouseId?: string
-} {
-  if (!locationKey || locationKey === 'all') return {}
-  const [type, id] = locationKey.split('-')
-  if (!id) return {}
-  if (type === 'branch') return { branchId: id }
-  if (type === 'warehouse') return { warehouseId: id }
-  return {}
-}
-
 export function useCashflow() {
   const locationKey = useAuthStore((state) => state.locationKey)
-  const { branchId, warehouseId } = parseLocationKey(locationKey)
+  const { branchId, warehouseId } = locationFilter(locationKey)
 
   const [range, setRangeState] = useState<CashflowRange>('30d')
   const [flowType, setFlowTypeState] = useState<FlowTypeFilter>('ALL')

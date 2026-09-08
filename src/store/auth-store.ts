@@ -65,13 +65,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchMe: async () => {
     set({ isLoading: true, error: null });
     try {
-      const userData = await getMe();
+      // `getMe` answers `undefined` for an empty body rather than throwing, and the
+      // store models "signed out" as null.
+      const userData = (await getMe()) ?? null;
       set({ 
         user: userData, 
         isLoading: false,
         locationKey: getInitialLocationKey(userData)
       });
-      setCachedUser(userData);
+      // Nothing to cache when the profile came back empty - writing null would only
+      // overwrite a good cached user with a blank one.
+      if (userData) setCachedUser(userData);
     } catch (err: any) {
       console.error("Failed to fetch current user profile:", err);
       const errMsg = err?.response?.data?.message || err?.message || "Failed to load user profile";

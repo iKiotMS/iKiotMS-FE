@@ -56,7 +56,7 @@ export function usePlansMutations() {
     async (id: string, payload: UpdatePlanPayload): Promise<boolean> => {
       try {
         const updated = await updatePlan(id, payload);
-        setPlans((prev) => prev.map((p) => (p._id === id ? updated : p)));
+        setPlans((prev) => prev.map((p) => (p.id === id ? updated : p)));
         toast.success("Đã cập nhật gói dịch vụ");
         return true;
       } catch (error) {
@@ -71,15 +71,15 @@ export function usePlansMutations() {
     async (id: string, isActive: boolean): Promise<void> => {
       // Optimistic; revert on failure.
       setPlans((prev) =>
-        prev.map((p) => (p._id === id ? { ...p, isActive } : p)),
+        prev.map((p) => (p.id === id ? { ...p, isActive } : p)),
       );
       try {
         const updated = await setPlanActive(id, isActive);
-        setPlans((prev) => prev.map((p) => (p._id === id ? updated : p)));
+        setPlans((prev) => prev.map((p) => (p.id === id ? updated : p)));
         toast.success(isActive ? "Đã bật gói" : "Đã tắt gói");
       } catch (error) {
         setPlans((prev) =>
-          prev.map((p) => (p._id === id ? { ...p, isActive: !isActive } : p)),
+          prev.map((p) => (p.id === id ? { ...p, isActive: !isActive } : p)),
         );
         toast.error(apiErrorMessage(error, "Không thể đổi trạng thái gói"));
       }

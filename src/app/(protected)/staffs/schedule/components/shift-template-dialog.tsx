@@ -92,13 +92,13 @@ export function ShiftTemplateDialog({
   });
 
   const filteredTemplates = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return shiftTemplates;
+    const needle = search.trim().toLowerCase();
+    if (!needle) return shiftTemplates;
     return shiftTemplates.filter(
       (t) =>
-        t.name.toLowerCase().includes(keyword) ||
-        t.startTime.includes(keyword) ||
-        t.endTime.includes(keyword),
+        t.name.toLowerCase().includes(needle) ||
+        t.startTime.includes(needle) ||
+        t.endTime.includes(needle),
     );
   }, [shiftTemplates, search]);
 
@@ -144,7 +144,7 @@ export function ShiftTemplateDialog({
   function selectTemplate(template: ShiftTemplate) {
     if (isEditing) return;
     setSelectedTemplate((prev) =>
-      prev?._id === template._id ? null : template,
+      prev?.id === template.id ? null : template,
     );
   }
 
@@ -172,7 +172,7 @@ export function ShiftTemplateDialog({
     }
 
     if (editingTemplate) {
-      await handleUpdateShiftTemplate(editingTemplate._id, values);
+      await handleUpdateShiftTemplate(editingTemplate.id, values);
       cancelEdit();
       setSelectedTemplate(null);
     } else {
@@ -182,11 +182,11 @@ export function ShiftTemplateDialog({
   }
 
   async function onDelete(template: ShiftTemplate) {
-    setDeletingId(template._id);
+    setDeletingId(template.id);
     try {
-      await handleDeleteShiftTemplate(template._id);
-      if (selectedTemplate?._id === template._id) setSelectedTemplate(null);
-      if (editingTemplate?._id === template._id) cancelEdit();
+      await handleDeleteShiftTemplate(template.id);
+      if (selectedTemplate?.id === template.id) setSelectedTemplate(null);
+      if (editingTemplate?.id === template.id) cancelEdit();
     } finally {
       setDeletingId(null);
     }
@@ -316,10 +316,10 @@ export function ShiftTemplateDialog({
               <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
                 {pagedTemplates.map((template) => {
                   const isHighlighted =
-                    selectedTemplate?._id === template._id ||
-                    editingTemplate?._id === template._id;
+                    selectedTemplate?.id === template.id ||
+                    editingTemplate?.id === template.id;
                   return (
-                    <li key={template._id}>
+                    <li key={template.id}>
                       <button
                         type="button"
                         onClick={() => selectTemplate(template)}
@@ -394,7 +394,7 @@ export function ShiftTemplateDialog({
                 className="cursor-pointer"
                 disabled={
                   !targetTemplate ||
-                  deletingId === targetTemplate._id ||
+                  deletingId === targetTemplate.id ||
                   isSubmitting
                 }
                 onClick={() =>
@@ -434,7 +434,7 @@ export function ShiftTemplateDialog({
                   variant="destructive"
                   size="sm"
                   className="cursor-pointer"
-                  disabled={deletingId === selectedTemplate._id || isSubmitting}
+                  disabled={deletingId === selectedTemplate.id || isSubmitting}
                   onClick={() => void onDelete(selectedTemplate)}
                 >
                   <Trash2 className="mr-2 size-4" />

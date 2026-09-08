@@ -154,8 +154,6 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
     setPreviewLoading(true)
     try {
       const res = await payrollApi.preview({
-        payrollMonth: selectedMonth,
-        // Keep preview compatible while the new BE is rolling out to Render.
         periodStartDate: previewPeriod.periodStart,
         periodEndDate: previewPeriod.periodEnd,
       })
@@ -354,8 +352,8 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                     </TableHeader>
                     <TableBody>
                       {previewData.payslips.map((slip, idx) => {
-                        const staffId = typeof slip.userId === 'string' ? slip.userId : slip.userId?._id
-                        const staff = staffs.find((s) => s._id === staffId)
+                        const staffId = typeof slip.userId === 'string' ? slip.userId : slip.userId?.id
+                        const staff = staffs.find((s) => s.id === staffId)
 
                         let name = 'Nhân viên'
                         let email = staff?.email || ''
@@ -376,7 +374,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
 
                         if (!name) name = 'Nhân viên'
 
-                        const rowKey = slip._id || (typeof slip.userId === 'string' ? slip.userId : slip.userId?._id) || `preview-slip-${idx}`
+                        const rowKey = slip.id || (typeof slip.userId === 'string' ? slip.userId : slip.userId?.id) || `preview-slip-${idx}`
 
                         return (
                           <TableRow
@@ -420,7 +418,7 @@ export function PayrollPeriodDialog({ open, onOpenChange }: PayrollPeriodDialogP
                     <p className="text-xs font-semibold text-muted-foreground">Bỏ qua không tính lương ({previewData.skipped.length}):</p>
                     <div className="bg-destructive/10 text-destructive text-xs rounded-lg p-2.5 space-y-1">
                       {previewData.skipped.map((skipItem: { userId: string; reason: string }, idx) => {
-                        const skipStaff = staffs.find((s) => s._id === skipItem.userId)
+                        const skipStaff = staffs.find((s) => s.id === skipItem.userId)
 
                         let skipName = ''
                         if (skipStaff) {

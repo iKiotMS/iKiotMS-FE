@@ -23,7 +23,7 @@ export function PaysheetsTable() {
   }
 
   function handleEdit(paysheet: PaySheet) {
-    setActivePaysheetId(paysheet._id)
+    setActivePaysheetId(paysheet.id)
   }
 
   return (
@@ -43,8 +43,8 @@ export function PaysheetsTable() {
         <TableBody>
           {paysheets.map((sheet) => {
             const payType = sheet.basicPay?.payType
-            let payTypeLabel = '—'
-            let salaryLabel = '—'
+            let payTypeLabel = '-'
+            let salaryLabel = '-'
 
             if (payType === 'FIXED') {
               payTypeLabel = 'Lương cố định'
@@ -68,7 +68,7 @@ export function PaysheetsTable() {
               .join(', ') || 'Không có'
 
             return (
-              <TableRow key={sheet._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+              <TableRow key={sheet.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                 <TableCell className="font-semibold text-slate-900 dark:text-slate-100">{sheet.name}</TableCell>
                 <TableCell className="text-slate-600 dark:text-slate-300 text-sm">{payTypeLabel}</TableCell>
                 <TableCell className="text-right font-bold text-slate-800 dark:text-slate-200 tabular-nums">
@@ -81,7 +81,7 @@ export function PaysheetsTable() {
                   {deductionsLabel}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
-                  {sheet.createdAt ? new Date(sheet.createdAt).toLocaleDateString('vi-VN') : '—'}
+                  {sheet.createdAt ? new Date(sheet.createdAt).toLocaleDateString('vi-VN') : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button

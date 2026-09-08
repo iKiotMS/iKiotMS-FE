@@ -120,7 +120,7 @@ export function getProductsColumns(
             {brand.name}
           </Badge>
         ) : (
-          <span className="text-muted-foreground text-xs">—</span>
+          <span className="text-muted-foreground text-xs">-</span>
         );
       },
       filterFn: (row, _columnId, value: string) =>
@@ -138,7 +138,7 @@ export function getProductsColumns(
             {name}
           </Badge>
         ) : (
-          <span className="text-muted-foreground text-xs">—</span>
+          <span className="text-muted-foreground text-xs">-</span>
         );
       },
       filterFn: (row, _columnId, value: string) =>

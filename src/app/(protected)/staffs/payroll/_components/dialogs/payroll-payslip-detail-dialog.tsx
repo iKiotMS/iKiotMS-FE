@@ -89,8 +89,8 @@ export function PayrollPayslipDetailDialog({
   const isDraft = (currentPayslip.status || periodStatus || 'DRAFT') === 'DRAFT'
 
   // ─── Resolve staff name ───────────────────────────────────────────────────
-  const staffId = typeof currentPayslip.userId === 'string' ? currentPayslip.userId : currentPayslip.userId?._id
-  const staff = staffs.find((s) => s._id === staffId)
+  const staffId = typeof currentPayslip.userId === 'string' ? currentPayslip.userId : currentPayslip.userId?.id
+  const staff = staffs.find((s) => s.id === staffId)
 
   let name = 'Nhân viên'
   let email = staff?.email || ''
@@ -162,13 +162,13 @@ export function PayrollPayslipDetailDialog({
   }
 
   async function handleSave() {
-    if (!periodId || !currentPayslip || !currentPayslip._id) {
+    if (!periodId || !currentPayslip || !currentPayslip.id) {
       toast.error('Không thể lưu: thiếu thông tin kỳ lương hoặc phiếu lương')
       return
     }
     setSaving(true)
     try {
-      const updated = await payrollApi.updatePayslip(periodId, currentPayslip._id, {
+      const updated = await payrollApi.updatePayslip(periodId, currentPayslip.id, {
         note: noteText || undefined,
         manualAdjustments: adjustments,
       })
@@ -221,9 +221,9 @@ export function PayrollPayslipDetailDialog({
               <p className="text-xs text-muted-foreground">Kỳ lương</p>
               <p className="font-semibold mt-0.5 flex items-center gap-1 text-xs">
                 <Calendar className="size-3.5 text-muted-foreground" />
-                {currentPayslip.periodStart ? new Date(currentPayslip.periodStart).toLocaleDateString('vi-VN') : '—'}
+                {currentPayslip.periodStart ? new Date(currentPayslip.periodStart).toLocaleDateString('vi-VN') : '-'}
                 {' ➔ '}
-                {currentPayslip.periodEnd ? new Date(currentPayslip.periodEnd).toLocaleDateString('vi-VN') : '—'}
+                {currentPayslip.periodEnd ? new Date(currentPayslip.periodEnd).toLocaleDateString('vi-VN') : '-'}
               </p>
             </div>
             <div>
@@ -256,7 +256,7 @@ export function PayrollPayslipDetailDialog({
               <div className="flex justify-between items-center p-3 border-b text-sm">
                 <span className="text-muted-foreground">Lương làm thêm giờ (Overtime)</span>
                 <span className="font-semibold text-orange-600 dark:text-orange-400 tabular-nums">
-                  {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '—'}
+                  {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '-'}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-muted/20 text-sm">
@@ -313,7 +313,7 @@ export function PayrollPayslipDetailDialog({
                             <span>
                               {new Intl.DateTimeFormat('vi-VN').format(new Date(d.date))}
                               {d.dayFraction < 1 ? ` (${d.dayFraction * 100}%)` : ''}
-                              {' — '}{d.leaveType === 'PAID' ? 'Có phép' : 'Không lương'}
+                              {' - '}{d.leaveType === 'PAID' ? 'Có phép' : 'Không lương'}
                               {d.ignoredBecauseAttended && ' · Bỏ qua (có chấm công)'}
                             </span>
                             <span>{d.leaveType === 'PAID' && !d.ignoredBecauseAttended ? `+${formatVND(d.amount)}` : ''}</span>
@@ -350,7 +350,7 @@ export function PayrollPayslipDetailDialog({
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">3. Phụ cấp ({allowanceLines.length})</h3>
               <span className="text-sm font-bold text-blue-600 dark:text-blue-400 tabular-nums">
-                {allowance > 0 ? `+${formatVND(allowance)}` : '—'}
+                {allowance > 0 ? `+${formatVND(allowance)}` : '-'}
               </span>
             </div>
             <div className="border rounded-lg overflow-hidden bg-background">
@@ -379,7 +379,7 @@ export function PayrollPayslipDetailDialog({
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">4. Các khoản giảm trừ ({deductionLines.length})</h3>
               <span className="text-sm font-bold text-destructive tabular-nums">
-                {deduction > 0 ? `-${formatVND(deduction)}` : '—'}
+                {deduction > 0 ? `-${formatVND(deduction)}` : '-'}
               </span>
             </div>
             <div className="border rounded-lg overflow-hidden bg-background">
@@ -421,7 +421,7 @@ export function PayrollPayslipDetailDialog({
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">5. Điều chỉnh bổ sung ({adjustments.length})</h3>
               <span className={`text-sm font-bold tabular-nums ${totalAdjustments > 0 ? 'text-green-600' : totalAdjustments < 0 ? 'text-destructive' : 'text-slate-400'}`}>
-                {totalAdjustments > 0 ? `+${formatVND(totalAdjustments)}` : totalAdjustments < 0 ? `-${formatVND(Math.abs(totalAdjustments))}` : '—'}
+                {totalAdjustments > 0 ? `+${formatVND(totalAdjustments)}` : totalAdjustments < 0 ? `-${formatVND(Math.abs(totalAdjustments))}` : '-'}
               </span>
             </div>
 
@@ -541,7 +541,7 @@ export function PayrollPayslipDetailDialog({
         </div>
 
         {/* Save footer for DRAFT mode */}
-        {isDraft && periodId && currentPayslip._id && (
+        {isDraft && periodId && currentPayslip.id && (
           <>
             <Separator />
             <div className="flex justify-end gap-2 pt-1">

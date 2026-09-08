@@ -26,10 +26,8 @@ export function LoginForm2({
   const routeByRole = (role?: string) => {
     if (role === "STAFF") {
       router.push("/check-out");
-    } else if (role === "SUPER_ADMIN") {
+    } else if (role === "ADMIN") {
       router.push("/admin/dashboard");
-    } else if (role === "WAREHOUSE_MANAGER") {
-      router.push("/products");
     } else {
       router.push("/dashboard");
     }

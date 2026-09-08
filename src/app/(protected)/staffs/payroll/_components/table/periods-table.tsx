@@ -8,7 +8,7 @@ import { usePayroll } from '../../_context/payroll-provider'
 import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
 
 const formatDMY = (dateStr: string) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return '-'
   try {
     return new Intl.DateTimeFormat('vi-VN').format(new Date(dateStr))
   } catch {
@@ -60,7 +60,7 @@ export function PeriodsTable() {
           {periods.map((p) => {
             const statusStyle = STATUS_MAP[p.status] || { label: p.status, className: '' }
             return (
-              <TableRow key={p._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+              <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                 <TableCell className="font-semibold text-slate-700 dark:text-slate-200">
                   {formatDMY(p.periodStart)} ➔ {formatDMY(p.periodEnd)}
                 </TableCell>
@@ -73,7 +73,7 @@ export function PeriodsTable() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
-                  {p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : '—'}
+                  {p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1.5">
@@ -81,7 +81,7 @@ export function PeriodsTable() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleViewDetails(p._id)}
+                      onClick={() => handleViewDetails(p.id)}
                       className="cursor-pointer h-8 text-xs flex items-center gap-1 hover:bg-slate-100 hover:text-slate-800"
                       title="Xem chi tiết"
                     >
@@ -94,7 +94,7 @@ export function PeriodsTable() {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleSubmitPeriod(p._id)}
+                        onClick={() => handleSubmitPeriod(p.id)}
                         className="cursor-pointer h-8 text-xs flex items-center gap-1"
                       >
                         <ArrowUpRight className="size-3.5" />
@@ -119,7 +119,7 @@ export function PeriodsTable() {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => handleApprovePeriod(p._id)}
+                          onClick={() => handleApprovePeriod(p.id)}
                           className="cursor-pointer h-8 text-xs flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white"
                         >
                           <CheckCircle2 className="size-3.5" />

@@ -11,7 +11,6 @@ export interface ApplicableRule {
 
 export interface Promotion {
   id: string
-  _id?: string
   tenantId?: string
   /** Empty/omitted = applies to all branches (tenant-wide). */
   branchIds?: string[]
@@ -45,7 +44,7 @@ export interface PromotionQueryParams {
   status?: PromotionStatus
   branchId?: string
   page?: number
-  recordPerPage?: number
+  limit?: number
 }
 
 export interface PromotionListResponse {
@@ -75,7 +74,6 @@ export type PromotionUpdatePayload = Partial<PromotionCreatePayload> & {
 
 export interface PromotionLog {
   id: string
-  _id?: string
   promotionId: string
   orderId?: string
   paymentReference?: string | null

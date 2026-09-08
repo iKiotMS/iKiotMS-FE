@@ -71,7 +71,7 @@ export const categoriesColumns: ColumnDef<Category>[] = [
     header: 'Mô tả',
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground line-clamp-1 max-w-xs">
-        {row.getValue('description') || '—'}
+        {row.getValue('description') || '-'}
       </span>
     ),
   },

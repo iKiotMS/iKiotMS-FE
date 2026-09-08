@@ -43,7 +43,7 @@ export function usePayrollMutations() {
 
       // Load paysheets
       try {
-        const paysheetRes = await payrollApi.getPaysheets({ page: 1, recordPerPage: 100 })
+        const paysheetRes = await payrollApi.getPaysheets({ page: 1, limit: 100 })
         setPaysheets(paysheetRes.data)
       } catch (err) {
         console.error('Error loading paysheets:', err)
@@ -82,7 +82,7 @@ export function usePayrollMutations() {
 
   async function refreshPaysheets() {
     try {
-      const paysheetRes = await payrollApi.getPaysheets({ page: 1, recordPerPage: 100 })
+      const paysheetRes = await payrollApi.getPaysheets({ page: 1, limit: 100 })
       setPaysheets(paysheetRes.data)
     } catch {
       toast.error('Không thể cập nhật danh sách lương cơ bản')
@@ -138,7 +138,7 @@ export function usePayrollMutations() {
     setIsLoading(true)
     try {
       let savedSettings: PayrollSettings
-      if (settings?._id) {
+      if (settings?.id) {
         savedSettings = await payrollApi.updateSettings(data)
       } else {
         savedSettings = await payrollApi.createSettings({
@@ -202,9 +202,9 @@ export function usePayrollMutations() {
         note: data.note,
         manualAdjustments: adjustmentsMapped,
       })
-      if (activePeriod && activePeriod._id === periodId) {
+      if (activePeriod && activePeriod.id === periodId) {
         const updatedPayslips = activePeriod.payslips.map((p) =>
-          p._id === payslipId ? updatedPayslip : p
+          p.id === payslipId ? updatedPayslip : p
         )
         // Recalculate summary cost
         const newTotal = updatedPayslips.reduce((sum, p) => sum + p.netSalary, 0)
@@ -224,8 +224,8 @@ export function usePayrollMutations() {
     setIsLoading(true)
     try {
       const updated = await payrollApi.submitPeriod(id)
-      setPeriods((prev) => prev.map((p) => (p._id === id ? updated : p)))
-      if (activePeriod && activePeriod._id === id) {
+      setPeriods((prev) => prev.map((p) => (p.id === id ? updated : p)))
+      if (activePeriod && activePeriod.id === id) {
         setActivePeriod(updated)
       }
       toast.success('Đã gửi yêu cầu duyệt kỳ lương')
@@ -242,8 +242,8 @@ export function usePayrollMutations() {
     setIsLoading(true)
     try {
       const updated = await payrollApi.returnPeriodToDraft(id, reason)
-      setPeriods((prev) => prev.map((p) => (p._id === id ? updated : p)))
-      if (activePeriod && activePeriod._id === id) {
+      setPeriods((prev) => prev.map((p) => (p.id === id ? updated : p)))
+      if (activePeriod && activePeriod.id === id) {
         setActivePeriod(updated)
       }
       toast.success('Đã trả kỳ lương về trạng thái Nháp')
@@ -260,8 +260,8 @@ export function usePayrollMutations() {
     setIsLoading(true)
     try {
       const updated = await payrollApi.approvePeriod(id)
-      setPeriods((prev) => prev.map((p) => (p._id === id ? updated : p)))
-      if (activePeriod && activePeriod._id === id) {
+      setPeriods((prev) => prev.map((p) => (p.id === id ? updated : p)))
+      if (activePeriod && activePeriod.id === id) {
         setActivePeriod(updated)
       }
       toast.success('Đã phê duyệt kỳ lương thành công')
@@ -281,8 +281,8 @@ export function usePayrollMutations() {
     setIsLoading(true)
     try {
       const updated = await payrollApi.markPeriodPaid(id, payload)
-      setPeriods((prev) => prev.map((p) => (p._id === id ? updated : p)))
-      if (activePeriod && activePeriod._id === id) {
+      setPeriods((prev) => prev.map((p) => (p.id === id ? updated : p)))
+      if (activePeriod && activePeriod.id === id) {
         setActivePeriod(updated)
       }
       toast.success('Đã đánh dấu đã trả lương xong')

@@ -17,26 +17,26 @@ import type {
   ProductItemListParams,
 } from "@/types/product";
 
-type MongoDoc<T extends object> = Omit<T, "id"> & { _id: string };
+type ApiDoc<T extends object> = Omit<T, "id"> & { id: string };
 
-// GET /products, GET /products/:id — có items (nested) và totalStock
-type MongoProduct = MongoDoc<Omit<Product, "items">> & {
-  items?: MongoDoc<ProductItem>[];
+// GET /products, GET /products/:id - có items (nested) và totalStock
+type ApiProductDoc = ApiDoc<Omit<Product, "items">> & {
+  items?: ApiDoc<ProductItem>[];
 };
 
-// POST /products, PATCH /products/:id — không trả về items hay totalStock
-type MongoProductBase = MongoDoc<Omit<Product, "items" | "totalStock">>;
+// POST /products, PATCH /products/:id - không trả về items hay totalStock
+type ApiProductBase = ApiDoc<Omit<Product, "items" | "totalStock">>;
 
-function mapId<T extends object>(doc: MongoDoc<T>): T & { id: string } {
-  const { _id, ...rest } = doc;
-  return { ...(rest as unknown as T), id: _id };
+function mapId<T extends object>(doc: ApiDoc<T>): T & { id: string } {
+  const { id, ...rest } = doc;
+  return { ...(rest as unknown as T), id: id };
 }
 
-function mapProduct(prod: MongoProduct): Product {
-  const { _id, items, ...rest } = prod;
+function mapProduct(prod: ApiProductDoc): Product {
+  const { id, items, ...rest } = prod;
   return {
     ...(rest as unknown as Omit<Product, "id" | "items">),
-    id: _id,
+    id: id,
     items: items?.map(mapId),
   };
 }
@@ -56,7 +56,7 @@ export const productApi = {
     };
 
     const res = await client.get<{
-      data: MongoProduct[];
+      data: ApiProductDoc[];
       pagination: PaginationResponse;
     }>("/products", { params: mergedParams });
     return {
@@ -65,12 +65,12 @@ export const productApi = {
     };
   },
 
-  // GET /products/items — flat SKU list, does not require fetching each product's detail
+  // GET /products/items - flat SKU list, does not require fetching each product's detail
   // (GET /products list responses don't include `items` per product; see ProductService.js).
   listItems: async (
     params?: ProductItemListParams,
   ): Promise<ProductItemListEntry[]> => {
-    const res = await client.get<{ data: MongoDoc<Omit<ProductItemListEntry, "id">>[] }>(
+    const res = await client.get<{ data: ApiDoc<Omit<ProductItemListEntry, "id">>[] }>(
       "/products/items",
       { params },
     );
@@ -82,7 +82,7 @@ export const productApi = {
     signal?: AbortSignal,
   ): Promise<ProductListResponse> => {
     const res = await client.get<{
-      data: MongoProduct[];
+      data: ApiProductDoc[];
       pagination: PaginationResponse;
     }>("/products/search", { params, signal });
     return {
@@ -96,14 +96,14 @@ export const productApi = {
     const params = parsed
       ? { locationId: parsed.locationId, locationType: parsed.locationType }
       : {};
-    const res = await client.get<{ data: MongoProduct }>(`/products/${id}`, {
+    const res = await client.get<{ data: ApiProductDoc }>(`/products/${id}`, {
       params,
     });
     return mapProduct(res.data.data) as ProductDetailResponse;
   },
 
   create: async (payload: ProductCreatePayload): Promise<Product> => {
-    const res = await client.post<{ data: MongoProductBase }>(
+    const res = await client.post<{ data: ApiProductBase }>(
       "/products",
       payload,
     );
@@ -114,7 +114,7 @@ export const productApi = {
     id: string,
     payload: ProductUpdatePayload,
   ): Promise<Product> => {
-    const res = await client.patch<{ data: MongoProductBase }>(
+    const res = await client.patch<{ data: ApiProductBase }>(
       `/products/${id}`,
       payload,
     );
@@ -122,14 +122,14 @@ export const productApi = {
   },
 
   remove: async (id: string): Promise<void> => {
-    await client.delete(`/products/${id}/delete`);
+    await client.delete(`/products/${id}`);
   },
 
   createItem: async (
     productId: string,
     payload: ProductItemCreatePayload,
   ): Promise<ProductItem> => {
-    const res = await client.post<{ data: MongoDoc<ProductItem> }>(
+    const res = await client.post<{ data: ApiDoc<ProductItem> }>(
       `/products/${productId}/items`,
       payload,
     );
@@ -140,7 +140,7 @@ export const productApi = {
     itemId: string,
     payload: ProductItemUpdatePayload,
   ): Promise<ProductItem> => {
-    const res = await client.patch<{ data: MongoDoc<ProductItem> }>(
+    const res = await client.patch<{ data: ApiDoc<ProductItem> }>(
       `/products/items/${itemId}`,
       payload,
     );
@@ -148,6 +148,6 @@ export const productApi = {
   },
 
   removeItem: async (itemId: string): Promise<void> => {
-    await client.delete(`/products/items/${itemId}/delete`);
+    await client.delete(`/products/items/${itemId}`);
   },
 };

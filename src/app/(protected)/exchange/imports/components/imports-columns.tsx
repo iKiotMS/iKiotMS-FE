@@ -79,11 +79,11 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
     size: 50,
   },
   {
-    accessorKey: "_id",
+    accessorKey: "id",
     header: "Mã đơn",
     cell: ({ row }) => (
       <span className="font-mono text-xs text-muted-foreground">
-        #{String(row.getValue("_id")).slice(-6).toUpperCase()}
+        #{String(row.getValue("id")).slice(-6).toUpperCase()}
       </span>
     ),
   },
@@ -110,7 +110,7 @@ export const importsColumns: ColumnDef<StockMovement>[] = [
       <span className="font-medium">
         {row.original.supplierName ||
           row.original.fromLocationName ||
-          (row.original.fromLocationId ? "Kho nguồn" : "—")}
+          (row.original.fromLocationId ? "Kho nguồn" : "-")}
       </span>
     ),
   },

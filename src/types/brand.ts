@@ -1,7 +1,6 @@
 // [Domain – Types]
 export interface Brand {
   id: string
-  _id?: string
   name: string
   description?: string
   logo?: string

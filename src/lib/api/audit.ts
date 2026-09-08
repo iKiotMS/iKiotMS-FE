@@ -1,7 +1,7 @@
 import client from "./client";
 
 export interface AuditLog {
-  _id: string;
+  id: string;
   userId?: string;
   userEmail?: string;
   userName?: string;

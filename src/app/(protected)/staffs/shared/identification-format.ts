@@ -15,7 +15,7 @@ export function parseIdentificationId(value?: string): string {
   return (value ?? "").replace(/\D/g, "").slice(0, CCCD_LENGTH);
 }
 
-/** CCCD 12 số — nhóm 3 chữ số: 079 201 000 001 */
+/** CCCD 12 số - nhóm 3 chữ số: 079 201 000 001 */
 export function formatIdentificationId(value?: string | null): string {
   const digits = parseIdentificationId(value ?? "");
   if (!digits) return "";
@@ -29,7 +29,7 @@ function getBirthYearFromCccd(centuryGenderCode: number, yearSuffix: string) {
 }
 
 /**
- * @param required — tạo NV: bắt buộc; sửa: rỗng = bỏ qua (không đổi).
+ * @param required - tạo NV: bắt buộc; sửa: rỗng = bỏ qua (không đổi).
  */
 export function validateStaffIdentificationId(
   value?: string,

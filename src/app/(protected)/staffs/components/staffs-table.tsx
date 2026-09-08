@@ -10,6 +10,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Funnel, Search } from "lucide-react";
+import { parseLocationKey } from "@/lib/location-key";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -86,12 +87,14 @@ export function StaffsTable() {
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   // The global switcher wins over these manual filters (same precedence the
-  // provider applies when fetching) — lock them and reflect the active scope
+  // provider applies when fetching) - lock them and reflect the active scope
   // instead of showing a stale "Tất cả" while the list is actually filtered.
   const isLocationLocked = locationKey !== "all";
-  const [lockedLocationType, lockedLocationId] = locationKey.split("-");
-  const lockedBranchId = lockedLocationType === "branch" ? lockedLocationId : "all";
-  const lockedWarehouseId = lockedLocationType === "warehouse" ? lockedLocationId : "all";
+  const lockedLocation = parseLocationKey(locationKey);
+  const lockedBranchId =
+    lockedLocation?.locationType === "branch" ? lockedLocation.locationId : "all";
+  const lockedWarehouseId =
+    lockedLocation?.locationType === "warehouse" ? lockedLocation.locationId : "all";
 
   const table = useReactTable({
     data: staffs,
@@ -107,14 +110,14 @@ export function StaffsTable() {
       expanded,
       pagination: {
         pageIndex: listQuery.page - 1,
-        pageSize: listQuery.recordPerPage,
+        pageSize: listQuery.limit,
       },
     },
   });
 
   const rangeStart =
-    total === 0 ? 0 : (listQuery.page - 1) * listQuery.recordPerPage + 1;
-  const rangeEnd = Math.min(listQuery.page * listQuery.recordPerPage, total);
+    total === 0 ? 0 : (listQuery.page - 1) * listQuery.limit + 1;
+  const rangeEnd = Math.min(listQuery.page * listQuery.limit, total);
 
   return (
     <div className="space-y-4">
@@ -131,9 +134,9 @@ export function StaffsTable() {
           </div>
 
           <Select
-            value={listQuery.role}
+            value={listQuery.roleId}
             onValueChange={(value) =>
-              updateRoleFilter(value as typeof listQuery.role)
+              updateRoleFilter(value as typeof listQuery.roleId)
             }
           >
             <SelectTrigger className="cursor-pointer w-48 h-9 text-sm">
@@ -332,11 +335,11 @@ export function StaffsTable() {
         <div className="flex items-center space-x-2">
           <Label className="text-sm font-medium">Hiển thị</Label>
           <Select
-            value={`${listQuery.recordPerPage}`}
+            value={`${listQuery.limit}`}
             onValueChange={(value) => updatePageSize(Number(value))}
           >
             <SelectTrigger className="w-20 cursor-pointer">
-              <SelectValue placeholder={listQuery.recordPerPage} />
+              <SelectValue placeholder={listQuery.limit} />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50].map((pageSize) => (

@@ -128,13 +128,13 @@ export function AdjustmentsCreateDialog({
 
   const applyProduct = (item: StockMovementProductItemOption) => {
     const current = form.getValues('details') ?? []
-    if (current.some((d) => d.productItemId === item._id)) {
+    if (current.some((d) => d.productItemId === item.id)) {
       toast.message('Hàng hóa này đã có trong danh sách')
       return
     }
     const stock = Math.max(0, item.stock ?? 0)
     const base = {
-      productItemId: item._id,
+      productItemId: item.id,
       receivedQuantity: stock,
       note: '',
     }
@@ -187,14 +187,14 @@ export function AdjustmentsCreateDialog({
 
   const handleLocationChange = (id: string) => {
     form.setValue('locationId', id)
-    const loc = locations.find((l) => l._id === id)
+    const loc = locations.find((l) => l.id === id)
     if (loc) form.setValue('locationType', loc.type)
     setProducts([])
   }
 
   async function onSubmit(data: AdjustFormValues) {
     const hasChange = data.details.some((d) => {
-      const product = products.find((p) => p._id === d.productItemId)
+      const product = products.find((p) => p.id === d.productItemId)
       const snapshot = product?.stock ?? 0
       return getAdjustQtyChange(snapshot, d.receivedQuantity) !== 0
     })
@@ -254,7 +254,7 @@ export function AdjustmentsCreateDialog({
                     </FormControl>
                     <SelectContent>
                       {visibleLocations.map((l) => (
-                        <SelectItem key={l._id} value={l._id}>
+                        <SelectItem key={l.id} value={l.id}>
                           {l.name}{' '}
                           <span className="text-muted-foreground">
                             ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})
@@ -319,12 +319,12 @@ export function AdjustmentsCreateDialog({
 
               {fields.map((f, idx) => {
                 const itemId = form.watch(`details.${idx}.productItemId`) ?? ''
-                const selected = products.find((p) => p._id === itemId)
+                const selected = products.find((p) => p.id === itemId)
                 const snapshot = selected?.stock ?? 0
                 const actual = form.watch(`details.${idx}.receivedQuantity`) ?? 0
                 const diff = getAdjustQtyChange(snapshot, actual)
                 const lineProducts = searchableProducts.filter(
-                  (p) => p._id === itemId || !usedIds.has(p._id),
+                  (p) => p.id === itemId || !usedIds.has(p.id),
                 )
 
                 return (
@@ -344,7 +344,7 @@ export function AdjustmentsCreateDialog({
                                 value={field.value}
                                 displayProduct={
                                   selected &&
-                                  !lineProducts.some((p) => p._id === selected._id)
+                                  !lineProducts.some((p) => p.id === selected.id)
                                     ? selected
                                     : undefined
                                 }
@@ -352,7 +352,7 @@ export function AdjustmentsCreateDialog({
                                 placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn hàng hóa'}
                                 onValueChange={(value) => {
                                   field.onChange(value)
-                                  const p = products.find((x) => x._id === value)
+                                  const p = products.find((x) => x.id === value)
                                   const stock = p?.stock ?? 0
                                   form.setValue(
                                     `details.${idx}.receivedQuantity`,

@@ -39,7 +39,7 @@ interface Customer {
 interface CheckoutSidebarProps {
   totalQuantity: number;
   subtotal: number;
-  /** Fully computed total (subtotal - discount/promotion + VAT) — the single source of truth for display and payment. */
+  /** Fully computed total (subtotal - discount/promotion + VAT) - the single source of truth for display and payment. */
   grandTotal: number;
   discount: number;
   discountType: "cash" | "percent";
@@ -157,7 +157,7 @@ export function CheckoutSidebar({
     }
   }, [selectedCustomer]);
 
-  // Billing math — grandTotal is fully computed by the parent (subtotal, discount/promotion,
+  // Billing math - grandTotal is fully computed by the parent (subtotal, discount/promotion,
   // VAT all folded in already); this component only derives display-only values from it.
   const hasPromotionApplied = selectedPromotionIds.length > 0;
   const changeDue = Math.max(0, customerPay - grandTotal);
@@ -295,7 +295,7 @@ export function CheckoutSidebar({
             </span>
           </div>
 
-          {/* Assigned promotion(s) — mutually exclusive with the manual discount below */}
+          {/* Assigned promotion(s) - mutually exclusive with the manual discount below */}
           {hasPromotionApplied ? (
             <div className="flex justify-between items-start gap-4">
               <span className="text-muted-foreground font-medium shrink-0">
@@ -339,7 +339,7 @@ export function CheckoutSidebar({
             </button>
           )}
 
-          {/* Discount Input — locked while a promotion is assigned */}
+          {/* Discount Input - locked while a promotion is assigned */}
           <div
             className={cn(
               "flex items-center justify-between gap-4",
@@ -453,7 +453,7 @@ export function CheckoutSidebar({
             </div>
           </div>
 
-          {/* Customer Pay Input — chỉ hiện khi CASH */}
+          {/* Customer Pay Input - chỉ hiện khi CASH */}
           {paymentMethod === "CASH" && (
             <div className="space-y-1.5 pt-1">
               <div className="flex justify-between items-center">

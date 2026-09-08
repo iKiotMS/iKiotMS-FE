@@ -23,8 +23,11 @@ const cskhGroup = {
 };
 
 
+// `BRANCH_MANAGER` and `WAREHOUSE_MANAGER` had entries here until 2026-09-07. Neither is
+// an account kind any more - a shop defines its own roles - so those two blocks were nav
+//configuration nothing could ever match.
 export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
-  SUPER_ADMIN: [
+  ADMIN: [
     {
       label: "Quản lý",
       items: [
@@ -52,7 +55,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
         sidebarItems.tongQuan,
         sidebarItems.troLyAI,
         sidebarItems.soThuChi,
-        sidebarItems.nhanVien,
+        sidebarItems.nhanVienChuCuaHang,
       ],
     },
     quanLyBanHangGroup([
@@ -65,30 +68,7 @@ export const sidebarRoleConfig: Record<UserRole, NavGroup[]> = {
     cskhGroup,
   ],
 
-  BRANCH_MANAGER: [
-    {
-      label: "Quản lý",
-      items: [sidebarItems.tongQuan, sidebarItems.soThuChi, sidebarItems.nhanVien],
-    },
-    quanLyBanHangGroup([
-      sidebarItems.hangHoa,
-      sidebarItems.giaoDichBranch,
-      sidebarItems.donHang,
-      sidebarItems.ketTien,
-    ]),
-    crmGroup,
-    cskhGroup,
-    salaryGroup,
-  ],
 
-  WAREHOUSE_MANAGER: [
-    {
-      label: "Quản lý",
-      items: [sidebarItems.nhanVien],
-    },
-    quanLyBanHangGroup([sidebarItems.hangHoa, sidebarItems.giaoDich]),
-    salaryGroup,
-  ],
 
   STAFF: [
     {

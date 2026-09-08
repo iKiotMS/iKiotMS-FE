@@ -64,7 +64,7 @@ export function CategoriesMutateDialog({
         description: currentRow.description ?? undefined,
         parentId: typeof currentRow.parentId === 'string'
           ? currentRow.parentId
-          : (currentRow.parentId as any)?._id ?? null,
+          : (currentRow.parentId as any)?.id ?? null,
         imageUrl: currentRow.imageUrl ?? undefined,
       })
     } else {

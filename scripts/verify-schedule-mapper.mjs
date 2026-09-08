@@ -4,7 +4,7 @@
  */
 
 function buildStaffLabel(assignees) {
-  if (assignees.length === 0) return "—";
+  if (assignees.length === 0) return "-";
   if (assignees.length === 1) return assignees[0].staffName;
   if (assignees.length === 2) {
     return `${assignees[0].staffName}, ${assignees[1].staffName}`;

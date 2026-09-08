@@ -72,7 +72,7 @@ export function PlansTable() {
               </TableRow>
             ) : (
               plans.map((plan) => (
-                <TableRow key={plan._id}>
+                <TableRow key={plan.id}>
                   <TableCell className="font-medium">
                     <span className="flex items-center gap-2">
                       {plan.planName}
@@ -105,7 +105,7 @@ export function PlansTable() {
                   <TableCell className="text-center">
                     <Switch
                       checked={plan.isActive}
-                      onCheckedChange={(v) => toggleActive(plan._id, v)}
+                      onCheckedChange={(v) => toggleActive(plan.id, v)}
                     />
                   </TableCell>
                   <TableCell className="text-right">

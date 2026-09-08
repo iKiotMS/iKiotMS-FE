@@ -38,7 +38,7 @@ import { toast } from 'sonner'
 import type { Payslip } from '@/types/payroll'
 
 const formatDMY = (dateStr?: string) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return '-'
   try {
     return new Intl.DateTimeFormat('vi-VN').format(new Date(dateStr))
   } catch {
@@ -315,7 +315,7 @@ export default function MyPayslipsPage() {
 
                       return (
                         <TableRow
-                          key={slip._id}
+                          key={slip.id}
                           className="hover:bg-slate-50/40 dark:hover:bg-slate-800/10 transition-colors group cursor-pointer border-b"
                           onClick={() => handleOpenDetails(slip)}
                         >
@@ -332,13 +332,13 @@ export default function MyPayslipsPage() {
                             {formatVND(earningsFromWork)}
                           </TableCell>
                           <TableCell className="text-right bg-blue-50/30 dark:bg-blue-950/15 border-r border-slate-200 dark:border-slate-800 tabular-nums text-green-600 dark:text-green-400">
-                            {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '—'}
+                            {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '-'}
                           </TableCell>
                           <TableCell className="text-right bg-emerald-50/30 dark:bg-emerald-950/15 border-r border-slate-200 dark:border-slate-800 tabular-nums text-green-600 dark:text-green-400 font-semibold">
-                            {totalAdditions > 0 ? `+${formatVND(totalAdditions)}` : '—'}
+                            {totalAdditions > 0 ? `+${formatVND(totalAdditions)}` : '-'}
                           </TableCell>
                           <TableCell className="text-right bg-rose-50/30 dark:bg-rose-950/15 border-r border-slate-200 dark:border-slate-800 tabular-nums text-red-600 dark:text-red-400 font-semibold">
-                            {totalDeductions > 0 ? `-${formatVND(totalDeductions)}` : '—'}
+                            {totalDeductions > 0 ? `-${formatVND(totalDeductions)}` : '-'}
                           </TableCell>
                           <TableCell className="text-right font-bold text-slate-800 dark:text-slate-100 tabular-nums text-base">
                             {formatVND(slip.netSalary)}

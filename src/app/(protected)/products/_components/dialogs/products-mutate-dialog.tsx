@@ -54,7 +54,7 @@ const EMPTY_VALUES: ProductFormValues = {
   barcode: '',
   retailPrice: '',
   costPrice: '',
-  VAT: '',
+  vat: '',
   warrantyPeriod: '',
   description: '',
   productDetails: [],
@@ -108,7 +108,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
     }
   }, [open, isEdit, currentRow, form])
 
-  // Branch/warehouse options are only needed once this dialog is open —
+  // Branch/warehouse options are only needed once this dialog is open -
   // fetched lazily here instead of eagerly on the products page mount.
   useEffect(() => {
     if (!open) return
@@ -308,7 +308,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                             ? null
                             : typeof c.parentId === 'string'
                               ? c.parentId
-                              : (c.parentId as { _id: string })._id,
+                              : (c.parentId as { id: string }).id,
                         }))}
                         placeholder="Chọn danh mục"
                       />
@@ -530,7 +530,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                   />
                   <FormField
                     control={form.control}
-                    name="VAT"
+                    name="vat"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>VAT (%)</FormLabel>
@@ -620,7 +620,7 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                   </div>
                   {detailFields.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      VD: Màu sắc — Đỏ, Dung lượng — 512GB
+                      VD: Màu sắc - Đỏ, Dung lượng - 512GB
                     </p>
                   )}
                   <div className="space-y-2">

@@ -58,7 +58,7 @@ export function ProductsTable() {
     onGlobalFilterChange: setGlobalFilter,
     onExpandedChange: setExpanded,
     // Default global filter only sees column values on `Product` rows, which never
-    // carry sku/productCode — match those via the pre-built skuSearchIndex instead.
+    // carry sku/productCode - match those via the pre-built skuSearchIndex instead.
     globalFilterFn: (row, _columnId, filterValue) => {
       const term = String(filterValue ?? '').trim().toLowerCase()
       if (!term) return true

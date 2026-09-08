@@ -96,11 +96,11 @@ export function createTransfersColumns(
     size: 90,
   },
   {
-    accessorKey: "_id",
+    accessorKey: "id",
     header: "Mã yêu cầu",
     cell: ({ row }) => (
       <span className="font-mono text-xs text-muted-foreground">
-        #{String(row.getValue("_id")).slice(-6).toUpperCase()}
+        #{String(row.getValue("id")).slice(-6).toUpperCase()}
       </span>
     ),
   },
@@ -112,7 +112,7 @@ export function createTransfersColumns(
       return (
         <div className="flex flex-col">
           <span className="text-sm font-medium">
-            {record.fromLocationName ?? "—"}
+            {record.fromLocationName ?? "-"}
           </span>
           <span className="text-xs text-muted-foreground capitalize">
             {record.fromLocationType === "warehouse" ? "Kho" : "Chi nhánh"}

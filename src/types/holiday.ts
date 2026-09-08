@@ -1,7 +1,7 @@
 export type HolidaySource = "GOOGLE_CALENDAR" | "MANUAL";
 
 export interface Holiday {
-  _id: string;
+  id: string;
   date: string;
   name: string;
   type: "PUBLIC_HOLIDAY";

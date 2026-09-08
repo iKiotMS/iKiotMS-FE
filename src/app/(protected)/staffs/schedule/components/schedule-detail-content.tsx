@@ -87,7 +87,7 @@ function AssigneeAttendanceCard({ assignee }: { assignee: ScheduleAssignee }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{assignee.staffName}</p>
           <p className="text-xs text-muted-foreground">
-            {assignee.staffPhone || "—"}
+            {assignee.staffPhone || "-"}
           </p>
         </div>
         <Badge variant={attendanceStatus.variant}>{attendanceStatus.label}</Badge>
@@ -110,7 +110,7 @@ function AssigneeAttendanceCard({ assignee }: { assignee: ScheduleAssignee }) {
           value={
             assignee.attendance?.lateMinutes != null
               ? `${assignee.attendance.lateMinutes} phút`
-              : "—"
+              : "-"
           }
         />
         <InfoItem
@@ -124,7 +124,7 @@ function AssigneeAttendanceCard({ assignee }: { assignee: ScheduleAssignee }) {
           value={
             assignee.attendance?.overtimeMinute != null
               ? `${assignee.attendance.overtimeMinute} phút`
-              : "—"
+              : "-"
           }
         />
         {hasAttendanceLocation(assignee.attendance?.checkInLocation) && (
@@ -215,7 +215,7 @@ export function ScheduleDetailContent({
                 {data.staffName}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {data.shiftName !== "—" ? data.shiftName : "Ca làm việc"}
+                {data.shiftName !== "-" ? data.shiftName : "Ca làm việc"}
                 {" · "}
                 {shiftTime}
               </p>
@@ -240,7 +240,7 @@ export function ScheduleDetailContent({
           <div className="space-y-3">
             <div>
               <h2 className="text-lg font-semibold">
-                {data.shiftName !== "—" ? data.shiftName : "Ca làm việc"}
+                {data.shiftName !== "-" ? data.shiftName : "Ca làm việc"}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground">{shiftTime}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -319,7 +319,7 @@ export function ScheduleDetailContent({
           <InfoItem
             icon={<Phone className="size-4" />}
             label="Liên hệ"
-            value={data.staffPhone || "—"}
+            value={data.staffPhone || "-"}
           />
         </div>
 
@@ -356,7 +356,7 @@ export function ScheduleDetailContent({
                 Mã lịch
               </dt>
               <dd className="font-mono font-medium">
-                #{data._id.slice(-6).toUpperCase()}
+                #{data.id.slice(-6).toUpperCase()}
               </dd>
             </div>
           </dl>
@@ -368,7 +368,7 @@ export function ScheduleDetailContent({
           {isLocked ? (
             <div className="flex items-center gap-2 rounded-lg border border-dashed bg-background/60 px-4 py-3 text-sm text-muted-foreground">
               <Lock className="size-4 shrink-0" />
-              Lịch đã hoàn thành — không thể sửa hoặc xóa.
+              Lịch đã hoàn thành - không thể sửa hoặc xóa.
             </div>
           ) : readOnlyHint && !canEdit && !canDelete ? (
             <div className="flex items-center gap-2 rounded-lg border border-dashed bg-background/60 px-4 py-3 text-sm text-muted-foreground">

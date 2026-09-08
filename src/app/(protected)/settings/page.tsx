@@ -61,6 +61,7 @@ import { LayoutTab } from "@/components/theme-customizer/layout-tab";
 import { useThemeManager } from "@/hooks/use-theme-manager";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 import { getMe } from "@/lib/api/auth";
+import { getMyTenant } from "@/lib/api/tenant";
 import { branchApi } from "@/lib/api/branch";
 import { warehouseApi } from "@/lib/api/warehouse";
 import { staffApi } from "@/lib/api/staff";
@@ -141,7 +142,7 @@ function BranchExpandableRow({
       loadedRef.current = true;
       setLoadingStaff(true);
       staffApi
-        .getList({ branchId: branch.id, recordPerPage: 50 })
+        .getList({ branchId: branch.id, limit: 50 })
         .then((res) => setStaff(res.data))
         .catch(() => setStaff([]))
         .finally(() => setLoadingStaff(false));
@@ -448,14 +449,14 @@ function BranchExpandableRow({
                           </TableHeader>
                           <TableBody>
                             {staff.map((s) => (
-                              <TableRow key={s._id} className="text-xs">
+                              <TableRow key={s.id} className="text-xs">
                                 <TableCell className="font-medium">
                                   {s.firstName} {s.lastName}
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  {s.email || "—"}
+                                  {s.email || "-"}
                                 </TableCell>
-                                <TableCell>{s.role}</TableCell>
+                                <TableCell>{s.roleName}</TableCell>
                                 <TableCell>
                                   <Badge
                                     className={cn(
@@ -523,7 +524,7 @@ function WarehouseExpandableRow({
       loadedRef.current = true;
       setLoadingStaff(true);
       staffApi
-        .getList({ warehouseId: warehouse.id, recordPerPage: 50 })
+        .getList({ warehouseId: warehouse.id, limit: 50 })
         .then((res) => setStaff(res.data))
         .catch(() => setStaff([]))
         .finally(() => setLoadingStaff(false));
@@ -786,14 +787,14 @@ function WarehouseExpandableRow({
                           </TableHeader>
                           <TableBody>
                             {staff.map((s) => (
-                              <TableRow key={s._id} className="text-xs">
+                              <TableRow key={s.id} className="text-xs">
                                 <TableCell className="font-medium">
                                   {s.firstName} {s.lastName}
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  {s.email || "—"}
+                                  {s.email || "-"}
                                 </TableCell>
-                                <TableCell>{s.role}</TableCell>
+                                <TableCell>{s.roleName}</TableCell>
                                 <TableCell>
                                   <Badge
                                     className={cn(
@@ -854,7 +855,7 @@ export default function SettingsPage() {
     accountName: "",
   });
   const [isSavingStore, setIsSavingStore] = React.useState(false);
-  // Whether SUPER_ADMIN has linked this tenant's bank account with SePay.
+  // Whether ADMIN has linked this tenant's bank account with SePay.
   const [sepayLinked, setSepayLinked] = React.useState(false);
 
   // Branches state
@@ -873,6 +874,7 @@ export default function SettingsPage() {
   const [newWarehouse, setNewWarehouse] = React.useState({
     name: "",
     address: "",
+    phoneNumber: "",
   });
 
   // Security state
@@ -927,33 +929,37 @@ export default function SettingsPage() {
       if (isInitial) {
         setIsLoading(true);
       }
-      const me = await getMe();
-      if (me) {
+      // The shop comes from `GET /tenant/me`, not from `GET /auth/me`: the latter answers
+      // the user row and its role and has never carried a `tenant` object, so every field
+      // in this block used to fall through its optional chain to "" - the whole "Thông tin
+      // cửa hàng" card rendered blank however many times somebody filled it in.
+      const [me, tenant] = await Promise.all([getMe(), getMyTenant()]);
+      if (me || tenant) {
         setStoreInfo({
-          name: me.tenant?.name || "",
-          code: me.tenantId || me.tenant?.id || "",
-          phone: me.tenant?.phoneNumber || me.phoneNumber || "",
-          email: me.email || "",
+          name: tenant?.name || "",
+          code: tenant?.id || me?.tenantId || "",
+          phone: tenant?.phoneNumber || me?.phoneNumber || "",
+          email: me?.email || "",
           website: "",
-          address: me.tenant?.mainAddress || "",
+          address: tenant?.mainAddress || "",
           description: "",
-          taxNumber: me.tenant?.taxNumber || "",
-          bankName: me.tenant?.banking?.bankName || "",
-          accountNumber: me.tenant?.banking?.accountNumber || "",
-          accountName: me.tenant?.banking?.accountName || "",
+          taxNumber: tenant?.taxNumber || "",
+          bankName: tenant?.banking?.bankName || "",
+          accountNumber: tenant?.banking?.accountNumber || "",
+          accountName: tenant?.banking?.accountName || "",
         });
-        setSepayLinked(Boolean(me.tenant?.hasSepayKey));
+        setSepayLinked(Boolean(tenant?.hasSepayKey));
       }
 
       const branchRes = await branchApi.getList();
       if (branchRes && branchRes.success && branchRes.data) {
         const formattedBranches = branchRes.data.map((b: any) => ({
-          id: b._id,
+          id: b.id,
           name: b.name,
           address: b.address || "",
           phone:
             b.phoneNumber && b.phoneNumber.length > 0 ? b.phoneNumber[0] : "",
-          isDefault: me ? me.branchId === b._id : false,
+          isDefault: me ? me.branchId === b.id : false,
           status: b.status === "ACTIVE" ? "active" : "inactive",
         }));
         setBranches(formattedBranches);
@@ -962,7 +968,7 @@ export default function SettingsPage() {
       const warehouseRes = await warehouseApi.getList();
       if (warehouseRes && warehouseRes.success && warehouseRes.data) {
         const formattedWarehouses = warehouseRes.data.map((w: any) => ({
-          id: w._id,
+          id: w.id,
           name: w.name,
           address: w.address || "",
           status: w.status === "ACTIVE" ? "active" : "inactive",
@@ -1084,12 +1090,12 @@ export default function SettingsPage() {
         if (branchRes && branchRes.success && branchRes.data) {
           const me = await getMe();
           const formattedBranches = branchRes.data.map((b: any) => ({
-            id: b._id,
+            id: b.id,
             name: b.name,
             address: b.address || "",
             phone:
               b.phoneNumber && b.phoneNumber.length > 0 ? b.phoneNumber[0] : "",
-            isDefault: me ? me.branchId === b._id : false,
+            isDefault: me ? me.branchId === b.id : false,
             status: b.status === "ACTIVE" ? "active" : "inactive",
           }));
           setBranches(formattedBranches);
@@ -1135,25 +1141,31 @@ export default function SettingsPage() {
       toast.error("Vui lòng điền tên kho tổng!");
       return;
     }
+    // `CreateWarehouseDto` requires at least one phone number, the same as a branch.
+    if (!newWarehouse.phoneNumber.trim()) {
+      toast.error("Vui lòng điền số điện thoại kho tổng!");
+      return;
+    }
 
     try {
       const created = await warehouseApi.create({
         name: newWarehouse.name,
         address: newWarehouse.address,
+        phoneNumber: [newWarehouse.phoneNumber.trim()],
       });
 
       if (created) {
         const warehouseRes = await warehouseApi.getList();
         if (warehouseRes && warehouseRes.success && warehouseRes.data) {
           const formattedWarehouses = warehouseRes.data.map((w: any) => ({
-            id: w._id,
+            id: w.id,
             name: w.name,
             address: w.address || "",
             status: w.status === "ACTIVE" ? "active" : "inactive",
           }));
           setWarehouses(formattedWarehouses);
         }
-        setNewWarehouse({ name: "", address: "" });
+        setNewWarehouse({ name: "", address: "", phoneNumber: "" });
         setShowAddWarehouse(false);
         toast.success("Đã thêm kho tổng mới thành công!");
         window.dispatchEvent(new Event("branches-updated"));
@@ -1491,7 +1503,7 @@ export default function SettingsPage() {
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {sepayLinked
-                          ? "Tài khoản đã được liên kết với cổng SePay — bạn có thể nhận thanh toán đơn hàng qua mã QR."
+                          ? "Tài khoản đã được liên kết với cổng SePay - bạn có thể nhận thanh toán đơn hàng qua mã QR."
                           : "Sau khi lưu thông tin ngân hàng, quản trị viên sẽ liên kết tài khoản của bạn với cổng SePay. Bạn sẽ nhận được thông báo khi hoàn tất."}
                       </p>
                     </div>
@@ -1760,6 +1772,27 @@ export default function SettingsPage() {
                                 setNewWarehouse({
                                   ...newWarehouse,
                                   name: e.target.value,
+                                })
+                              }
+                              required
+                              className="h-9 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor="warehouse-phone"
+                              className="text-xs"
+                            >
+                              Số điện thoại *
+                            </Label>
+                            <Input
+                              id="warehouse-phone"
+                              placeholder="Ví dụ: 0987654321"
+                              value={newWarehouse.phoneNumber}
+                              onChange={(e) =>
+                                setNewWarehouse({
+                                  ...newWarehouse,
+                                  phoneNumber: e.target.value,
                                 })
                               }
                               required

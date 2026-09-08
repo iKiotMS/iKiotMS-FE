@@ -30,14 +30,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (!user) {
       return defaultUserData;
     }
+    // email is optional on the backend User (phoneNumber is the required
+    // identifier), so it can't be the last resort here - fall through to it.
     const name =
       [user.profile?.lastName, user.profile?.firstName]
         .filter(Boolean)
         .join(" ")
-        .trim() || user.email;
+        .trim() ||
+      user.email ||
+      user.phoneNumber ||
+      defaultUserData.name;
     return {
       name,
-      email: user.email,
+      email: user.email || user.phoneNumber || "",
       avatar: user.profile?.avatarUrl || "",
     };
   }, [user]);
@@ -56,7 +61,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        {user?.role === "SUPER_ADMIN" ? (
+        {user?.role === "ADMIN" ? (
           <div className="flex items-center gap-2.5 px-3 py-2">
             <Logo size={28} className="shrink-0" />
             <span className="font-semibold text-sm tracking-tight text-neutral-900 dark:text-neutral-100">

@@ -1,6 +1,12 @@
 import { AxiosError } from "axios";
+import { getApiErrorBody, messageForCode } from "@/lib/api/error-codes";
 
-/** Map thông báo BE (EN) → VN, đặc biệt rule importPrice ≤ retailPrice. */
+/**
+ * Map thông báo BE (EN) → VN, đặc biệt rule importPrice ≤ retailPrice.
+ *
+ * Chỉ còn là đường lùi cho backend cũ: backend mới gửi `code`, và bảng
+ * `ERROR_MESSAGES` là nơi tra câu chữ.
+ */
 function localizeStockMovementMessage(message: string): string {
   const importOverRetail = message.match(
     /Import price cannot be greater than retail price \(([\d.]+)\)(?: for product item (.+))?/i,
@@ -12,7 +18,7 @@ function localizeStockMovementMessage(message: string): string {
       ? new Intl.NumberFormat("vi-VN").format(retail)
       : importOverRetail[1];
     return sku
-      ? `Giá nhập không được cao hơn giá bán (${retailLabel} đ) — SKU ${sku}`
+      ? `Giá nhập không được cao hơn giá bán (${retailLabel} đ) - SKU ${sku}`
       : `Giá nhập không được cao hơn giá bán (${retailLabel} đ)`;
   }
 
@@ -30,6 +36,9 @@ export function getStockMovementErrorMessage(
   error: unknown,
   fallback: string,
 ): string {
+  const mapped = messageForCode(getApiErrorBody(error)?.code);
+  if (mapped) return mapped;
+
   if (error instanceof AxiosError) {
     const data = error.response?.data as
       | { message?: string; error?: string }

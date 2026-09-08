@@ -71,7 +71,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // Powers the toolbar search box's SKU/product-code matching (see products-table.tsx) —
+  // Powers the toolbar search box's SKU/product-code matching (see products-table.tsx) -
   // GET /products doesn't attach item-level fields per product, so build the index from
   // the flat item list instead.
   useEffect(() => {
@@ -90,21 +90,21 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Only needed inside stock-location pickers/labels (mutate dialog, item dialogs,
-  // detail sheet) — fetched on first open instead of on every products page mount.
+  // detail sheet) - fetched on first open instead of on every products page mount.
   function ensureLocationOptionsLoaded() {
     if (locationOptionsLoadedRef.current) return
     locationOptionsLoadedRef.current = true
     branchApi
       .getList({ limit: 100 })
-      .then((res) => setBranchOptions((res.data ?? []).map((b) => ({ value: b._id, label: b.name }))))
+      .then((res) => setBranchOptions((res.data ?? []).map((b) => ({ value: b.id, label: b.name }))))
       .catch(() => setBranchOptions([]))
     warehouseApi
       .getList({ limit: 100 })
-      .then((res) => setWarehouseOptions((res.data ?? []).map((w) => ({ value: w._id, label: w.name }))))
+      .then((res) => setWarehouseOptions((res.data ?? []).map((w) => ({ value: w.id, label: w.name }))))
       .catch(() => setWarehouseOptions([]))
   }
 
-  // Only needed inside the Supplier dropdown/detail row — fetched on first open.
+  // Only needed inside the Supplier dropdown/detail row - fetched on first open.
   function ensureSuppliersLoaded() {
     if (suppliersLoadedRef.current) return
     suppliersLoadedRef.current = true

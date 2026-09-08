@@ -2,6 +2,7 @@ import * as React from "react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import { branchApi } from "@/lib/api/branch";
+import { parseLocationKey } from "@/lib/location-key";
 import { warehouseApi } from "@/lib/api/warehouse";
 import type { Branch } from "@/types/branch";
 import type { Warehouse as DWBWarehouse } from "@/types/warehouse";
@@ -57,7 +58,7 @@ export function useBranchSwitcher() {
 
   const mapBranchToItem = React.useCallback(
     (b: Branch): SwitcherItem => ({
-      id: b._id,
+      id: b.id,
       name: b.name,
       address: b.address || "",
       type: "branch",
@@ -68,7 +69,7 @@ export function useBranchSwitcher() {
 
   const mapWarehouseToItem = React.useCallback(
     (w: DWBWarehouse): SwitcherItem => ({
-      id: w._id,
+      id: w.id,
       name: w.name,
       address: w.address || "",
       type: "warehouse",
@@ -154,9 +155,11 @@ export function useBranchSwitcher() {
       return;
     }
 
-    const [type, id] = locationKey.split("-");
+    const parsed = parseLocationKey(locationKey);
+    const type = parsed?.locationType;
+    const id = parsed?.locationId ?? "";
     if (type === "branch") {
-      const match = dbBranches.find((b) => b._id === id);
+      const match = dbBranches.find((b) => b.id === id);
       if (match) {
         setActiveItem(mapBranchToItem(match));
       } else {
@@ -168,7 +171,7 @@ export function useBranchSwitcher() {
         });
       }
     } else if (type === "warehouse") {
-      const match = dbWarehouses.find((w) => w._id === id);
+      const match = dbWarehouses.find((w) => w.id === id);
       if (match) {
         setActiveItem(mapWarehouseToItem(match));
       } else {
@@ -224,7 +227,7 @@ export function useBranchSwitcher() {
         email: values.email || undefined,
         status: values.status as any,
       };
-      const updated = await branchApi.update(editingBranch._id, payload);
+      const updated = await branchApi.update(editingBranch.id, payload);
       toast.success(`Đã cập nhật chi nhánh "${updated.name}" thành công!`);
       setIsEditBranchDialogOpen(false);
       setEditingBranch(null);
@@ -242,6 +245,8 @@ export function useBranchSwitcher() {
       const payload = {
         name: values.name,
         address: values.address,
+        phoneNumber: [values.phoneNumber],
+        ...(values.email ? { email: values.email } : {}),
       };
       const newWarehouse = await warehouseApi.create(payload);
       toast.success(`Đã tạo kho hàng "${newWarehouse.name}" thành công!`);
@@ -260,9 +265,11 @@ export function useBranchSwitcher() {
       const payload = {
         name: values.name,
         address: values.address,
+        phoneNumber: [values.phoneNumber],
+        ...(values.email ? { email: values.email } : {}),
         status: values.status as any,
       };
-      const updated = await warehouseApi.update(editingWarehouse._id, payload);
+      const updated = await warehouseApi.update(editingWarehouse.id, payload);
       toast.success(`Đã cập nhật kho hàng "${updated.name}" thành công!`);
       setIsEditWarehouseDialogOpen(false);
       setEditingWarehouse(null);

@@ -262,15 +262,15 @@ export default function NotificationsPage() {
                   <div className="max-h-[350px] overflow-y-auto space-y-2 pr-2">
                     {tenants.map((tenant) => (
                       <div
-                        key={tenant._id}
-                        onClick={() => toggleTenant(tenant._id)}
+                        key={tenant.id}
+                        onClick={() => toggleTenant(tenant.id)}
                         className={`flex items-center space-x-3 p-2 rounded-lg border cursor-pointer hover:bg-muted/40 transition-colors ${
-                          selectedTenants.includes(tenant._id) ? "border-primary bg-primary/5" : ""
+                          selectedTenants.includes(tenant.id) ? "border-primary bg-primary/5" : ""
                         }`}
                       >
                         <Checkbox
-                          checked={selectedTenants.includes(tenant._id)}
-                          onCheckedChange={() => toggleTenant(tenant._id)}
+                          checked={selectedTenants.includes(tenant.id)}
+                          onCheckedChange={() => toggleTenant(tenant.id)}
                           className="cursor-pointer"
                         />
                         <div className="flex flex-col min-w-0">
@@ -322,7 +322,7 @@ export default function NotificationsPage() {
                       </TableRow>
                     ) : (
                       announcements.map((ann) => (
-                        <TableRow key={ann._id}>
+                        <TableRow key={ann.id}>
                           <TableCell className="text-xs text-muted-foreground">
                             {new Date(ann.createdAt).toLocaleString("vi-VN")}
                           </TableCell>
@@ -344,7 +344,7 @@ export default function NotificationsPage() {
                             ) : (
                               <div className="flex flex-wrap gap-1">
                                 {ann.targetTenants?.map((t) => (
-                                  <Badge key={t._id} variant="outline" className="text-[10px]">
+                                  <Badge key={t.id} variant="outline" className="text-[10px]">
                                     {t.name}
                                   </Badge>
                                 ))}

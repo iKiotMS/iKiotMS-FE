@@ -12,13 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Staff } from "@/types/staff";
-import {
-  getManagerRoleLabel,
-  isOrphanManagerRecord,
-  requiresManagerReplacement,
-} from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import { useStaffs } from "./staffs-provider";
-import { StaffReplacementSelect } from "./staff-replacement-select";
 
 type StaffsDeactivateDialogProps = {
   open: boolean;
@@ -26,6 +20,19 @@ type StaffsDeactivateDialogProps = {
   currentRow: Staff | null;
 };
 
+/**
+ * Khóa tài khoản.
+ *
+ * This dialog used to ask for a replacement manager first, because the old backend took a
+ * `replacementManagerId` and swapped the outgoing manager out in the same call. That flow
+ * is gone: running a location is `Branch.managerId` / `Warehouse.managerId`, appointed
+ * through its own endpoint, and `PATCH /users/:id/account/deactivate` now takes **no body** - anything sent
+ * would be dropped silently.
+ *
+ * So the check moved to where it is actually enforced. The backend refuses while the
+ * account still runs a location or is named as the handover contact on a leave request in
+ * force, and says which; that message is what the toast shows.
+ */
 export function StaffsDeactivateDialog({
   open,
   onOpenChange,
@@ -33,19 +40,10 @@ export function StaffsDeactivateDialog({
 }: StaffsDeactivateDialogProps) {
   const { handleDeactivate } = useStaffs();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [replacementManagerId, setReplacementManagerId] = useState("");
-
-  const needsReplacement =
-    currentRow !== null && requiresManagerReplacement(currentRow);
-  const orphanManager =
-    currentRow !== null && isOrphanManagerRecord(currentRow);
 
   useEffect(() => {
-    if (!open) {
-      setReplacementManagerId("");
-      setIsSubmitting(false);
-    }
-  }, [open, currentRow?._id]);
+    if (!open) setIsSubmitting(false);
+  }, [open, currentRow?.id]);
 
   function handleOpenChange(value: boolean) {
     if (!isSubmitting) onOpenChange(value);
@@ -53,18 +51,13 @@ export function StaffsDeactivateDialog({
 
   async function onConfirm() {
     if (!currentRow || isSubmitting) return;
-    if (needsReplacement && !replacementManagerId) return;
-    if (orphanManager) return;
-
     setIsSubmitting(true);
     try {
-      await handleDeactivate(
-        currentRow._id,
-        needsReplacement ? replacementManagerId : undefined,
-      );
+      await handleDeactivate(currentRow.id);
       onOpenChange(false);
     } catch {
-      // Error toast handled in provider.
+      // The provider toasts the backend's reason - including "reassign the branch this
+      // person runs first", which is the case this dialog used to try to handle itself.
     } finally {
       setIsSubmitting(false);
     }
@@ -76,43 +69,14 @@ export function StaffsDeactivateDialog({
         <DialogHeader>
           <DialogTitle>Khóa tài khoản</DialogTitle>
           <DialogDescription>
-            {needsReplacement && currentRow ? (
-              <>
-                Bạn đang khóa tài khoản {getManagerRoleLabel(currentRow.role)}{" "}
-                <strong className="text-foreground">{currentRow.fullName}</strong>.
-                Hệ thống yêu cầu chọn nhân viên STAFF active để thay thế trước
-                khi khóa.
-              </>
-            ) : (
-              <>
-                Bạn có chắc muốn khóa tài khoản của{" "}
-                <strong className="text-foreground">
-                  {currentRow?.fullName ?? ""}
-                </strong>
-                ? Nhân viên sẽ không thể đăng nhập cho đến khi được kích hoạt
-                lại.
-              </>
-            )}
+            Bạn có chắc muốn khóa tài khoản của{" "}
+            <strong className="text-foreground">
+              {currentRow?.fullName ?? ""}
+            </strong>{" "}
+            ({currentRow?.roleName ?? "-"})? Nhân viên sẽ không đăng nhập được
+            cho đến khi được kích hoạt lại.
           </DialogDescription>
         </DialogHeader>
-
-        {orphanManager && currentRow && (
-          <p className="text-sm text-destructive rounded-md border border-dashed px-3 py-2">
-            {currentRow.role === "BRANCH_MANAGER"
-              ? "Quản lý chi nhánh chưa được gán chi nhánh. Vui lòng dùng chức năng «Đổi quản lý chi nhánh» hoặc cập nhật phân công trước khi khóa."
-              : "Quản lý kho chưa được gán kho. Vui lòng cập nhật phân công trước khi khóa."}
-          </p>
-        )}
-
-        {needsReplacement && currentRow && !orphanManager && (
-          <StaffReplacementSelect
-            key={`deactivate-${currentRow._id}`}
-            manager={currentRow}
-            value={replacementManagerId}
-            onChange={setReplacementManagerId}
-            disabled={isSubmitting}
-          />
-        )}
 
         <DialogFooter className="gap-2">
           <Button
@@ -126,11 +90,7 @@ export function StaffsDeactivateDialog({
           <Button
             variant="destructive"
             className="cursor-pointer"
-            disabled={
-              isSubmitting ||
-              orphanManager ||
-              (needsReplacement && !replacementManagerId)
-            }
+            disabled={isSubmitting}
             onClick={onConfirm}
           >
             <Lock className="mr-2 size-4" />

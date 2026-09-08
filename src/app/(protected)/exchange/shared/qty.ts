@@ -20,7 +20,7 @@ export function clampReceivedQuantity(value: number) {
   return Math.max(0, Math.trunc(value));
 }
 
-/** @deprecated Doc không còn cap theo loại phiếu — luôn false. */
+/** @deprecated Doc không còn cap theo loại phiếu - luôn false. */
 export function shouldCapReceivedQuantity(_movementType?: MovementType) {
   return false;
 }

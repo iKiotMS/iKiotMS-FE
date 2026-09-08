@@ -1,19 +1,19 @@
 import client from "./client";
 
 export interface NotificationAnnouncement {
-  _id: string;
+  id: string;
   title: string;
   description: string;
   type: "ANNOUNCEMENT";
   category: "Maintenance" | "New feature" | "Promotion" | "Security";
   targetType: "ALL" | "SELECTION";
-  targetTenants?: Array<{ _id: string; name: string }>;
+  targetTenants?: Array<{ id: string; name: string }>;
   createdBy?: { email: string; profile?: { firstName?: string; lastName?: string } };
   createdAt: string;
 }
 
 export interface SystemNotification {
-  _id: string;
+  id: string;
   title: string;
   description: string;
   type: "SYSTEM_TRANSACTION" | "SYSTEM_TENANT_CREATED" | "SYSTEM_TICKET_CREATED" | "SYSTEM_TENANT_BANK_UPDATED";
@@ -79,7 +79,7 @@ export type NotificationType =
 
 /** Payload socket event "notification" chính là document này. */
 export interface AppNotification {
-  _id: string;
+  id: string;
   title: string;
   description: string;
   type: NotificationType;

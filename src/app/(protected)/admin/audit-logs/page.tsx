@@ -126,7 +126,7 @@ export default function AuditLogsPage() {
         description="Lưu giữ toàn bộ thao tác thay đổi, thêm, xóa thông tin của các quản trị viên cấp cao trên hệ thống."
       />
 
-      {/* Toolbar / Filters — reactive, no buttons needed */}
+      {/* Toolbar / Filters - reactive, no buttons needed */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
         <div className="space-y-1">
           <Label className="text-xs font-semibold">Người thực hiện</Label>
@@ -249,7 +249,7 @@ export default function AuditLogsPage() {
               </TableRow>
             ) : (
               logs.map((log) => (
-                <TableRow key={log._id} className="hover:bg-muted/30">
+                <TableRow key={log.id} className="hover:bg-muted/30">
                   <TableCell className="text-xs text-muted-foreground">
                     {formatDate(log.createdAt)}
                   </TableCell>
@@ -274,7 +274,7 @@ export default function AuditLogsPage() {
                   <TableCell className="font-medium text-xs">
                     {log.resource || (
                       <span className="text-muted-foreground font-normal italic">
-                        —
+                        -
                       </span>
                     )}
                   </TableCell>

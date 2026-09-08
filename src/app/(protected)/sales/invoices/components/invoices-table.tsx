@@ -54,20 +54,20 @@ function mapBEOrderToInvoice(order: any): Invoice {
   const userObj = order.userId || {};
 
   return {
-    id: order._id,
-    invoiceCode: order.paymentReference || `HD-${order._id.slice(-6).toUpperCase()}`,
+    id: order.id,
+    invoiceCode: order.paymentReference || `HD-${order.id.slice(-6).toUpperCase()}`,
     tenantId: order.tenantId,
     branchId: order.branchId,
-    customerId: customerObj._id || "",
+    customerId: customerObj.id || "",
     customer: {
-      code: customerObj._id ? `KH-${customerObj._id.slice(-6).toUpperCase()}` : "KH00000",
+      code: customerObj.id ? `KH-${customerObj.id.slice(-6).toUpperCase()}` : "KH00000",
       name: customerObj.name || "Khách lẻ",
-      phone: customerObj.phone || "—",
+      phone: customerObj.phone || "-",
       gender: "MALE",
-      address: "—",
+      address: "-",
     },
     status: order.status || "COMPLETED",
-    userId: userObj._id || "",
+    userId: userObj.id || "",
     seller: {
       name: userObj.name || "Nhân viên",
       email: userObj.email || "",

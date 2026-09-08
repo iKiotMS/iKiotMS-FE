@@ -19,7 +19,7 @@ interface Product {
   brandName: string;
   retailPrice: number;
   costPrice: number;
-  VAT: number;
+  vat: number;
   stock: number;
   status: string;
   imageUrl?: string;
@@ -82,7 +82,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             brandName: "",
             retailPrice: item.retailPrice,
             costPrice: item.costPrice,
-            VAT: item.VAT || 0,
+            vat: item.vat || 0,
             stock: item.stock || 0,
             status: product.status,
             imageUrl: (
@@ -113,7 +113,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         brandName: "",
         retailPrice: item.retailPrice,
         costPrice: item.costPrice,
-        VAT: item.VAT || 0,
+        vat: item.vat || 0,
         stock: item.stock || 0,
         status: product.status,
         imageUrl: (
@@ -282,7 +282,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       <div className="flex gap-2 text-sm text-muted-foreground font-mono mt-0.5">
                         <span>{product.sku}</span>
                         <span>•</span>
-                        <span>Mã vạch: {product.barcode || "—"}</span>
+                        <span>Mã vạch: {product.barcode || "-"}</span>
                       </div>
                     </div>
 

@@ -17,15 +17,15 @@ import type {
   WorkingSchedule,
 } from "@/types/working-schedule";
 
-function resolveId(ref: { _id: string } | string | undefined | null): string {
+function resolveId(ref: { id: string } | string | undefined | null): string {
   if (!ref) return "";
-  return typeof ref === "string" ? ref : ref._id;
+  return typeof ref === "string" ? ref : ref.id;
 }
 
 function resolveStaffName(user: ApiScheduleUser): string {
   const { firstName, lastName } = user.profile ?? {};
   const name = `${lastName ?? ""} ${firstName ?? ""}`.trim();
-  return name || user.phoneNumber || user._id;
+  return name || user.phoneNumber || user.id;
 }
 
 function mapAttendanceLocation(value: unknown): AttendanceLocation | null {
@@ -47,7 +47,7 @@ function mapAttendance(
   att: ApiScheduleUser["attendance"],
 ): AttendanceDetail {
   return {
-    _id: att?._id,
+    id: att?.id,
     status: att?.status ?? "NOT_CHECKED_IN",
     actualCheckinAt: att?.actualCheckinAt ?? null,
     actualCheckoutAt: att?.actualCheckoutAt ?? null,
@@ -68,39 +68,48 @@ function mapAttendance(
   };
 }
 
+/**
+ * Everyone rostered on a shift.
+ *
+ * The response key is **`assignedUsers`** - `WorkingSchedule` has a join table, so a shift
+ * carries a list of people, not one `userId`. This read `raw.userId`, which the API has
+ * never sent: every schedule came back with an empty assignee list, so the roster showed
+ * blank names and `staffPhone: ""` on every row. The old Mongo model did have a `userId`
+ * array, which is where the name came from.
+ *
+ * The string/single-object branches are kept because the same mapper runs over
+ * `GET /working-schedules/:id/users/:userId`, which answers one `user` rather than a list.
+ */
 function normalizeApiUsers(
-  userId: ApiWorkingSchedule["userId"],
+  assigned: ApiWorkingSchedule["assignedUsers"],
 ): ApiScheduleUser[] {
-  if (!userId) return [];
+  if (!assigned) return [];
 
-  if (Array.isArray(userId)) {
-    return userId.map((entry) => {
-      if (typeof entry === "string") {
-        return { _id: entry };
-      }
-      return entry;
-    });
+  if (Array.isArray(assigned)) {
+    return assigned.map((entry) =>
+      typeof entry === "string" ? { id: entry } : entry,
+    );
   }
 
-  if (typeof userId === "string") {
-    return [{ _id: userId }];
+  if (typeof assigned === "string") {
+    return [{ id: assigned }];
   }
 
-  return [userId];
+  return [assigned];
 }
 
 function resolveWorkplaceId(
-  ref?: string | { _id?: string } | null,
+  ref?: string | { id?: string } | null,
 ): string | undefined {
   if (!ref) return undefined;
   if (typeof ref === "string") return ref;
-  if (typeof ref === "object" && ref._id) return String(ref._id);
+  if (typeof ref === "object" && ref.id) return String(ref.id);
   return undefined;
 }
 
 function mapAssignee(user: ApiScheduleUser): ScheduleAssignee {
   const userId =
-    typeof user._id === "string" ? user._id : String(user._id ?? "");
+    typeof user.id === "string" ? user.id : String(user.id ?? "");
 
   return {
     userId,
@@ -115,7 +124,7 @@ function mapAssignee(user: ApiScheduleUser): ScheduleAssignee {
 }
 
 export function buildStaffLabel(assignees: ScheduleAssignee[]): string {
-  if (assignees.length === 0) return "—";
+  if (assignees.length === 0) return "-";
   if (assignees.length === 1) return assignees[0].staffName;
   if (assignees.length === 2) {
     return `${assignees[0].staffName}, ${assignees[1].staffName}`;
@@ -133,7 +142,7 @@ function resolveManagedBy(
   const name = managedBy.profile
     ? `${managedBy.profile.lastName ?? ""} ${managedBy.profile.firstName ?? ""}`.trim()
     : managedBy.phoneNumber;
-  return { id: managedBy._id, name: name || undefined };
+  return { id: managedBy.id, name: name || undefined };
 }
 
 function resolveShiftTimes(
@@ -164,7 +173,9 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
   const shiftTemplate =
     typeof raw.shiftTemplateId === "string" ? null : raw.shiftTemplateId;
 
-  const assignees = normalizeApiUsers(raw.userId).map(mapAssignee);
+  const assignees = normalizeApiUsers(raw.assignedUsers ?? raw.user).map(
+    mapAssignee,
+  );
   const firstAssignee = assignees[0];
   const managedBy = resolveManagedBy(raw.managedBy);
   const workDate = resolveWorkDateText(raw.workDate, raw.startAt);
@@ -174,7 +185,7 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     raw.scheduleType === "OVERTIME" ? "OVERTIME" : "NORMAL";
 
   return {
-    _id: raw._id,
+    id: raw.id,
     tenantId: String(raw.tenantId),
     assignees,
     managedById: managedBy.id,
@@ -183,7 +194,7 @@ export function mapScheduleFromApi(raw: ApiWorkingSchedule): WorkingSchedule {
     staffAvatarUrl: firstAssignee?.staffAvatarUrl,
     staffPhone: firstAssignee?.staffPhone ?? "",
     shiftTemplateId: resolveId(raw.shiftTemplateId),
-    shiftName: shiftTemplate?.name ?? "—",
+    shiftName: shiftTemplate?.name ?? "-",
     startTime,
     endTime,
     workDate,
@@ -216,7 +227,7 @@ export function mapShiftTemplatesToOptions(
   templates: ShiftTemplate[],
 ): ShiftTemplateOption[] {
   return templates.map((t) => ({
-    value: t._id,
+    value: t.id,
     label: `${t.name} (${formatShiftTimeRange(t.startTime, t.endTime)})`,
     startTime: t.startTime,
     endTime: t.endTime,
@@ -233,17 +244,20 @@ export type ScheduleWorkplaceScope =
   | { type: "branch"; branchId: string }
   | { type: "warehouse"; warehouseId: string };
 
+/**
+ * The workplace a roster response should be narrowed to, or `null` for "show everything".
+ *
+ * A **posting** decides this now. The old test also demanded the BRANCH_MANAGER /
+ * WAREHOUSE_MANAGER role, which no account carries, so it always returned `null` and
+ * `filterScheduleToWorkplaceScope` handed back every assignee on a mixed shift.
+ */
 export function resolveScheduleWorkplaceScope(
-  role?: string | null,
+  _role?: string | null,
   branchId?: string | null,
   warehouseId?: string | null,
 ): ScheduleWorkplaceScope | null {
-  if (role === "BRANCH_MANAGER" && branchId) {
-    return { type: "branch", branchId };
-  }
-  if (role === "WAREHOUSE_MANAGER" && warehouseId) {
-    return { type: "warehouse", warehouseId };
-  }
+  if (branchId) return { type: "branch", branchId };
+  if (warehouseId) return { type: "warehouse", warehouseId };
   return null;
 }
 

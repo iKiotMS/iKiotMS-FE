@@ -2,6 +2,7 @@
 import client from '@/lib/api/client';
 import type { Order, OrderCreatePayload, OrderCreateResponse, OrderStatus, OrderPaymentMethod } from '@/types/order';
 import { useAuthStore } from '@/store/auth-store';
+import { branchIdOf } from '@/lib/location-key';
 
 export interface OrderQueryParams {
   page?: number;
@@ -37,7 +38,7 @@ export const orderApi = {
     const res = await client.post<OrderCreateResponse>('/orders', payload);
     return res.data;
   },
-  /** Khách bỏ QR SePay và trả tại quầy — chốt đơn theo phương thức offline. */
+  /** Khách bỏ QR SePay và trả tại quầy - chốt đơn theo phương thức offline. */
   payOffline: async (id: string, payload: PayOfflinePayload = {}): Promise<Order> => {
     const res = await client.post<{ success: boolean; data: Order }>(
       `/orders/${id}/pay-offline`,
@@ -50,19 +51,10 @@ export const orderApi = {
     return res.data.data;
   },
   getList: async (params?: OrderQueryParams): Promise<OrderListResponse> => {
-    const state = useAuthStore.getState();
-    const locationKey = state.locationKey;
-    let branchIdParam: { branchId?: string } = {};
-
-    if (locationKey && locationKey !== "all") {
-      const [type, id] = locationKey.split("-");
-      if (type === "branch" && id) {
-        branchIdParam = { branchId: id };
-      }
-    }
+    const branchId = branchIdOf(useAuthStore.getState().locationKey);
 
     const mergedParams = {
-      ...branchIdParam,
+      ...(branchId ? { branchId } : {}),
       ...params,
     };
 

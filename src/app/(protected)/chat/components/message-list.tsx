@@ -109,7 +109,7 @@ export function MessageList({
     if (prevIsSendingRef.current && !isSending && messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg && lastMsg.role === "model") {
-        const key = lastMsg._id || `msg-${messages.length - 1}`;
+        const key = lastMsg.id || `msg-${messages.length - 1}`;
         setAnimatingMessageKey(key);
       }
     }
@@ -213,7 +213,7 @@ export function MessageList({
           messages.map((message, idx) => {
             const isUser = message.role === "user";
             const textContent = message.parts.map((p) => p.text).join("");
-            const messageKey = message._id || `msg-${idx}`;
+            const messageKey = message.id || `msg-${idx}`;
             const shouldAnimate = !isUser && animatingMessageKey === messageKey;
 
             return (

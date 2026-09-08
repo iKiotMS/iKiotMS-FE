@@ -1,12 +1,7 @@
 import { type LucideIcon } from "lucide-react";
 
-export type UserRole =
-  | "SUPER_ADMIN"
-  | "TENANT_OWNER"
-  | "BRANCH_MANAGER"
-  | "WAREHOUSE_MANAGER"
-  | "STAFF"
-  | "CUSTOMER";
+/** The account kinds the backend actually issues (`User.systemRole`). */
+export type UserRole = "ADMIN" | "TENANT_OWNER" | "STAFF" | "CUSTOMER";
 
 export interface NavSubItem {
   title: string;

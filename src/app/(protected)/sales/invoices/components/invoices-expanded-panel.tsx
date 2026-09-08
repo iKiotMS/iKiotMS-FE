@@ -134,7 +134,7 @@ export function InvoicesExpandedPanel({
                       <TableCell className="text-right tabular-nums text-red-500 text-xs font-medium">
                         {item.discountAmount > 0
                           ? `-${formatVND(item.discountAmount)}`
-                          : "—"}
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-sm text-foreground">
                         {formatVND(itemTotal)}
@@ -174,7 +174,7 @@ export function InvoicesExpandedPanel({
                     </TableRow>
                     {invoice.discountType === "PROMOTION" && invoice.appliedPromotions && invoice.appliedPromotions.length > 0 && (
                       invoice.appliedPromotions.map((p, idx) => (
-                        <TableRow key={p._id || idx} className="bg-red-50/30 dark:bg-red-950/5 hover:bg-red-50/30 dark:hover:bg-red-950/5">
+                        <TableRow key={p.id || idx} className="bg-red-50/30 dark:bg-red-950/5 hover:bg-red-50/30 dark:hover:bg-red-950/5">
                           <TableCell />
                           <TableCell
                             colSpan={4}
@@ -279,7 +279,7 @@ export function InvoicesExpandedPanel({
                     Email nhân viên:
                   </span>
                   <span className="text-muted-foreground font-mono">
-                    {invoice.seller.email || "—"}
+                    {invoice.seller.email || "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -324,7 +324,7 @@ export function InvoicesExpandedPanel({
                       <div className="pl-3 py-1 space-y-1 border-l-2 border-primary/20 text-[11px] text-muted-foreground bg-muted/40 rounded-r-md">
                         <div className="font-semibold text-primary/70">Khuyến mãi đã áp dụng:</div>
                         {invoice.appliedPromotions.map((p, idx) => (
-                          <div key={p._id || idx} className="flex justify-between">
+                          <div key={p.id || idx} className="flex justify-between">
                             <span>• {p.promoName}</span>
                             <span className="tabular-nums">-{formatVND(p.discountAmount)}</span>
                           </div>

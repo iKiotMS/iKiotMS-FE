@@ -124,7 +124,7 @@ function CurrentShiftBanner({ schedule }: { schedule: WorkingSchedule }) {
         Ca hiện tại
       </span>
       <span className="text-muted-foreground">
-        {schedule.shiftName !== "—" ? schedule.shiftName : "Ca làm"}
+        {schedule.shiftName !== "-" ? schedule.shiftName : "Ca làm"}
         {" · "}
         {timeRange}
         {isOvertime ? " · Tăng ca" : ""}
@@ -261,7 +261,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
               key={entry.chipKey}
               entry={entry}
               isSelected={
-                selectedScheduleId === entry.schedule._id &&
+                selectedScheduleId === entry.schedule.id &&
                 selectedAssigneeUserId === (entry.assignee?.userId ?? null)
               }
               onClick={() =>
@@ -312,14 +312,14 @@ export function ScheduleCalendar() {
     leaveByDate,
   } = useSchedule();
 
-  const [keyword, setKeyword] = useState("");
+  const [search, setKeyword] = useState("");
   const canFilterStaff = useMemo(
     () => canFilterScheduleByStaff(getSessionRole()),
     [],
   );
 
   const filteredSchedules = useMemo(() => {
-    const kw = keyword.trim().toLowerCase();
+    const kw = search.trim().toLowerCase();
     if (!kw) return schedules;
     return schedules.filter(
       (s) =>
@@ -332,7 +332,7 @@ export function ScheduleCalendar() {
             a.staffPhone.includes(kw),
         ),
     );
-  }, [schedules, keyword]);
+  }, [schedules, search]);
 
   const calendarEntries = useMemo(
     () => expandSchedulesForCalendar(filteredSchedules, filters.userId),
@@ -399,7 +399,7 @@ export function ScheduleCalendar() {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Tìm nhân viên, ca..."
-              value={keyword}
+              value={search}
               onChange={(e) => setKeyword(e.target.value)}
               className="pl-9 h-9"
             />
@@ -501,7 +501,7 @@ export function ScheduleCalendar() {
                 dayEntries={entriesByDate.get(dateKey) ?? EMPTY_DAY_ENTRIES}
                 isSelected={selectedDayDate === dateKey}
                 isLoading={isLoading}
-                selectedScheduleId={selectedSchedule?._id ?? null}
+                selectedScheduleId={selectedSchedule?.id ?? null}
                 selectedAssigneeUserId={selectedAssigneeUserId}
                 onOpenDay={openDayPanel}
                 onSelectSchedule={selectSchedule}

@@ -26,10 +26,10 @@ export const warehouseApi = {
     return res.data.data;
   },
   remove: async (id: string): Promise<void> => {
-    await client.delete(`/warehouses/${id}/delete`);
+    await client.delete(`/warehouses/${id}`);
   },
 
-  /** PATCH /warehouses/:id/manager — TENANT_OWNER thăng STAFF → WAREHOUSE_MANAGER. */
+  /** PATCH /warehouses/:id/manager - chỉ định người phụ trách kho (không đổi vai trò). */
   assignManager: async (
     warehouseId: string,
     staffId: string,

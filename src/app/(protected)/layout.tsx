@@ -34,9 +34,9 @@ function RoutePermissionGuard({ children }: { children: React.ReactNode }) {
     (route) => pathname === route || pathname.startsWith(route + "/"),
   );
 
-  // Special handling for checkout (allowed for all except SUPER_ADMIN)
+  // Special handling for checkout (allowed for all except ADMIN)
   const isCheckout = pathname === "/check-out" || pathname.startsWith("/check-out/");
-  if (isCheckout && user.role !== "SUPER_ADMIN") {
+  if (isCheckout && user.role !== "ADMIN") {
     return <>{children}</>;
   }
 

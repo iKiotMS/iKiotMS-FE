@@ -17,7 +17,7 @@ import type {
 type ApiRef =
   | string
   | {
-      _id?: string;
+      id?: string;
       supplierName?: string;
       fullName?: string;
       email?: string;
@@ -26,25 +26,40 @@ type ApiRef =
     };
 
 type ApiMovementDetail = {
-  productItemId?: string | { _id?: string; sku?: string; productName?: string };
+  productItemId?: string | { id?: string; sku?: string; productName?: string };
   quantity?: number;
   importPrice?: number;
   receivedQuantity?: number;
   note?: string;
 };
 
+/**
+ * "A branch or a warehouse", the shape the API speaks on both sides of the wire.
+ *
+ * Postgres stores it as a pair of nullable foreign keys, and `location-ref.dto.ts` is the
+ * one place on the server that maps between the two - so requests carry `fromLocation:
+ * { locationId, locationType }` and responses answer the same object plus a separate
+ * `*LocationName`. This file used to send and read the pair **flat**
+ * (`fromLocationId` + `fromLocationType`), which is neither: `whitelist: true` dropped the
+ * flat keys off every create, and every response read them back as `undefined`. The
+ * exchange screens have been showing "warehouse" for every destination because that is the
+ * fallback three lines below.
+ */
+type ApiLocationRef = {
+  locationId: string;
+  locationType: LocationType;
+};
+
 type ApiMovement = {
-  _id: string;
+  id: string;
   tenantId?: string;
   movementType?: StockMovement["movementType"];
   status?: StockMovement["status"];
   fromSupplierId?: ApiRef;
-  fromLocationId?: string;
+  fromLocation?: ApiLocationRef | null;
   fromLocationName?: string | null;
-  fromLocationType?: LocationType;
-  toLocationId?: string;
+  toLocation?: ApiLocationRef | null;
   toLocationName?: string | null;
-  toLocationType?: LocationType;
   createdBy?: ApiRef;
   requestedBy?: ApiRef;
   note?: string;
@@ -54,13 +69,13 @@ type ApiMovement = {
 };
 
 type ApiSupplier = {
-  _id: string;
+  id: string;
   supplierName?: string;
   name?: string;
 };
 
 type ApiLocation = {
-  _id: string;
+  id: string;
   name?: string;
 };
 
@@ -70,7 +85,7 @@ type ApiProductImage = {
 };
 
 type ApiProductItem = {
-  _id: string;
+  id: string;
   productName?: string;
   name?: string;
   sku?: string;
@@ -79,11 +94,11 @@ type ApiProductItem = {
   stock?: number;
   images?: ApiProductImage[];
   productDetails?: Array<{ name?: string; value?: string }>;
-  suppliers?: Array<string | { _id?: string; id?: string }>;
+  suppliers?: Array<string | { id?: string }>;
 };
 
 type ApiProduct = {
-  _id?: string;
+  id?: string;
   name?: string;
   images?: ApiProductImage[];
   items?: ApiProductItem[];
@@ -91,7 +106,7 @@ type ApiProduct = {
 };
 
 type ApiInventoryRow = {
-  productItemId?: string | { _id?: string };
+  productItemId?: string | { id?: string };
   stock?: number;
 };
 
@@ -103,7 +118,7 @@ function asArray<T>(value: T[] | T | undefined | null): T[] {
 function resolveRefId(value?: ApiRef): string {
   if (!value) return "";
   if (typeof value === "string") return value;
-  return value._id ?? "";
+  return value.id ?? "";
 }
 
 function resolveSupplierName(value?: ApiRef): string | undefined {
@@ -127,7 +142,7 @@ function normalizeNote(value?: string | null) {
 function mapDetail(raw: ApiMovementDetail) {
   const productRef = raw.productItemId;
   const productItemId =
-    typeof productRef === "string" ? productRef : (productRef?._id ?? "");
+    typeof productRef === "string" ? productRef : (productRef?.id ?? "");
 
   return {
     productItemId,
@@ -143,24 +158,63 @@ function mapDetail(raw: ApiMovementDetail) {
 function mapMovement(raw: ApiMovement): StockMovement {
   const creator = raw.createdBy ?? raw.requestedBy;
   return {
-    _id: raw._id,
+    id: raw.id,
     tenantId: String(raw.tenantId ?? ""),
     movementType: raw.movementType ?? "IMPORT",
     status: raw.status ?? "PENDING",
     fromSupplierId: resolveRefId(raw.fromSupplierId),
     supplierName: resolveSupplierName(raw.fromSupplierId),
-    fromLocationId: raw.fromLocationId,
+    fromLocationId: raw.fromLocation?.locationId,
     fromLocationName: raw.fromLocationName ?? undefined,
-    fromLocationType: raw.fromLocationType,
-    toLocationId: raw.toLocationId ?? "",
-    toLocationName: raw.toLocationName ?? raw.toLocationId ?? "",
-    toLocationType: raw.toLocationType ?? "warehouse",
+    fromLocationType: raw.fromLocation?.locationType,
+    toLocationId: raw.toLocation?.locationId ?? "",
+    toLocationName: raw.toLocationName ?? raw.toLocation?.locationId ?? "",
+    toLocationType: raw.toLocation?.locationType ?? "warehouse",
     requestedBy: resolveRefId(creator),
     requestedByName: resolveUserName(creator),
     note: normalizeNote(raw.note),
     details: (raw.details ?? []).map(mapDetail),
     createdAt: raw.createdAt ?? "",
     updatedAt: raw.updatedAt ?? "",
+  };
+}
+
+/**
+ * The create body `POST /stock-movements` actually accepts.
+ *
+ * The screens work in flat ids (that is what a `<Select>` binds to), and
+ * `CreateStockMovementDto` takes the pair nested - so the conversion belongs here, once,
+ * rather than at each of the four call sites that used to spread a flat payload straight
+ * into the request and have both locations dropped in silence.
+ *
+ * A missing half is left off entirely rather than sent as `{ locationId: undefined }`:
+ * IMPORT has no source and ADJUST no destination, and `assertEndpointsValid` decides which
+ * of those is legal for the movement type.
+ */
+function toCreateBody<
+  T extends {
+    fromLocationId?: string;
+    fromLocationType?: LocationType;
+    toLocationId?: string;
+    toLocationType?: LocationType;
+  },
+>(payload: T) {
+  const {
+    fromLocationId,
+    fromLocationType,
+    toLocationId,
+    toLocationType,
+    ...rest
+  } = payload;
+
+  return {
+    ...rest,
+    ...(fromLocationId && fromLocationType
+      ? { fromLocation: { locationId: fromLocationId, locationType: fromLocationType } }
+      : {}),
+    ...(toLocationId && toLocationType
+      ? { toLocation: { locationId: toLocationId, locationType: toLocationType } }
+      : {}),
   };
 }
 
@@ -185,8 +239,8 @@ async function fetchSupplierOptions(): Promise<StockMovementSupplierOption[]> {
     params: { page: 1, limit: 100 },
   });
   return asArray<ApiSupplier>(response.data?.data).map((supplier) => ({
-    _id: supplier._id,
-    name: supplier.supplierName ?? supplier.name ?? supplier._id,
+    id: supplier.id,
+    name: supplier.supplierName ?? supplier.name ?? supplier.id,
   }));
 }
 
@@ -198,15 +252,15 @@ async function fetchLocationOptions(): Promise<StockMovementLocationOption[]> {
 
   const warehouses = asArray<ApiLocation>(warehousesResponse.data?.data).map(
     (warehouse) => ({
-      _id: warehouse._id,
-      name: warehouse.name ?? warehouse._id,
+      id: warehouse.id,
+      name: warehouse.name ?? warehouse.id,
       type: "warehouse" as const,
     }),
   );
   const branches = asArray<ApiLocation>(branchesResponse.data?.data).map(
     (branch) => ({
-      _id: branch._id,
-      name: branch.name ?? branch._id,
+      id: branch.id,
+      name: branch.name ?? branch.id,
       type: "branch" as const,
     }),
   );
@@ -230,7 +284,7 @@ async function fetchInventoryAtLocation(
       const id =
         typeof row.productItemId === "string"
           ? row.productItemId
-          : row.productItemId?._id;
+          : row.productItemId?.id;
       if (id) map.set(id, row.stock ?? 0);
     }
     totalPages = Number(response.data?.pagination?.totalPages ?? 1);
@@ -241,11 +295,11 @@ async function fetchInventoryAtLocation(
 }
 
 function resolveSupplierIds(
-  suppliers?: Array<string | { id?: string; _id?: string }>,
+  suppliers?: Array<string | { id?: string }>,
 ): string[] {
   if (!suppliers?.length) return [];
   return suppliers
-    .map((s) => (typeof s === "string" ? s : (s.id ?? s._id ?? "")))
+    .map((s) => (typeof s === "string" ? s : (s.id ?? "")))
     .filter(Boolean);
 }
 
@@ -280,9 +334,9 @@ function mapApiProductsToItemOptions(
   return products.flatMap((product) =>
     asArray<ApiProductItem>(product.items ?? product.productItems).map(
       (item) => ({
-        _id: item._id,
-        productId: product._id,
-        name: item.productName ?? item.name ?? product.name ?? item._id,
+        id: item.id,
+        productId: product.id,
+        name: item.productName ?? item.name ?? product.name ?? item.id,
         sku: item.sku ?? "",
         costPrice: item.costPrice ?? item.retailPrice ?? 0,
         retailPrice: item.retailPrice,
@@ -295,7 +349,7 @@ function mapApiProductsToItemOptions(
   );
 }
 
-/** GET /products/search — có items + costPrice/retailPrice. */
+/** GET /products/search - có items + costPrice/retailPrice. */
 async function fetchProductSearch(params: {
   q?: string;
   page?: number;
@@ -360,9 +414,9 @@ async function fetchSupplierProductItemOptions(
         status: "ACTIVE",
       },
     });
-    const rows = asArray<{ _id?: string }>(response.data?.data);
+    const rows = asArray<{ id?: string }>(response.data?.data);
     for (const p of rows) {
-      if (p._id) productIds.push(p._id);
+      if (p.id) productIds.push(p.id);
     }
     totalPages = Number(response.data?.pagination?.totalPages ?? 1);
     page += 1;
@@ -385,9 +439,9 @@ async function fetchSupplierProductItemOptions(
         const ids = resolveSupplierIds(item.suppliers);
         if (!ids.includes(supplierId)) continue;
         options.push({
-          _id: item._id,
-          productId: detail._id,
-          name: item.productName ?? item.name ?? detail.name ?? item._id,
+          id: item.id,
+          productId: detail.id,
+          name: item.productName ?? item.name ?? detail.name ?? item.id,
           sku: item.sku ?? "",
           costPrice: item.costPrice ?? item.retailPrice ?? 0,
           retailPrice: item.retailPrice,
@@ -431,7 +485,7 @@ async function getProductLookup(): Promise<ProductLookup> {
 
   productLookupInflight = fetchAllProductItemOptions()
     .then((options) => {
-      const value = new Map(options.map((item) => [item._id, item]));
+      const value = new Map(options.map((item) => [item.id, item]));
       productLookupCache = { at: Date.now(), value };
       return value;
     })
@@ -450,7 +504,7 @@ async function getLocationLookup(): Promise<LocationLookup> {
 
   locationLookupInflight = fetchLocationOptions()
     .then((options) => {
-      const value = new Map(options.map((item) => [item._id, item]));
+      const value = new Map(options.map((item) => [item.id, item]));
       locationLookupCache = { at: Date.now(), value };
       return value;
     })
@@ -469,7 +523,7 @@ async function getSupplierLookup(): Promise<SupplierLookup> {
 
   supplierLookupInflight = fetchSupplierOptions()
     .then((options) => {
-      const value = new Map(options.map((item) => [item._id, item]));
+      const value = new Map(options.map((item) => [item.id, item]));
       supplierLookupCache = { at: Date.now(), value };
       return value;
     })
@@ -593,25 +647,27 @@ export const stockMovementApi = {
   },
 
   createImport: async (payload: CreateImportPayload): Promise<StockMovement> => {
-    const response = await client.post("/stock-movements", payload);
+    const response = await client.post("/stock-movements", toCreateBody(payload));
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   createExport: async (payload: CreateExportPayload): Promise<StockMovement> => {
-    const response = await client.post("/stock-movements", payload);
+    const response = await client.post("/stock-movements", toCreateBody(payload));
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
   createAdjust: async (payload: CreateAdjustPayload): Promise<StockMovement> => {
-    const createBody: CreateAdjustPayload = {
-      ...payload,
-      details: payload.details.map((d) => ({
-        productItemId: d.productItemId,
-        receivedQuantity: d.receivedQuantity,
-        note: d.note,
-      })),
-    };
-    const response = await client.post("/stock-movements", createBody);
+    const response = await client.post(
+      "/stock-movements",
+      toCreateBody({
+        ...payload,
+        details: payload.details.map((d) => ({
+          productItemId: d.productItemId,
+          receivedQuantity: d.receivedQuantity,
+          note: d.note,
+        })),
+      }),
+    );
     return safeEnrichMovement(mapMovement(response.data?.data as ApiMovement));
   },
 
@@ -691,26 +747,29 @@ export const stockMovementApi = {
 
     const reason = options?.reason?.trim();
     const note = reason
-      ? `${reason} (từ phiếu ${source._id})`
-      : `Trả hàng từ phiếu ${source._id}`;
+      ? `${reason} (từ phiếu ${source.id})`
+      : `Trả hàng từ phiếu ${source.id}`;
 
-    const createResponse = await client.post("/stock-movements", {
-      movementType,
-      fromLocationId,
-      fromLocationType,
-      toLocationId,
-      toLocationType,
-      note,
-      details,
-    });
+    const createResponse = await client.post(
+      "/stock-movements",
+      toCreateBody({
+        movementType,
+        fromLocationId,
+        fromLocationType,
+        toLocationId,
+        toLocationType,
+        note,
+        details,
+      }),
+    );
     const created = await safeEnrichMovement(
       mapMovement(createResponse.data?.data as ApiMovement),
     );
 
-    await client.patch(`/stock-movements/${created._id}/open`);
-    await client.patch(`/stock-movements/${created._id}/close`);
+    await client.patch(`/stock-movements/${created.id}/open`);
+    await client.patch(`/stock-movements/${created.id}/close`);
     const shipResponse = await client.patch(
-      `/stock-movements/${created._id}/ship`,
+      `/stock-movements/${created.id}/ship`,
     );
     return safeEnrichMovement(
       mapMovement(shipResponse.data?.data as ApiMovement),
@@ -763,12 +822,12 @@ export const stockMovementApi = {
     ]);
     return [...lookup.values()].map((item) => ({
       ...item,
-      atLocation: inventoryMap.has(item._id),
-      stock: inventoryMap.get(item._id),
+      atLocation: inventoryMap.has(item.id),
+      stock: inventoryMap.get(item.id),
     }));
   },
 
-  /** Toàn bộ catalog + giá (không lọc tồn) — dùng nhập từ NCC */
+  /** Toàn bộ catalog + giá (không lọc tồn) - dùng nhập từ NCC */
   getCatalogProductItems: async (): Promise<StockMovementProductItemOption[]> => {
     return fetchAllProductItemOptions();
   },
@@ -783,11 +842,11 @@ export const stockMovementApi = {
       fetchInventoryAtLocation(locationId, locationType),
     ]);
     return [...lookup.values()]
-      .filter((item) => (inventoryMap.get(item._id) ?? 0) > 0)
+      .filter((item) => (inventoryMap.get(item.id) ?? 0) > 0)
       .map((item) => ({
         ...item,
         atLocation: true,
-        stock: inventoryMap.get(item._id) ?? 0,
+        stock: inventoryMap.get(item.id) ?? 0,
       }));
   },
 };

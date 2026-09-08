@@ -22,7 +22,7 @@ export function HolidaysDialogs() {
       />
       {currentRow && (
         <HolidaysMutateDialog
-          key={`holiday-edit-${currentRow._id}`}
+          key={`holiday-edit-${currentRow.id}`}
           open={open === "edit"}
           onOpenChange={(value) => {
             if (!value) closeDialog();

@@ -104,10 +104,12 @@ export function LeaveRequestsPersonalDialog({
 }) {
   const { user } = useAuth();
   const { handleCreatePersonal, handoverOptions, balance } = useLeaveRequests();
-  const role = user?.role;
-  const isBranchManager = role === "BRANCH_MANAGER";
-  const isWarehouseManager = role === "WAREHOUSE_MANAGER";
-  const needsHandoverPicker = isBranchManager || isWarehouseManager;
+  // A handover is needed when this person actually runs shifts in the window - which
+  // `scheduleHandoverRequired` below asks the server. Being posted somewhere is what makes
+  // that possible at all; the old test asked for two role names nobody carries, so the
+  // picker stopped appearing and the mandatory-handover branch of the schema went with it.
+  const isPosted = Boolean(user?.branchId || user?.warehouseId);
+  const needsHandoverPicker = isPosted;
 
   const [scheduleHandoverRequired, setScheduleHandoverRequired] = useState(false);
   const [checkingHandover, setCheckingHandover] = useState(false);
@@ -115,7 +117,7 @@ export function LeaveRequestsPersonalDialog({
   const [missingScheduleDates, setMissingScheduleDates] = useState<Date[]>([]);
   const [totalDaysInRange, setTotalDaysInRange] = useState(0);
 
-  const requiresHandover = isBranchManager || scheduleHandoverRequired;
+  const requiresHandover = scheduleHandoverRequired;
   const allowedHandoverIds = useMemo(
     () => new Set(handoverOptions.map((o) => o.value)),
     [handoverOptions],
@@ -125,10 +127,10 @@ export function LeaveRequestsPersonalDialog({
     () =>
       buildPersonalLeaveSchema({
         handoverRequired: requiresHandover,
-        isBranchManager,
+        isBranchManager: requiresHandover,
         allowedHandoverIds,
       }),
-    [requiresHandover, isBranchManager, allowedHandoverIds],
+    [requiresHandover, allowedHandoverIds],
   );
   const schemaRef = useRef(personalLeaveSchema);
   schemaRef.current = personalLeaveSchema;
@@ -167,8 +169,10 @@ export function LeaveRequestsPersonalDialog({
   }, [open, form]);
 
   useEffect(() => {
-    // BR luôn bắt buộc handover — không cần gọi preview.
-    if (!open || !isWarehouseManager || !startDate || !endDate) return;
+    // Hỏi server xem khoảng nghỉ này có ca nào người đó đang quản lý không. Trước đây chỉ
+    // hỏi cho WAREHOUSE_MANAGER và mặc định BRANCH_MANAGER là luôn phải bàn giao - cả hai
+    // role đều không còn, nên giờ ai được phân công ở đâu đó cũng hỏi.
+    if (!open || !isPosted || !startDate || !endDate) return;
     const startIso = combineLeaveDateTime(
       startDate,
       startTime || DEFAULT_START_TIME,
@@ -199,7 +203,7 @@ export function LeaveRequestsPersonalDialog({
     };
   }, [
     open,
-    isWarehouseManager,
+    isPosted,
     startDate,
     endDate,
     startTime,
@@ -224,7 +228,7 @@ export function LeaveRequestsPersonalDialog({
         const result = await workingScheduleApi.getList({
           startDate,
           endDate,
-          recordPerPage: 500,
+          limit: 500,
         });
         if (cancelled) return;
 
@@ -391,16 +395,13 @@ export function LeaveRequestsPersonalDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {isBranchManager
-                        ? "Nhân viên thay thế tạm *"
-                        : `Nhân viên nhận bàn giao${requiresHandover ? " *" : ""}`}
+                      {`Nhân viên nhận bàn giao${requiresHandover ? " *" : ""}`}
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       value={field.value || undefined}
                       disabled={
-                        checkingHandover ||
-                        (!isBranchManager && !requiresHandover)
+                        checkingHandover || !requiresHandover
                       }
                     >
                       <FormControl>
@@ -409,11 +410,9 @@ export function LeaveRequestsPersonalDialog({
                             placeholder={
                               checkingHandover
                                 ? "Đang kiểm tra lịch..."
-                                : isBranchManager
-                                  ? "Chọn Staff cùng chi nhánh thay thế tạm"
-                                  : requiresHandover
-                                    ? "Chọn nhân viên bàn giao"
-                                    : "Không cần bàn giao"
+                                : requiresHandover
+                                  ? "Chọn nhân viên nhận bàn giao"
+                                  : "Không cần bàn giao"
                             }
                           />
                         </SelectTrigger>
@@ -450,9 +449,8 @@ export function LeaveRequestsPersonalDialog({
               <Button
                 type="submit"
                 className="cursor-pointer"
-                disabled={
-                  isBranchManager && handoverOptions.length === 0
-                }
+                // Bắt buộc bàn giao mà không còn ai để bàn giao thì không gửi được.
+                disabled={requiresHandover && handoverOptions.length === 0}
               >
                 <Plus className="mr-2 size-4" />
                 Gửi đơn

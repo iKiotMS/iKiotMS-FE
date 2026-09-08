@@ -33,9 +33,9 @@ export type LeaveRequestsDialogType = "personal" | "emergency";
 
 const DEFAULT_LIST_QUERY: LeaveListQuery = {
   page: 1,
-  recordPerPage: 10,
+  limit: 10,
   status: "all",
-  keyword: "",
+  search: "",
 };
 
 type LeaveRequestsContextType = {
@@ -60,9 +60,9 @@ type LeaveRequestsContextType = {
   handleReject: (id: string, reviewNote: string) => Promise<void>;
   handleCancel: (id: string) => Promise<void>;
   updateStatusFilter: (status: LeaveRequestStatus | "all") => void;
-  updateKeywordFilter: (keyword: string) => void;
+  updateKeywordFilter: (search: string) => void;
   updatePage: (page: number) => void;
-  updatePageSize: (recordPerPage: number) => void;
+  updatePageSize: (limit: number) => void;
 };
 
 const LeaveRequestsContext =
@@ -74,9 +74,11 @@ function isUserContextReady(
   warehouseId?: string | null,
 ): boolean {
   if (!role) return false;
-  if (role === "BRANCH_MANAGER") return !!branchId;
-  if (role === "WAREHOUSE_MANAGER") return !!warehouseId;
-  return true;
+  // "Do we know enough to load this screen." Anybody posted somewhere needs their posting
+  // resolved first; an owner is posted nowhere and is ready immediately. Keyed on the role
+  // names, this returned true for every staff account before their posting had loaded.
+  if (branchId || warehouseId) return true;
+  return role === "TENANT_OWNER" || role === "ADMIN";
 }
 
 export function LeaveRequestsProvider({
@@ -116,13 +118,11 @@ export function LeaveRequestsProvider({
     async function loadOptions() {
       const emergencyAllowed = canCreateEmergencyLeave(role);
       const personalAllowed = canCreatePersonalLeave(role);
+      // Which option lists to fetch follows from where the person works, not from a role.
       const needsBranchStaff =
-        (emergencyAllowed || personalAllowed) &&
-        role === "BRANCH_MANAGER" &&
-        !!branchId;
-      const needsToStaff = emergencyAllowed && role === "TENANT_OWNER";
-      const needsWhHandover =
-        personalAllowed && role === "WAREHOUSE_MANAGER";
+        (emergencyAllowed || personalAllowed) && !!branchId;
+      const needsToStaff = emergencyAllowed && !branchId && !warehouseId;
+      const needsWhHandover = personalAllowed && !!warehouseId;
 
       let activeStaff: Awaited<ReturnType<typeof staffApi.getAllForOptions>> =
         [];
@@ -142,19 +142,18 @@ export function LeaveRequestsProvider({
       }
 
       if (emergencyAllowed) {
+        // The role filters here listed the three fixed roles the old backend had. Roles
+        // are tenant-defined rows now and every /users row is already a staff account, so
+        // what is left is the posting: a branch-scoped picker still wants that branch.
         const filtered = needsBranchStaff
-          ? activeStaff.filter(
-              (s) => s.role === "STAFF" && s.branchId === branchId,
-            )
-          : activeStaff.filter((s) =>
-              ["STAFF", "BRANCH_MANAGER", "WAREHOUSE_MANAGER"].includes(s.role),
-            );
+          ? activeStaff.filter((s) => s.branchId === branchId)
+          : activeStaff;
         if (!cancelled) {
           setStaffOptions(
             filtered.map((s) => ({
-              value: s._id,
+              value: s.id,
               label: s.fullName,
-              role: s.role,
+              role: s.roleName,
             })),
           );
         }
@@ -167,15 +166,12 @@ export function LeaveRequestsProvider({
           setHandoverOptions(
             activeStaff
               .filter(
-                (s) =>
-                  s.role === "STAFF" &&
-                  s.branchId === branchId &&
-                  s._id !== currentUserId,
+                (s) => s.branchId === branchId && s.id !== currentUserId,
               )
               .map((s) => ({
-                value: s._id,
+                value: s.id,
                 label: s.fullName,
-                role: s.role,
+                role: s.roleName,
               })),
           );
         }
@@ -183,7 +179,7 @@ export function LeaveRequestsProvider({
         try {
           const schedules = await workingScheduleApi.getList({
             page: 1,
-            recordPerPage: 100,
+            limit: 100,
           });
           if (cancelled) return;
           const unique = new Map<string, LeaveStaffOption>();
@@ -216,7 +212,7 @@ export function LeaveRequestsProvider({
     return () => {
       cancelled = true;
     };
-  }, [role, branchId, currentUserId]);
+  }, [role, branchId, warehouseId, currentUserId]);
 
   const fetchBalance = useCallback(async () => {
     if (!canCreatePersonalLeave(role)) {
@@ -242,14 +238,14 @@ export function LeaveRequestsProvider({
         { role },
         {
           page: listQuery.page,
-          recordPerPage: listQuery.recordPerPage,
+          limit: listQuery.limit,
           status: listQuery.status === "all" ? undefined : listQuery.status,
-          keyword: listQuery.keyword || undefined,
+          search: listQuery.search || undefined,
         },
       );
 
       let data = response.data;
-      if (targetId && !data.some((r) => r._id === targetId)) {
+      if (targetId && !data.some((r) => r.id === targetId)) {
         try {
           const targetReq = await leaveRequestApi.getById(targetId);
           if (targetReq) {
@@ -276,9 +272,9 @@ export function LeaveRequestsProvider({
     contextReady,
     role,
     listQuery.page,
-    listQuery.recordPerPage,
+    listQuery.limit,
     listQuery.status,
-    listQuery.keyword,
+    listQuery.search,
     targetId,
   ]);
 
@@ -317,7 +313,7 @@ export function LeaveRequestsProvider({
         const created = await leaveRequestApi.createEmergency(payload);
         if (options?.approveImmediately) {
           await leaveRequestApi.approve(
-            created._id,
+            created.id,
             options.approveImmediately,
           );
           toast.success("Đã tạo và duyệt đơn nghỉ phép khẩn");
@@ -382,16 +378,16 @@ export function LeaveRequestsProvider({
     [],
   );
 
-  const updateKeywordFilter = useCallback((keyword: string) => {
-    setListQuery((prev) => ({ ...prev, keyword, page: 1 }));
+  const updateKeywordFilter = useCallback((search: string) => {
+    setListQuery((prev) => ({ ...prev, search, page: 1 }));
   }, []);
 
   const updatePage = useCallback((page: number) => {
     setListQuery((prev) => ({ ...prev, page }));
   }, []);
 
-  const updatePageSize = useCallback((recordPerPage: number) => {
-    setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
+  const updatePageSize = useCallback((limit: number) => {
+    setListQuery((prev) => ({ ...prev, limit, page: 1 }));
   }, []);
 
   const value = useMemo(

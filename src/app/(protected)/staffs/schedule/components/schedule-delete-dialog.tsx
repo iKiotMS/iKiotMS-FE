@@ -30,7 +30,7 @@ export function ScheduleDeleteDialog({
   async function onConfirm() {
     if (!currentRow || isLocked) return;
     try {
-      await handleDelete(currentRow._id);
+      await handleDelete(currentRow.id);
       onOpenChange(false);
     } catch {
       // Toast handled in provider
@@ -44,12 +44,12 @@ export function ScheduleDeleteDialog({
           <DialogTitle>Xóa lịch làm</DialogTitle>
           <DialogDescription>
             {isLocked ? (
-              "Lịch đã hoàn thành — không thể xóa theo quy tắc hệ thống."
+              "Lịch đã hoàn thành - không thể xóa theo quy tắc hệ thống."
             ) : (
               <>
                 Bạn có chắc muốn xóa ca làm{" "}
                 <strong className="text-foreground">
-                  {currentRow?.shiftName !== "—"
+                  {currentRow?.shiftName !== "-"
                     ? currentRow?.shiftName
                     : currentRow?.staffName ?? ""}
                 </strong>

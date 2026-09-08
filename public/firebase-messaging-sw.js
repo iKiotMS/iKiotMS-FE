@@ -1,9 +1,9 @@
 /* eslint-disable no-undef */
-// Service worker cho FCM — nhận push khi tab đã đóng hoặc chạy nền.
+// Service worker cho FCM - nhận push khi tab đã đóng hoặc chạy nền.
 //
 // File này KHÔNG đi qua bundler của Next.js, nên không đọc được process.env:
 // config buộc phải hardcode. Đây là web config công khai (giống hệt các biến
-// NEXT_PUBLIC_* trong .env), không phải service account — tuyệt đối không dán
+// NEXT_PUBLIC_* trong .env), không phải service account - tuyệt đối không dán
 // FIREBASE_PRIVATE_KEY vào đây.
 //
 // Dùng bản "compat" vì service worker không hỗ trợ ES module import.

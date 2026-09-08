@@ -118,8 +118,12 @@ const DEFAULT_LABELS: TransferUiLabels = {
   sidebarTitle: 'Chuyển kho',
 }
 
-export function getTransferUiLabels(role?: string | null): TransferUiLabels {
-  if (role === 'BRANCH_MANAGER') return BRANCH_LABELS
-  if (role === 'WAREHOUSE_MANAGER') return WAREHOUSE_LABELS
+/** Wording follows where the reader works, which is what the two manager roles used to say. */
+export function getTransferUiLabels(
+  branchId?: string | null,
+  warehouseId?: string | null,
+): TransferUiLabels {
+  if (branchId) return BRANCH_LABELS
+  if (warehouseId) return WAREHOUSE_LABELS
   return DEFAULT_LABELS
 }

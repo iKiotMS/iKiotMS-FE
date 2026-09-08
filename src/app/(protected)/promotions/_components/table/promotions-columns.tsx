@@ -109,7 +109,7 @@ export const promotionsColumns: ColumnDef<Promotion>[] = [
       const promotion = row.original
       return (
         <span className="text-xs text-muted-foreground">
-          {formatDateTime(promotion.startDate)} — {formatDateTime(promotion.endDate)}
+          {formatDateTime(promotion.startDate)} - {formatDateTime(promotion.endDate)}
         </span>
       )
     },

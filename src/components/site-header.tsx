@@ -39,7 +39,7 @@ export function SiteHeader() {
             <SearchTrigger onClick={() => setSearchOpen(true)} />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {user?.role !== "SUPER_ADMIN" && (
+            {user?.role !== "ADMIN" && (
               <Button
                 variant="default"
                 asChild
@@ -57,7 +57,7 @@ export function SiteHeader() {
                 </a>
               </Button>
             )}
-            {user?.role !== "SUPER_ADMIN" && <NotificationBell />}
+            {user?.role !== "ADMIN" && <NotificationBell />}
             <ModeToggle />
           </div>
         </div>

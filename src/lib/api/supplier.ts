@@ -10,12 +10,12 @@ import type {
   SupplierPayDebtPayload,
 } from '@/types/supplier'
 
-// Backend trả về document Mongoose với `_id`; FE dùng `id`.
-type SupplierDoc = Omit<Supplier, 'id'> & { _id: string }
+// Backend trả về document Mongoose với `id`; FE dùng `id`.
+type SupplierDoc = Omit<Supplier, 'id'> & { id: string }
 
 function mapSupplier(doc: SupplierDoc): Supplier {
-  const { _id, ...rest } = doc
-  return { ...rest, id: _id, _id }
+  const { id, ...rest } = doc
+  return { ...rest, id }
 }
 
 export const supplierApi = {

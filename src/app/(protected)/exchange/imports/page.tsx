@@ -13,16 +13,17 @@ import { PageHeader } from "@/components/page-header"
 
 export default function ImportsPage() {
   const router = useRouter()
-  const role = getAuthScope().role
-  const isBranchManager = !canAccessImports(role)
+  // Trực thuộc chi nhánh thì không tạo phiếu nhập - nhập hàng về kho.
+  const branchId = getAuthScope().branchId
+  const isBranchStaff = !canAccessImports(branchId)
 
   useEffect(() => {
-    if (isBranchManager) {
+    if (isBranchStaff) {
       router.replace('/exchange/exports')
     }
-  }, [isBranchManager, router])
+  }, [isBranchStaff, router])
 
-  if (isBranchManager) {
+  if (isBranchStaff) {
     return null
   }
 

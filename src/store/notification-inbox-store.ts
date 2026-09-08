@@ -23,7 +23,7 @@ export const useNotificationInboxStore = create<NotificationInboxState>((set, ge
   fetchInbox: async () => {
     set({ isLoading: true });
     try {
-      // BE trả sẵn unreadCount — dùng luôn, đừng đếm lại ở client
+      // BE trả sẵn unreadCount - dùng luôn, đừng đếm lại ở client
       const res = await notificationApi.getInbox({ page: 1, limit: 20 });
       set({ items: res.data, unreadCount: res.unreadCount });
     } catch {
@@ -35,8 +35,8 @@ export const useNotificationInboxStore = create<NotificationInboxState>((set, ge
 
   receive: (notification) =>
     set((state) => {
-      // Socket có thể bắn trùng khi reconnect — chặn duplicate theo _id
-      if (state.items.some((item) => item._id === notification._id)) return state;
+      // Socket có thể bắn trùng khi reconnect - chặn duplicate theo id
+      if (state.items.some((item) => item.id === notification.id)) return state;
       return {
         items: [notification, ...state.items],
         unreadCount: state.unreadCount + 1,
@@ -44,13 +44,13 @@ export const useNotificationInboxStore = create<NotificationInboxState>((set, ge
     }),
 
   markAsRead: async (id) => {
-    const target = get().items.find((item) => item._id === id);
+    const target = get().items.find((item) => item.id === id);
     if (!target || target.isRead) return;
 
     // Optimistic update, đúng pattern các mutation hook khác trong repo
     set((state) => ({
       items: state.items.map((item) =>
-        item._id === id ? { ...item, isRead: true } : item,
+        item.id === id ? { ...item, isRead: true } : item,
       ),
       unreadCount: Math.max(state.unreadCount - 1, 0),
     }));
@@ -75,11 +75,11 @@ export const useNotificationInboxStore = create<NotificationInboxState>((set, ge
   },
 
   deleteOne: async (id) => {
-    const target = get().items.find((item) => item._id === id);
+    const target = get().items.find((item) => item.id === id);
     const wasUnread = target && !target.isRead;
     // Optimistic remove
     set((state) => ({
-      items: state.items.filter((item) => item._id !== id),
+      items: state.items.filter((item) => item.id !== id),
       unreadCount: wasUnread ? Math.max(state.unreadCount - 1, 0) : state.unreadCount,
     }));
     try {

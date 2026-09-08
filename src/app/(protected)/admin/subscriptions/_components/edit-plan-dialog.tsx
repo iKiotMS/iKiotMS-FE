@@ -105,7 +105,7 @@ export function EditPlanDialog({
       isPopular: values.isPopular,
       isActive: values.isActive,
     };
-    const ok = await onSubmit(plan._id, payload);
+    const ok = await onSubmit(plan.id, payload);
     if (ok) onOpenChange(false);
   }
 

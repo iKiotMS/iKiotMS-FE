@@ -9,7 +9,7 @@ export interface TicketMessage {
 }
 
 export interface Ticket {
-  _id: string;
+  id: string;
   ticketId: string;
   tenantId: string;
   tenantName: string;

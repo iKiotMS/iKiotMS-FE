@@ -124,7 +124,7 @@ export function NotificationBell({
           ) : (
             items.map((item) => (
               <div
-                key={item._id}
+                key={item.id}
                 className={cn(
                   "group relative flex w-full flex-col gap-1 border-b px-4 py-3 text-left transition-colors hover:bg-muted/50",
                   !item.isRead && "bg-muted/30",
@@ -132,7 +132,7 @@ export function NotificationBell({
               >
                 <button
                   onClick={() =>
-                    handleClick(item._id, item.link, item.referenceId)
+                    handleClick(item.id, item.link, item.referenceId)
                   }
                   className="flex w-full flex-col gap-1 text-left cursor-pointer"
                 >
@@ -153,9 +153,9 @@ export function NotificationBell({
                   </span>
                 </button>
 
-                {/* Delete button — shows on row hover */}
+                {/* Delete button - shows on row hover */}
                 <button
-                  onClick={(e) => handleDelete(e, item._id)}
+                  onClick={(e) => handleDelete(e, item.id)}
                   className="absolute right-2 top-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                   title="Xóa thông báo này"
                 >

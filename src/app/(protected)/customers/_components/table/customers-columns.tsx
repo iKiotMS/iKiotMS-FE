@@ -82,7 +82,7 @@ export const customersColumns: ColumnDef<Customer>[] = [
       return (
         <div className="flex flex-col">
           <span className="font-medium">{customer.name}</span>
-          <span className="text-xs text-muted-foreground">{customer.phone || '—'}</span>
+          <span className="text-xs text-muted-foreground">{customer.phone || '-'}</span>
         </div>
       )
     },
@@ -106,7 +106,7 @@ export const customersColumns: ColumnDef<Customer>[] = [
     header: 'Địa chỉ',
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground line-clamp-1 max-w-xs">
-        {row.getValue('address') || '—'}
+        {row.getValue('address') || '-'}
       </span>
     ),
   },

@@ -23,7 +23,7 @@ export interface StockMovementDetail {
 }
 
 export interface StockMovement {
-  _id: string;
+  id: string;
   tenantId: string;
   movementType: MovementType;
   status: MovementStatus;
@@ -86,7 +86,7 @@ export interface CreateAdjustPayload {
   note?: string;
   details: {
     productItemId: string;
-    /** Tồn thực tế sau kiểm kê — BE tự snapshot quantity hệ thống */
+    /** Tồn thực tế sau kiểm kê - BE tự snapshot quantity hệ thống */
     receivedQuantity: number;
     note?: string;
   }[];
@@ -125,21 +125,21 @@ export interface StockMovementQueryParams {
 }
 
 export interface StockMovementSupplierOption {
-  _id: string;
+  id: string;
   name: string;
 }
 
 export interface StockMovementLocationOption {
-  _id: string;
+  id: string;
   name: string;
   type: LocationType;
 }
 
 export interface StockMovementProductItemOption {
-  _id: string;
+  id: string;
   name: string;
   sku: string;
-  /** Product parent id — dùng để tải suppliers khi cần */
+  /** Product parent id - dùng để tải suppliers khi cần */
   productId?: string;
   costPrice?: number;
   retailPrice?: number;

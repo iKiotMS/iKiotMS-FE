@@ -40,7 +40,7 @@ import {
 } from "@/components/sidebar/constants/role-permissions";
 
 const formatDate = (iso?: string) => {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(
     new Date(iso),
   );
@@ -123,7 +123,7 @@ export function ProductsItemDetailSheet({
   const supplierNames =
     item.suppliers && item.suppliers.length > 0
       ? item.suppliers.map((s) => s.supplierName).join(", ")
-      : "—";
+      : "-";
 
   function resolveLocationName(
     locationType: string,
@@ -193,7 +193,7 @@ export function ProductsItemDetailSheet({
                   <div className="px-3">
                     <InfoRow label="Mã vạch">
                       <span className="font-mono text-xs">
-                        {item.barcode || "—"}
+                        {item.barcode || "-"}
                       </span>
                     </InfoRow>
                   </div>
@@ -264,7 +264,7 @@ export function ProductsItemDetailSheet({
                 </InfoRow>
               </div>
               <div className="px-4">
-                <InfoRow label="VAT">{item.VAT ?? 0}%</InfoRow>
+                <InfoRow label="VAT">{item.vat ?? 0}%</InfoRow>
               </div>
             </Section>
 

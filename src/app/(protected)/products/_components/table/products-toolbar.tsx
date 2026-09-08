@@ -44,7 +44,7 @@ export function ProductsToolbar({ table }: ProductsToolbarProps) {
           ? null
           : typeof c.parentId === 'string'
             ? c.parentId
-            : (c.parentId as { _id: string })._id,
+            : (c.parentId as { id: string }).id,
       })),
     ],
     [categories],

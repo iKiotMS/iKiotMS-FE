@@ -34,7 +34,7 @@ interface ShiftTemplateListResponse {
   pagination: {
     total: number;
     page: number;
-    recordPerPage: number;
+    limit: number;
     totalPages: number;
   };
 }
@@ -69,12 +69,12 @@ function mapListResponse(
     scope,
   );
   const pagination = raw.pagination;
-  const recordPerPage = pagination?.recordPerPage ?? mapped.length;
+  const limit = pagination?.limit ?? mapped.length;
   const total = pagination?.total ?? mapped.length;
   const totalPages =
     pagination?.totalPages ??
-    pagination?.totalPage ??
-    Math.max(1, Math.ceil(total / (recordPerPage || 1)));
+    pagination?.totalPages ??
+    Math.max(1, Math.ceil(total / (limit || 1)));
 
   return {
     data: mapped,
@@ -105,7 +105,7 @@ function normalizeBulkUserId(
 export const shiftTemplateApi = {
   getList: async (params?: {
     page?: number;
-    recordPerPage?: number;
+    limit?: number;
     name?: string;
   }): Promise<ShiftTemplateListResponse> => {
     const response = await client.get<ShiftTemplateListResponse>(
@@ -178,31 +178,14 @@ export const workingScheduleApi = {
     scheduleId: string,
     userId: string,
   ): Promise<WorkingSchedule> => {
-    const response = await client.get<
-      ApiWorkingSchedule & { user?: ApiWorkingSchedule["userId"] }
-    >(`/working-schedules/${scheduleId}/users/${userId}`);
+    // This endpoint answers one person's slice of the shift: `user` instead of
+    // `assignedUsers`. The mapper reads either, so there is nothing to reshape here -
+    // there used to be a block that moved `user` into the (never-sent) `userId` key.
+    const response = await client.get<ApiWorkingSchedule>(
+      `/working-schedules/${scheduleId}/users/${userId}`,
+    );
 
-    const payload = response.data;
-    const nestedUser =
-      payload && typeof payload === "object" && "user" in payload
-        ? (payload as { user?: ApiScheduleUser }).user
-        : undefined;
-
-    let raw: ApiWorkingSchedule;
-    if (nestedUser) {
-      const { user, ...scheduleData } = payload as ApiWorkingSchedule & {
-        user: ApiScheduleUser;
-      };
-      const users = Array.isArray(user) ? user : [user];
-      raw = {
-        ...scheduleData,
-        userId: users,
-      } as ApiWorkingSchedule;
-    } else {
-      raw = payload as ApiWorkingSchedule;
-    }
-
-    const scoped = applyWorkplaceScope(mapScheduleFromApi(raw));
+    const scoped = applyWorkplaceScope(mapScheduleFromApi(response.data));
     if (!scoped) {
       throw new Error("Bạn không có quyền xem lịch làm việc này");
     }

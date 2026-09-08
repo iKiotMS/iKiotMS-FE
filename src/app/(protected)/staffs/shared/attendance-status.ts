@@ -18,7 +18,7 @@ export const ATTENDANCE_STATUS_MAP: Record<
 
 export function getAttendanceStatusDisplay(status?: string) {
   if (!status) {
-    return { label: "—", variant: "secondary" as BadgeVariant };
+    return { label: "-", variant: "secondary" as BadgeVariant };
   }
   return (
     ATTENDANCE_STATUS_MAP[status] ?? {
@@ -29,7 +29,7 @@ export function getAttendanceStatusDisplay(status?: string) {
 }
 
 export function formatWorkedMinutes(minutes?: number | null): string {
-  if (minutes == null || Number.isNaN(minutes)) return "—";
+  if (minutes == null || Number.isNaN(minutes)) return "-";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m} phút`;
@@ -75,7 +75,7 @@ export function formatAttendanceLocation(
     verificationStatus?: string;
   } | null,
 ): string {
-  if (!location) return "—";
+  if (!location) return "-";
 
   const parts: string[] = [];
 
@@ -94,5 +94,5 @@ export function formatAttendanceLocation(
     parts.push(formatVerificationStatus(location.verificationStatus));
   }
 
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  return parts.length > 0 ? parts.join(" · ") : "-";
 }

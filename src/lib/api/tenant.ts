@@ -12,7 +12,7 @@ export interface TenantOwnerProfile {
 }
 
 export interface TenantOwner {
-  _id: string;
+  id: string;
   email: string;
   phoneNumber: string;
   role: string;
@@ -22,14 +22,14 @@ export interface TenantOwner {
 }
 
 export interface Plan {
-  _id: string;
+  id: string;
   planName: string;
   planCode: string;
   price: number;
 }
 
 export interface Subscription {
-  _id: string;
+  id: string;
   status: "TRIAL" | "ACTIVE" | "EXPIRED" | "PAST_DUE" | "CANCELLED";
   startDate: string;
   endDate: string;
@@ -37,7 +37,7 @@ export interface Subscription {
 }
 
 export interface Invoice {
-  _id: string;
+  id: string;
   amount: number;
   currency: string;
   status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
@@ -51,7 +51,7 @@ export interface Invoice {
 }
 
 export interface Tenant {
-  _id: string;
+  id: string;
   name: string;
   tenantOwnerId?: TenantOwner;
   status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
@@ -70,13 +70,27 @@ export interface Tenant {
   hasSepayKey?: boolean;
 }
 
+/**
+ * Every shop on the platform - **admin only** (`GET /tenants`, `AdminOnlyGuard`).
+ *
+ * This used to call `GET /tenant/me`, which answers the caller's *own* shop as a single
+ * object. The three admin screens that use this then mapped over it as though it were an
+ * array, so the tenant pickers on `/admin/notifications`, `/admin/sepay` and
+ * `/admin/users` have been empty. `/tenant/me` is `getMyTenant()` below.
+ */
 export async function listTenants(): Promise<Tenant[]> {
-  const response = await client.get("/tenant");
+  const response = await client.get<{ data: Tenant[] }>("/tenants");
+  return response.data.data ?? [];
+}
+
+/** The signed-in account's own shop (`GET /tenant/me`). */
+export async function getMyTenant(): Promise<Tenant> {
+  const response = await client.get<{ data: Tenant }>("/tenant/me");
   return response.data.data;
 }
 
 /**
- * SUPER_ADMIN: save the SePay webhook API key for a tenant after manually
+ * ADMIN: save the SePay webhook API key for a tenant after manually
  * linking their bank account in the SePay dashboard. Marks the tenant as linked.
  */
 export async function setSepayKey(

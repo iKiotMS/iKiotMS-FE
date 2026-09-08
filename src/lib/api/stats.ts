@@ -70,7 +70,7 @@ export interface Cashflow {
 }
 
 export interface CashflowTransaction {
-  _id: string;
+  id: string;
   flowType: 'INCOME' | 'EXPENSE';
   amount: number;
   paymentMethod: string | null;
@@ -121,7 +121,7 @@ export interface InventoryStats {
   lowStock: LowStockItem[];
 }
 
-// ── Platform-operator overview (SUPER_ADMIN) ──────────────────────────────────
+// ── Platform-operator overview (ADMIN) ──────────────────────────────────
 export interface AdminRevenuePoint {
   bucket: string;
   revenue: number;
@@ -143,7 +143,7 @@ export interface AdminTopTenant {
 }
 
 export interface AdminRecentInvoice {
-  _id: string;
+  id: string;
   amount: number;
   status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentReference?: string;

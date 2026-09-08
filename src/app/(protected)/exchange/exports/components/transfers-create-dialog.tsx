@@ -136,7 +136,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
   const applyProduct = (item: StockMovementProductItemOption) => {
     const current = form.getValues('details') ?? []
-    if (current.some((d) => d.productItemId === item._id)) {
+    if (current.some((d) => d.productItemId === item.id)) {
       toast.message('Hàng hóa này đã có trong danh sách')
       return
     }
@@ -146,7 +146,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     )
     const qty = 1
     const base = {
-      productItemId: item._id,
+      productItemId: item.id,
       quantity: qty,
       importPrice,
       note: '',
@@ -218,23 +218,23 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     () => filterLocationsByAuthScope(locations, effectiveScope),
     [locations, effectiveScope],
   )
-  const fromLocation = visibleFromLocations.find((l) => l._id === fromLocationId)
+  const fromLocation = visibleFromLocations.find((l) => l.id === fromLocationId)
 
   const visibleToLocations = useMemo(() => {
     if (!fromLocationId) return []
     if (isWarehouseActor) {
-      return locations.filter((l) => l.type === 'branch' && l._id !== fromLocationId)
+      return locations.filter((l) => l.type === 'branch' && l.id !== fromLocationId)
     }
     // BR chuyển hàng: chỉ CN khác. BR trả hàng: kho / CN khác (không gồm nơi gửi).
     if (isBranchActor) {
       if (branchRequestKind === 'transfer') {
         return locations.filter(
-          (l) => l.type === 'branch' && l._id !== fromLocationId,
+          (l) => l.type === 'branch' && l.id !== fromLocationId,
         )
       }
-      return locations.filter((l) => l._id !== fromLocationId)
+      return locations.filter((l) => l.id !== fromLocationId)
     }
-    return locations.filter((l) => l._id !== fromLocationId)
+    return locations.filter((l) => l.id !== fromLocationId)
   }, [
     locations,
     fromLocationId,
@@ -257,7 +257,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   useEffect(() => {
     if (!open) return
     const currentTo = form.getValues('toLocationId')
-    if (currentTo && !visibleToLocations.some((l) => l._id === currentTo)) {
+    if (currentTo && !visibleToLocations.some((l) => l.id === currentTo)) {
       form.setValue('toLocationId', '')
     }
   }, [open, visibleToLocations, form])
@@ -277,8 +277,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
   }
 
   async function onSubmit(data: TransferFormValues) {
-    const fromLoc = locations.find((l) => l._id === data.fromLocationId)
-    const toLoc = locations.find((l) => l._id === data.toLocationId)
+    const fromLoc = locations.find((l) => l.id === data.fromLocationId)
+    const toLoc = locations.find((l) => l.id === data.toLocationId)
     if (
       effectiveScope.locationId &&
       data.fromLocationId !== effectiveScope.locationId
@@ -384,7 +384,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                     </FormControl>
                     <SelectContent>
                       {visibleFromLocations.map((l) => (
-                        <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
+                        <SelectItem key={l.id} value={l.id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -403,7 +403,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                     </FormControl>
                     <SelectContent>
                       {visibleToLocations.map((l) => (
-                        <SelectItem key={l._id} value={l._id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
+                        <SelectItem key={l.id} value={l.id}>{l.name} ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -480,7 +480,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
               {fields.map((f, idx) => {
                 const rowProductId = details[idx]?.productItemId
                 const pickerProducts = products.filter(
-                  (p) => p._id === rowProductId || !usedIds.has(p._id),
+                  (p) => p.id === rowProductId || !usedIds.has(p.id),
                 )
                 return (
                   <div key={f.id} className="space-y-3 rounded-lg border bg-muted/30 p-3">
@@ -500,7 +500,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                                 metaMode="stock"
                                 onValueChange={(v) => {
                                   field.onChange(v)
-                                  const p = products.find((x) => x._id === v)
+                                  const p = products.find((x) => x.id === v)
                                   if (p?.costPrice) {
                                     form.setValue(
                                       `details.${idx}.importPrice`,
@@ -544,7 +544,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                         name={`details.${idx}.quantity`}
                         render={({ field }) => {
                           const selected = products.find(
-                            (p) => p._id === details[idx]?.productItemId,
+                            (p) => p.id === details[idx]?.productItemId,
                           )
                           const stockMax =
                             typeof selected?.stock === 'number'

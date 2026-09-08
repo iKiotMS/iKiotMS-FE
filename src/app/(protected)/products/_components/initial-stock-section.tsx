@@ -124,7 +124,7 @@ type Props = {
 }
 
 // Shared "Tồn kho ban đầu" picker used by both the product-create dialog (first
-// item) and the standalone product-item dialog (add variant) — branch and
+// item) and the standalone product-item dialog (add variant) - branch and
 // warehouse are picked independently, each with its own "select all".
 export function InitialStockSection({ branchOptions, warehouseOptions, value, onChange }: Props) {
   const hasLocations = branchOptions.length > 0 || warehouseOptions.length > 0

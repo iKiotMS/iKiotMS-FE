@@ -1,6 +1,6 @@
 import type { VariantProps } from "class-variance-authority";
 import { badgeVariants } from "@/components/ui/badge";
-import type { StaffRole, StaffStatus } from "@/types/staff";
+import type { StaffStatus } from "@/types/staff";
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 
@@ -13,12 +13,11 @@ export const STAFF_STATUS_MAP: Record<
   SUSPENDED: { label: "Tạm khóa", variant: "destructive" },
 };
 
-export const STAFF_ROLE_MAP: Record<StaffRole, { label: string; variant: BadgeVariant }> =
-  {
-    BRANCH_MANAGER: { label: "Quản lý chi nhánh", variant: "info" },
-    WAREHOUSE_MANAGER: { label: "Quản lý kho", variant: "secondary" },
-    STAFF: { label: "Nhân viên bán hàng", variant: "outline" },
-  };
+/**
+ * Roles are tenant-defined rows now, so there is no fixed set to give a colour to. Every
+ * role badge uses the same neutral variant and shows the role's own name.
+ */
+export const STAFF_ROLE_BADGE_VARIANT: BadgeVariant = "outline";
 
 export function getStaffStatusDisplay(status: StaffStatus) {
   return (

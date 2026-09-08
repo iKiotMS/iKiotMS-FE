@@ -52,7 +52,7 @@ export function UsersTable() {
       const searchParams = new URLSearchParams(window.location.search)
       const tenantId = searchParams.get("tenantId") || searchParams.get("id")
       if (tenantId) {
-        const index = tenants.findIndex((t) => t._id === tenantId)
+        const index = tenants.findIndex((t) => t.id === tenantId)
         if (index !== -1) {
           const page = Math.floor(index / pageSize) + 1
           setCurrentPage(page)
@@ -73,7 +73,7 @@ export function UsersTable() {
         .filter(Boolean)
         .join(" ")
         .trim()
-      const searchStr = `${ownerName} ${tenant.tenantOwnerId?.email || ""} ${tenant.name || ""} ${tenant._id}`.toLowerCase()
+      const searchStr = `${ownerName} ${tenant.tenantOwnerId?.email || ""} ${tenant.name || ""} ${tenant.id}`.toLowerCase()
       if (globalFilter && !searchStr.includes(globalFilter.toLowerCase())) {
         return false
       }
@@ -141,7 +141,7 @@ export function UsersTable() {
               </TableRow>
             ) : (
               paginatedTenants.map((tenant) => (
-                <UsersRow key={tenant._id} tenant={tenant} onRefresh={fetchTenants} />
+                <UsersRow key={tenant.id} tenant={tenant} onRefresh={fetchTenants} />
               ))
             )}
           </TableBody>

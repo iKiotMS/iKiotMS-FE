@@ -253,16 +253,14 @@ export function useAccountSettings() {
 
       await updateMe({
         email: data.email,
-        profile: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          avatarUrl: finalAvatarUrl || undefined,
-          address: data.address || undefined,
-          gender: data.gender,
-          dob: data.dob ? new Date(data.dob).toISOString() : undefined,
-          taxNumber: data.taxNumber || undefined,
-          identificationId: data.identificationId || undefined,
-        },
+        firstName: data.firstName,
+        lastName: data.lastName,
+        avatarUrl: finalAvatarUrl || undefined,
+        address: data.address || undefined,
+        gender: data.gender,
+        dob: data.dob ? new Date(data.dob).toISOString() : undefined,
+        taxNumber: data.taxNumber || undefined,
+        identificationId: data.identificationId || undefined,
       })
 
       toast.success("Cập nhật thông tin tài khoản thành công!")

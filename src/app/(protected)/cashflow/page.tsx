@@ -199,7 +199,7 @@ export default function CashflowPage() {
                 rows.map((tx) => {
                   const isIncome = tx.flowType === 'INCOME'
                   return (
-                    <TableRow key={tx._id}>
+                    <TableRow key={tx.id}>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                         {formatDateTime(tx.createdAt)}
                       </TableCell>
@@ -209,10 +209,10 @@ export default function CashflowPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-[280px] truncate">
-                        {tx.description || tx.supplierName || '—'}
+                        {tx.description || tx.supplierName || '-'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {tx.paymentReference || '—'}
+                        {tx.paymentReference || '-'}
                       </TableCell>
                       <TableCell className="text-sm">
                         {tx.locationName ? (
@@ -225,13 +225,13 @@ export default function CashflowPage() {
                             )}
                           </span>
                         ) : (
-                          '—'
+                          '-'
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
                         {tx.paymentMethod
                           ? PAYMENT_METHOD_LABELS[tx.paymentMethod] || tx.paymentMethod
-                          : '—'}
+                          : '-'}
                       </TableCell>
                       <TableCell
                         className={`text-right font-semibold whitespace-nowrap ${

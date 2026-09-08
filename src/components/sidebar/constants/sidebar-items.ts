@@ -49,6 +49,26 @@ export const sidebarItems = {
 
     ],
   },
+  /**
+   * Bản dành cho chủ cửa hàng: giống `nhanVien` cộng thêm "Phân quyền".
+   *
+   * Trang đó gác bằng `canManageRoles` (bản sao của `OwnerOrAdminGuard` ở backend), mà
+   * `nhanVien` thì dùng chung cho cả nhân viên thường - hiện link cho họ chỉ để họ bấm
+   * vào và gặp màn hình từ chối.
+   */
+  nhanVienChuCuaHang: {
+    title: "Nhân viên",
+    url: "#",
+    icon: Users,
+    items: [
+      { title: "Danh sách", url: "/staffs" },
+      { title: "Lịch làm", url: "/staffs/schedule" },
+      { title: "Nghỉ phép", url: "/staffs/schedule/leave-requests" },
+      { title: "Ngày lễ", url: "/staffs/holidays" },
+      { title: "Bảng lương", url: "/staffs/payroll" },
+      { title: "Phân quyền", url: "/staffs/roles" },
+    ],
+  },
   luong: {
     title: "Lương của tôi",
     url: "/staffs/payroll/my-payslips",
@@ -109,7 +129,7 @@ export const sidebarItems = {
     icon: Ticket,
   },
 
-  // SUPER_ADMIN Quản lý
+  // ADMIN Quản lý
   adminDashboard: {
     title: "Dashboard",
     url: "/admin/dashboard",
@@ -156,7 +176,7 @@ export const sidebarItems = {
     icon: LifeBuoy,
   },
 
-  // SUPER_ADMIN Cài đặt
+  // ADMIN Cài đặt
   cauHinhHeThong: {
     title: "Cấu hình hệ thống",
     url: "/admin/settings",

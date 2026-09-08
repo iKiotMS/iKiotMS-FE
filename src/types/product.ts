@@ -2,13 +2,13 @@ export type ProductStatus = "ACTIVE" | "INACTIVE" | "DISCONTINUED";
 export type LocationType = "branch" | "warehouse";
 
 export interface ProductImage {
-  _id?: string;
+  id?: string;
   url: string;
   isThumbnail: boolean;
 }
 
 export interface ProductDetail {
-  _id?: string;
+  id?: string;
   name: string;
   value: string;
 }
@@ -21,7 +21,7 @@ export interface StockDetail {
 }
 
 // Populated subset of Supplier as returned on ProductItem.suppliers
-// (BE populates only these fields — see ProductService.getProductById/addSupplierToItem).
+// (BE populates only these fields - see ProductService.getProductById/addSupplierToItem).
 export interface ProductItemSupplier {
   id: string;
   supplierName: string;
@@ -40,7 +40,7 @@ export interface ProductItem {
   description?: string;
   retailPrice: number;
   costPrice: number;
-  VAT?: number;
+  vat?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
   productDetails?: ProductDetail[];
@@ -105,7 +105,7 @@ export interface ProductSearchParams {
   limit?: number;
 }
 
-// GET /products/items — flat SKU list for pickers (e.g. promotion product-scope selector).
+// GET /products/items - flat SKU list for pickers (e.g. promotion product-scope selector).
 // Unlike Product.items, this doesn't require fetching every product's detail.
 export interface ProductItemListEntry {
   id: string;
@@ -118,7 +118,7 @@ export interface ProductItemListEntry {
 export interface ProductItemListParams {
   limit?: number;
   search?: string;
-  // Comma-separated branch IDs — scopes results to items stocked at one of these branches.
+  // Comma-separated branch IDs - scopes results to items stocked at one of these branches.
   branchIds?: string;
 }
 
@@ -135,7 +135,7 @@ export interface ProductItemCreatePayload {
   description?: string;
   retailPrice: number;
   costPrice: number;
-  VAT?: number;
+  vat?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
   productDetails?: ProductDetail[];
@@ -150,7 +150,7 @@ export interface ProductItemUpdatePayload {
   description?: string;
   retailPrice?: number;
   costPrice?: number;
-  VAT?: number;
+  vat?: number;
   warrantyPeriod?: string;
   images?: ProductImage[];
   productDetails?: ProductDetail[];

@@ -20,11 +20,11 @@ export function UsersRow({ tenant, onRefresh }: UsersRowProps) {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search)
       const tenantId = searchParams.get("tenantId") || searchParams.get("id")
-      if (tenantId === tenant._id) {
+      if (tenantId === tenant.id) {
         setIsExpanded(true)
       }
     }
-  }, [tenant._id])
+  }, [tenant.id])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -78,7 +78,7 @@ export function UsersRow({ tenant, onRefresh }: UsersRowProps) {
         <TableCell>
           <div className="flex flex-col">
             <span className="font-medium text-sm">{tenant.name || "N/A"}</span>
-            <span className="text-2xs text-muted-foreground font-normal">{tenant._id}</span>
+            <span className="text-2xs text-muted-foreground font-normal">{tenant.id}</span>
           </div>
         </TableCell>
         <TableCell>{getPlanBadge(tenant.activeSubscription?.planId?.planCode)}</TableCell>

@@ -1,4 +1,4 @@
-import { getAccessToken, getCachedUser } from "@/lib/auth";
+import { getCachedUser } from "@/lib/auth";
 import { parseLocationKey } from "@/lib/location-key";
 import { useAuthStore } from "@/store/auth-store";
 import type { StockMovementLocationOption } from "@/types/stock-movement";
@@ -33,48 +33,38 @@ export function filterLocationsByAuthScope(
     (scope.locationType === "warehouse" || scope.locationType === "branch")
   ) {
     return locations.filter(
-      (l) => l._id === scope.locationId && l.type === scope.locationType,
+      (l) => l.id === scope.locationId && l.type === scope.locationType,
     );
   }
-  const { role, warehouseId, branchId } = scope;
-  if (role === "WAREHOUSE_MANAGER" && warehouseId) {
-    return locations.filter((l) => l._id === warehouseId);
-  }
-  if (role === "BRANCH_MANAGER" && branchId) {
-    return locations.filter((l) => l._id === branchId);
-  }
+  // A posting is what narrows the list now. The old test also asked for the
+  // WAREHOUSE_MANAGER / BRANCH_MANAGER role, which no account carries any more - so this
+  // fell through and offered every location in the shop to everyone.
+  const { warehouseId, branchId } = scope;
+  if (warehouseId) return locations.filter((l) => l.id === warehouseId);
+  if (branchId) return locations.filter((l) => l.id === branchId);
   return locations;
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(
-      normalized.length + ((4 - (normalized.length % 4)) % 4),
-      "=",
-    );
-    return JSON.parse(atob(padded)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-/** Đọc role / branch / warehouse từ JWT — chỉ dùng trong module stock movement. */
+/**
+ * Who the caller is and where they work - read from the cached `/auth/me` row.
+ *
+ * It used to come out of the access token. The rewritten backend signs **only** `{ sub }`
+ * (see `jwt.strategy.ts`), so `branchId`/`warehouseId`/`role` were all `undefined` and
+ * every scope built on them silently widened to "no restriction". `/auth/me` returns all
+ * three, and `AuthGuard` refreshes it on mount, so the cached user is both available and
+ * current.
+ */
 export function getAuthScope(): AuthScope {
-  const token = getAccessToken();
-  const payload = token ? decodeJwtPayload(token) : null;
   const cached = getCachedUser();
   const asString = (value: unknown) =>
     typeof value === "string" && value.trim() ? value : undefined;
 
   return {
-    userId: asString(payload?.userId),
-    tenantId: asString(payload?.tenantId),
-    role: asString(payload?.role) ?? cached?.role,
-    branchId: asString(payload?.branchId),
-    warehouseId: asString(payload?.warehouseId),
+    userId: asString(cached?.id),
+    tenantId: asString(cached?.tenantId),
+    role: cached?.role,
+    branchId: asString(cached?.branchId),
+    warehouseId: asString(cached?.warehouseId),
   };
 }
 
@@ -92,7 +82,7 @@ export function getEffectiveLocationScope(
       ? useAuthStore.getState().locationKey
       : "all");
 
-  if (auth.role === "WAREHOUSE_MANAGER" && auth.warehouseId) {
+  if (auth.warehouseId) {
     return {
       ...auth,
       locationId: auth.warehouseId,
@@ -100,7 +90,7 @@ export function getEffectiveLocationScope(
       lockedBySwitcher: false,
     };
   }
-  if (auth.role === "BRANCH_MANAGER" && auth.branchId) {
+  if (auth.branchId) {
     return {
       ...auth,
       locationId: auth.branchId,

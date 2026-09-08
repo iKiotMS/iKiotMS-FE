@@ -65,7 +65,7 @@ export function MovementDetailsTable({
   showReceivedColumn: boolean;
   openingDetails: OpeningDetailRow[];
   openingProducts: StockMovementProductItemOption[];
-  /** Catalog tenant — enrich hiển thị (IMPORT); không dùng làm list dropdown NCC. */
+  /** Catalog tenant - enrich hiển thị (IMPORT); không dùng làm list dropdown NCC. */
   catalogProducts?: StockMovementProductItemOption[];
   openingRowErrors: OpeningRowFieldErrors[];
   updateOpeningRow: (idx: number, patch: Partial<OpeningDetailRow>) => void;
@@ -84,8 +84,8 @@ export function MovementDetailsTable({
 
   const productById = useMemo(() => {
     const map = new Map<string, StockMovementProductItemOption>();
-    for (const p of catalogProducts) map.set(p._id, p);
-    for (const p of openingProducts) map.set(p._id, p);
+    for (const p of catalogProducts) map.set(p.id, p);
+    for (const p of openingProducts) map.set(p.id, p);
     return map;
   }, [catalogProducts, openingProducts]);
 
@@ -167,7 +167,7 @@ export function MovementDetailsTable({
                   const fallback =
                     !selected && item.productItemId
                       ? {
-                          _id: item.productItemId,
+                          id: item.productItemId,
                           name: fromDetail?.productName || "Đang tải...",
                           sku: fromDetail?.sku || "",
                         }
@@ -177,7 +177,7 @@ export function MovementDetailsTable({
                   const lineTotal = (item.importPrice ?? 0) * item.quantity;
                   const pickerProducts = openingProducts.filter(
                     (p) =>
-                      p._id === item.productItemId || !usedIds.has(p._id),
+                      p.id === item.productItemId || !usedIds.has(p.id),
                   );
                   const selectedProduct = productById.get(item.productItemId);
                   const stockMax =
@@ -200,7 +200,7 @@ export function MovementDetailsTable({
                           value={item.productItemId}
                           displayProduct={
                             display &&
-                            !pickerProducts.some((p) => p._id === display._id)
+                            !pickerProducts.some((p) => p.id === display.id)
                               ? display
                               : undefined
                           }
@@ -591,7 +591,7 @@ export function MovementActionBar({
         </div>
       )}
 
-      {/* IN_TRANSIT: người gửi (fromLocation) được hủy — hoàn tồn do BE. */}
+      {/* IN_TRANSIT: người gửi (fromLocation) được hủy - hoàn tồn do BE. */}
       {isInTransit && canCancel && !canReceiveTransit && (
         <div className="flex gap-3">
           <Button

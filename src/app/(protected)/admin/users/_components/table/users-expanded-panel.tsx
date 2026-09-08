@@ -59,12 +59,12 @@ export function UsersExpandedPanel({
     setIsSaving(true)
     try {
       if (editStatus !== tenant.status) {
-        await client.put(`/tenant/${tenant._id}`, { status: editStatus })
+        await client.put(`/tenant/${tenant.id}`, { status: editStatus })
       }
 
       const currentPlan = tenant.activeSubscription?.planId?.planCode || "TRIAL"
       if (editPlan !== currentPlan) {
-        await client.post(`/subscription/upgrade/${tenant._id}`, { planCode: editPlan })
+        await client.post(`/subscription/upgrade/${tenant.id}`, { planCode: editPlan })
       }
 
       toast.success("Cập nhật thông tin thành công!")
@@ -230,7 +230,7 @@ export function UsersExpandedPanel({
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="text-muted-foreground">Mã cửa hàng (Domain ID):</span>
-                <span className="font-semibold text-foreground">{tenant._id}</span>
+                <span className="font-semibold text-foreground">{tenant.id}</span>
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="text-muted-foreground">Số điện thoại liên hệ:</span>
@@ -308,14 +308,14 @@ export function UsersExpandedPanel({
                     </TableRow>
                   ) : (
                     tenant.invoices.map((txn) => (
-                      <TableRow key={txn._id} className="text-xs hover:bg-muted/30">
-                        <TableCell className="font-semibold text-2xs">{txn._id}</TableCell>
+                      <TableRow key={txn.id} className="text-xs hover:bg-muted/30">
+                        <TableCell className="font-semibold text-2xs">{txn.id}</TableCell>
                         <TableCell>{getPlanBadge(txn.planId?.planCode || "Trial")}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {txn.billingPeriodStart ? `${new Date(txn.billingPeriodStart).toLocaleDateString("vi-VN")} - ${new Date(txn.billingPeriodEnd).toLocaleDateString("vi-VN")}` : "N/A"}
                         </TableCell>
                         <TableCell className="font-semibold text-primary">{txn.amount.toLocaleString()}đ</TableCell>
-                        <TableCell className="font-mono text-2xs text-muted-foreground">{txn.paymentReference || "—"}</TableCell>
+                        <TableCell className="font-mono text-2xs text-muted-foreground">{txn.paymentReference || "-"}</TableCell>
                         <TableCell className="text-muted-foreground">{txn.createdAt ? new Date(txn.createdAt).toLocaleDateString("vi-VN") : "N/A"}</TableCell>
                         <TableCell>
                           {txn.status === "PAID" && <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0" variant="outline">Thành công</Badge>}

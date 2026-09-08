@@ -14,7 +14,7 @@ export function UnauthorizedPage() {
       router.push("/sign-in");
       return;
     }
-    if (user.role === "SUPER_ADMIN") {
+    if (user.role === "ADMIN") {
       router.push("/admin/dashboard");
     } else if (user.role === "STAFF") {
       router.push("/check-out");

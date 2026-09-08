@@ -76,14 +76,14 @@ export const suppliersColumns: ColumnDef<Supplier>[] = [
     accessorKey: 'contactName',
     header: 'Người liên hệ',
     cell: ({ row }) => (
-      <span className="text-sm">{row.getValue('contactName') || '—'}</span>
+      <span className="text-sm">{row.getValue('contactName') || '-'}</span>
     ),
   },
   {
     accessorKey: 'phoneNumber',
     header: 'Số điện thoại',
     cell: ({ row }) => (
-      <span className="text-sm tabular-nums">{row.getValue('phoneNumber') || '—'}</span>
+      <span className="text-sm tabular-nums">{row.getValue('phoneNumber') || '-'}</span>
     ),
   },
   {

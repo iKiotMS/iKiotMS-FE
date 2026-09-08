@@ -148,7 +148,7 @@ export function SignupForm2({
 
   // First step: validate the form, then send the OTP (or bypass in dev).
   const onSubmit = async (data: SignupInput) => {
-    // Pre-check uniqueness first — stop early (and keep the SMS) if taken.
+    // Pre-check uniqueness first - stop early (and keep the SMS) if taken.
     const isAvailable = await checkAvailability(data);
     if (!isAvailable) return;
 

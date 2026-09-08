@@ -38,7 +38,7 @@ export const payrollApi = {
   },
 
   // --- Paysheets ---
-  getPaysheets: async (params?: { page?: number; recordPerPage?: number; name?: string }): Promise<{
+  getPaysheets: async (params?: { page?: number; limit?: number; name?: string }): Promise<{
     data: PaySheet[]
     total: number
     page: number
@@ -47,7 +47,7 @@ export const payrollApi = {
     const res = await client.get<{
       success: boolean
       data: PaySheet[]
-      pagination?: { total: number; page: number; recordPerPage: number; totalPages: number }
+      pagination?: { total: number; page: number; limit: number; totalPages: number }
     }>('/payroll/paysheets', { params })
     return {
       data: res.data.data || [],

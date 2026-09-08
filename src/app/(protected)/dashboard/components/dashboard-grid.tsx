@@ -13,7 +13,7 @@ import { RevenueBreakdown } from './revenue-breakdown'
 export function DashboardGrid() {
   const { isWarehouse } = useDashboard()
 
-  // A warehouse has no sales — show only the widgets that apply to it.
+  // A warehouse has no sales - show only the widgets that apply to it.
   if (isWarehouse) {
     return (
       <div className="@container/main space-y-6">

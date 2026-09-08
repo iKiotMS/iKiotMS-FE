@@ -31,10 +31,10 @@ import {
   getStaffInitials,
 } from "@/app/(protected)/staffs/shared/staff-format";
 import {
-  STAFF_ROLE_MAP,
+  STAFF_ROLE_BADGE_VARIANT,
   getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
-import { getSessionBranchId, getSessionRole } from "@/lib/auth";
+import { getSessionRole } from "@/lib/auth";
 import {
   canAssignBranchManager,
   canAssignWarehouseManager,
@@ -87,7 +87,6 @@ export function StaffsExpandedPanel({
   const { setOpen, setCurrentRow, openAssignBranchManager, openAssignWarehouseManager } =
     useStaffs();
   const userRole = getSessionRole();
-  const requesterBranchId = getSessionBranchId();
   const [paySheetDetail, setPaySheetDetail] = useState<PaySheetDetail | null>(
     null,
   );
@@ -95,17 +94,13 @@ export function StaffsExpandedPanel({
 
   const showDelete =
     canDeleteStaff(userRole) &&
-    canDeleteStaffRow(userRole, staff, requesterBranchId);
+    canDeleteStaffRow(userRole);
   const showEdit = canUpdateStaff(userRole);
   const showAccountActions = canManageStaffAccount(userRole);
   const showAssignBranchManager =
-    canAssignBranchManager(userRole) &&
-    staff.role === "BRANCH_MANAGER" &&
-    Boolean(staff.branchId);
+    canAssignBranchManager(userRole) && Boolean(staff.branchId);
   const showAssignWarehouseManager =
-    canAssignWarehouseManager(userRole) &&
-    staff.role === "WAREHOUSE_MANAGER" &&
-    Boolean(staff.warehouseId);
+    canAssignWarehouseManager(userRole) && Boolean(staff.warehouseId);
 
   useEffect(() => {
     if (!isExpanded || !staff.paySheetId) {
@@ -136,15 +131,12 @@ export function StaffsExpandedPanel({
   if (!isExpanded) return null;
 
   const status = getStaffStatusDisplay(staff.status);
-  const role = STAFF_ROLE_MAP[staff.role] ?? {
-    label: staff.role,
-    variant: "outline" as const,
-  };
+  const role = { label: staff.roleName, variant: STAFF_ROLE_BADGE_VARIANT };
   const canActivate = showAccountActions && staff.status !== "ACTIVE";
   const canDeactivate =
     showAccountActions &&
     staff.status === "ACTIVE" &&
-    canDeactivateStaffRow(userRole, staff, requesterBranchId);
+    canDeactivateStaffRow(userRole);
   const canChangePassword =
     showAccountActions && staff.status === "ACTIVE";
 
@@ -235,7 +227,7 @@ export function StaffsExpandedPanel({
             icon={<Warehouse className="size-4" />}
             label="Kho"
             value={
-              staff.warehouseName && staff.warehouseName !== "—"
+              staff.warehouseName && staff.warehouseName !== "-"
                 ? staff.warehouseName
                 : "Kho hàng"
             }
@@ -308,7 +300,7 @@ export function StaffsExpandedPanel({
         <InfoItem
           icon={<User className="size-4" />}
           label="Mã nhân viên"
-          value={`#${staff._id.slice(-6).toUpperCase()}`}
+          value={`#${staff.id.slice(-6).toUpperCase()}`}
         />
       </div>
 

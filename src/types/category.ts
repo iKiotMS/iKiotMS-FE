@@ -1,14 +1,13 @@
 // [Domain – Types]
 export interface CategoryBreadcrumb {
-  _id: string
+  id: string
   name: string
 }
 
 export interface Category {
   id: string
-  _id?: string
   name: string
-  parentId?: string | { _id: string; name: string } | null
+  parentId?: string | { id: string; name: string } | null
   description?: string
   imageUrl?: string
   breadcrumbs?: CategoryBreadcrumb[]

@@ -47,7 +47,7 @@ function ownerLabel(tenant: Tenant): string {
     .filter(Boolean)
     .join(" ")
     .trim();
-  return name || owner?.email || owner?.phoneNumber || "—";
+  return name || owner?.email || owner?.phoneNumber || "-";
 }
 
 function hasBankInfo(tenant: Tenant): boolean {
@@ -153,14 +153,14 @@ export default function AdminSepayPage() {
     }
     setIsSaving(true);
     try {
-      await setSepayKey(dialogTenant._id, key);
+      await setSepayKey(dialogTenant.id, key);
       toast.success(
         `Đã liên kết SePay cho cửa hàng "${dialogTenant.name}" thành công!`,
       );
       // Optimistically mark as linked, then refetch for source of truth.
       setTenants((prev) =>
         prev.map((t) =>
-          t._id === dialogTenant._id ? { ...t, hasSepayKey: true } : t,
+          t.id === dialogTenant.id ? { ...t, hasSepayKey: true } : t,
         ),
       );
       setDialogTenant(null);
@@ -264,10 +264,10 @@ export default function AdminSepayPage() {
                 const bank = hasBankInfo(tenant);
                 const linked = Boolean(tenant.hasSepayKey);
                 return (
-                  <TableRow key={tenant._id} className="align-top">
+                  <TableRow key={tenant.id} className="align-top">
                     {/* Store */}
                     <TableCell>
-                      <div className="font-medium">{tenant.name || "—"}</div>
+                      <div className="font-medium">{tenant.name || "-"}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         {ownerLabel(tenant)}
                       </div>
@@ -278,13 +278,13 @@ export default function AdminSepayPage() {
                       {bank ? (
                         <div className="text-xs space-y-0.5">
                           <div className="font-semibold">
-                            {tenant.banking?.bankName || "—"}
+                            {tenant.banking?.bankName || "-"}
                           </div>
                           <div className="text-muted-foreground font-mono">
-                            {tenant.banking?.accountNumber || "—"}
+                            {tenant.banking?.accountNumber || "-"}
                           </div>
                           <div className="text-muted-foreground">
-                            {tenant.banking?.accountName || "—"}
+                            {tenant.banking?.accountName || "-"}
                           </div>
                         </div>
                       ) : (

@@ -52,7 +52,7 @@ interface InvoiceState {
   paymentMethod: "CASH" | "SEPAY";
   customerPay: number;
   note: string;
-  /** Promotions manually assigned via the "Gán giảm giá" picker — at most 2, and if 2, both stackable. */
+  /** Promotions manually assigned via the "Gán giảm giá" picker - at most 2, and if 2, both stackable. */
   selectedPromotionIds: string[];
 }
 
@@ -112,7 +112,7 @@ export default function CheckOutPage() {
         return activeSwitcherItemId;
       }
     }
-    if (branches.length > 0) return branches[0]._id;
+    if (branches.length > 0) return branches[0].id;
     return "";
   };
 
@@ -153,7 +153,7 @@ export default function CheckOutPage() {
     );
   };
 
-  // Signature identifying which cart (items + customer) the active invoice has —
+  // Signature identifying which cart (items + customer) the active invoice has -
   // used both to key the promotion calculation and to feed the picker dialog.
   const cartSignature = useMemo(() => {
     if (activeInvoice.items.length === 0) return null;
@@ -163,7 +163,7 @@ export default function CheckOutPage() {
     return `${itemsKey}|${activeInvoice.selectedCustomer?.id ?? ""}`;
   }, [activeInvoice.items, activeInvoice.selectedCustomer]);
 
-  // Signature the current promotionResult is valid for — includes the selected promotion
+  // Signature the current promotionResult is valid for - includes the selected promotion
   // ids, so switching the selection (or clearing it) invalidates a stale result too.
   const promotionSignature = useMemo(() => {
     if (!cartSignature || activeInvoice.selectedPromotionIds.length === 0) return null;
@@ -173,7 +173,7 @@ export default function CheckOutPage() {
   // Recompute the discount for the active invoice's manually assigned promotion(s) whenever
   // the cart or the selection changes (debounced). If a previously eligible promotion no
   // longer qualifies (e.g. cart edited below its minOrderValue), the backend rejects the
-  // whole selection — drop it and let the user reassign.
+  // whole selection - drop it and let the user reassign.
   useEffect(() => {
     if (!promotionSignature) return;
 
@@ -373,7 +373,7 @@ export default function CheckOutPage() {
       return;
     }
 
-    // Snapshot of the cart the promotion preview was calculated for — captured now
+    // Snapshot of the cart the promotion preview was calculated for - captured now
     // because the invoice resets as soon as order creation succeeds below.
     const promotionToApply =
       hasPromotionApplied && activePromotionResult
@@ -409,29 +409,43 @@ export default function CheckOutPage() {
           : (subtotal * activeInvoice.discount) / 100;
     }
 
+    // What goes on the wire is deliberately narrower than what the receipt below prints.
+    // `POST /orders` computes the money itself: the total from the lines, and - when the
+    // sale carries promotions - the discount from the engine, which it then spreads across
+    // the lines. So the client names the promotions and nothing else.
+    //
+    // `discountType: "PROMOTION"` is now **rejected outright** (`@IsIn(['ORDER'])`, 400):
+    // sending `appliedPromotions` is what makes a sale a promotion sale, and asking the
+    // till to also declare a total it doesn't compute is how the screen and the stored
+    // order ended up able to disagree. `ORDER` - the cashier's own typed-in whole-order
+    // discount - is still sent, with its value.
+    //
+    // `grandTotal`, `items[].unitPrice` and `items[].productName` are gone for the same
+    // reason: the server prices from the catalogue. They were being dropped silently by
+    // `whitelist: true` anyway, which made the payload read as though the till set the
+    // price when it never did.
     const payload = {
       customerId: activeInvoice.selectedCustomer?.id,
       branchId: resolvedBranchId,
       paymentMethod: activeInvoice.paymentMethod,
       items: activeInvoice.items.map((item) => ({
         productItemId: item.productItemId,
-        productName: item.name,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
         discountAmount: item.discountAmount,
       })),
-      grandTotal,
       customerPay: activeInvoice.customerPay,
       note: activeInvoice.note,
-      discountType,
-      discountValue,
-      appliedPromotions,
+      ...(appliedPromotions
+        ? { appliedPromotions: appliedPromotions.map((p) => ({ promotionId: p.promotionId })) }
+        : discountType === "ORDER"
+          ? { discountType, discountValue }
+          : {}),
     };
 
     const buildReceipt = (createdOrder: any, orderId: string) => ({
       orderCode: createdOrder.paymentReference || `HD-${orderId.slice(-6).toUpperCase()}`,
       createdAt: createdOrder.createdAt || new Date().toISOString(),
-      branchName: branches.find((b) => b._id === resolvedBranchId)?.name || "Chi nhánh chính",
+      branchName: branches.find((b) => b.id === resolvedBranchId)?.name || "Chi nhánh chính",
       sellerName: getCachedUser()?.full_name || "Quản trị viên (Admin)",
       customer: activeInvoice.selectedCustomer,
       items: activeInvoice.items.map((item) => ({
@@ -459,10 +473,10 @@ export default function CheckOutPage() {
       loading: "Đang xử lý...",
       success: (response) => {
         const createdOrder = response.data.order;
-        const orderId = createdOrder.id || (createdOrder as any)._id || "";
+        const orderId = createdOrder.id || (createdOrder as any).id || "";
         const receipt = buildReceipt(createdOrder, orderId);
 
-        // Commit promotion usage/log now that the order exists — best-effort: the order
+        // Commit promotion usage/log now that the order exists - best-effort: the order
         // is already paid, so a logging failure here shouldn't block the checkout flow.
         if (promotionToApply && orderId) {
           promotionApi.apply({ ...promotionToApply, orderId }).catch((error) => {
@@ -666,7 +680,7 @@ export default function CheckOutPage() {
             setQrOrderData(null);
           }}
           onPaidOffline={({ customerPay, change }) => {
-            // Đơn đã chuyển sang tiền mặt — hóa đơn phải phản ánh đúng phương thức
+            // Đơn đã chuyển sang tiền mặt - hóa đơn phải phản ánh đúng phương thức
             setReceiptOrder({
               ...qrOrderData.receiptSnapshot,
               paymentMethod: "CASH",

@@ -178,7 +178,7 @@ export function AdjustmentsExpandedPanel({
     }
     await run(() =>
       handleUpdateDetails(
-        detail._id,
+        detail.id,
         rows.map((r) => ({
           productItemId: r.productItemId,
           receivedQuantity: r.receivedQuantity,
@@ -204,17 +204,17 @@ export function AdjustmentsExpandedPanel({
       return;
     }
 
-    // Doc: sửa nháp rồi duyệt — lưu editRows trước để BE duyệt đúng dữ liệu mới nhất.
+    // Doc: sửa nháp rồi duyệt - lưu editRows trước để BE duyệt đúng dữ liệu mới nhất.
     await run(async () => {
       await handleUpdateDetails(
-        detail._id,
+        detail.id,
         rows.map((r) => ({
           productItemId: r.productItemId,
           receivedQuantity: r.receivedQuantity,
           note: r.note?.trim() || undefined,
         })),
       );
-      await handleApprove(detail._id);
+      await handleApprove(detail.id);
     });
   };
 
@@ -235,8 +235,8 @@ export function AdjustmentsExpandedPanel({
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm animate-in fade-in-0 duration-200">
       <MovementDetailHeader
-        movementId={detail._id}
-        title={`Điều chỉnh tồn kho — ${detail.fromLocationName || "—"}`}
+        movementId={detail.id}
+        title={`Điều chỉnh tồn kho - ${detail.fromLocationName || "-"}`}
         subtitle={locLabel}
         status={detail.status}
         movementType={detail.movementType}
@@ -247,12 +247,12 @@ export function AdjustmentsExpandedPanel({
         <InfoItem
           icon={<Warehouse className="size-4" />}
           label="Kho / Chi nhánh"
-          value={`${detail.fromLocationName ?? "—"} (${locLabel})`}
+          value={`${detail.fromLocationName ?? "-"} (${locLabel})`}
         />
         <InfoItem
           icon={<User className="size-4" />}
           label="Người thực hiện"
-          value={detail.requestedByName || "—"}
+          value={detail.requestedByName || "-"}
         />
         <InfoItem
           icon={<CalendarDays className="size-4" />}
@@ -262,7 +262,7 @@ export function AdjustmentsExpandedPanel({
               ? format(new Date(detail.createdAt), "dd/MM/yyyy HH:mm", {
                   locale: vi,
                 })
-              : "—"
+              : "-"
           }
         />
       </div>
@@ -277,10 +277,10 @@ export function AdjustmentsExpandedPanel({
           }
           onPick={(item) => {
             setEditRows((prev) => {
-              if (prev.some((r) => r.productItemId === item._id)) return prev;
+              if (prev.some((r) => r.productItemId === item.id)) return prev;
               const emptyIdx = prev.findIndex((r) => !r.productItemId);
               const row = {
-                productItemId: item._id,
+                productItemId: item.id,
                 quantity: item.stock ?? 0,
                 receivedQuantity:
                   typeof item.stock === "number" ? item.stock : 0,
@@ -321,7 +321,7 @@ export function AdjustmentsExpandedPanel({
                   );
                   const pickerProducts = products.filter(
                     (p) =>
-                      p._id === row.productItemId || !usedIds.has(p._id),
+                      p.id === row.productItemId || !usedIds.has(p.id),
                   );
                   const diff = getAdjustQtyChange(
                     row.quantity,
@@ -336,7 +336,7 @@ export function AdjustmentsExpandedPanel({
                           metaMode="stock"
                           placeholder="Chọn mặt hàng"
                           onValueChange={(value) => {
-                            const p = products.find((x) => x._id === value);
+                            const p = products.find((x) => x.id === value);
                             setEditRows((prev) =>
                               prev.map((r, i) =>
                                 i === idx
@@ -418,7 +418,7 @@ export function AdjustmentsExpandedPanel({
                     item.receivedQuantity,
                   );
                   const product = products.find(
-                    (p) => p._id === item.productItemId,
+                    (p) => p.id === item.productItemId,
                   );
                   return (
                     <TableRow key={item.productItemId}>
@@ -440,7 +440,7 @@ export function AdjustmentsExpandedPanel({
                         <QtyChangeCell value={diff} />
                       </TableCell>
                       <TableCell className="max-w-[14rem] text-sm text-muted-foreground whitespace-pre-wrap break-words">
-                        {item.note || "—"}
+                        {item.note || "-"}
                       </TableCell>
                     </TableRow>
                   );
@@ -526,7 +526,7 @@ export function AdjustmentsExpandedPanel({
         confirmLabel="Huỷ phiếu"
         isLoading={isActionLoading}
         onConfirm={async () => {
-          await run(() => handleCancel(detail._id));
+          await run(() => handleCancel(detail.id));
           setCancelConfirmOpen(false);
         }}
       />

@@ -54,7 +54,7 @@ export function HolidaysMutateDialog({
     setError("");
     try {
       if (currentRow) {
-        await handleEdit(currentRow._id, { date, name: trimmedName });
+        await handleEdit(currentRow.id, { date, name: trimmedName });
       } else {
         await handleAdd({ date, name: trimmedName });
       }

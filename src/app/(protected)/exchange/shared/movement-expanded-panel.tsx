@@ -194,7 +194,7 @@ export function MovementExpandedPanel({
   const isReceiver = mode === "transfer" && canActAsToLocation;
 
   const canOpenDraft = mode === "transfer" && isDraft && isSender;
-  // Doc: IMPORT details — user at toLocation
+  // Doc: IMPORT details - user at toLocation
   const canEditOpening =
     mode === "import"
       ? detail.movementType === "IMPORT" && isPending && canActAsToLocation
@@ -264,7 +264,7 @@ export function MovementExpandedPanel({
       toast.error(err);
       return;
     }
-    await withRefresh(() => importActions.handleShip(detail._id));
+    await withRefresh(() => importActions.handleShip(detail.id));
   };
 
   const onImportSaveDetails = async (e: React.MouseEvent) => {
@@ -274,7 +274,7 @@ export function MovementExpandedPanel({
     if (!ok) return;
     await withRefresh(async () => {
       await importActions.handleUpdateDetails(
-        detail._id,
+        detail.id,
         payload.map((item) => ({
           productItemId: item.productItemId,
           quantity: item.quantity,
@@ -288,7 +288,7 @@ export function MovementExpandedPanel({
   const onTransferOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
-    void withRefresh(() => transferActions.handleOpen(detail._id));
+    void withRefresh(() => transferActions.handleOpen(detail.id));
   };
 
   const onTransferSaveFromOpening = (e: React.MouseEvent) => {
@@ -298,7 +298,7 @@ export function MovementExpandedPanel({
     if (!ok) return;
     const submitPayload = payload.filter((item) => item.productItemId);
     void withRefresh(() =>
-      transferActions.handleSubmitFromOpening(detail._id, submitPayload),
+      transferActions.handleSubmitFromOpening(detail.id, submitPayload),
     );
   };
 
@@ -309,14 +309,14 @@ export function MovementExpandedPanel({
     if (!ok) return;
     const submitPayload = payload.filter((item) => item.productItemId);
     void withRefresh(() =>
-      transferActions.handleShipFromOpening(detail._id, submitPayload),
+      transferActions.handleShipFromOpening(detail.id, submitPayload),
     );
   };
 
   const onTransferShip = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!transferActions) return;
-    void withRefresh(() => transferActions.handleShip(detail._id));
+    void withRefresh(() => transferActions.handleShip(detail.id));
   };
 
   const onReceive = async (e: React.MouseEvent) => {
@@ -334,7 +334,7 @@ export function MovementExpandedPanel({
       return;
     }
     await withRefresh(async () => {
-      await handleReceive(detail._id, payload);
+      await handleReceive(detail.id, payload);
       setShowReceiveForm(false);
       setReceivedQtys({});
     });
@@ -367,7 +367,7 @@ export function MovementExpandedPanel({
           throw new Error(err);
         }
         try {
-          await stockMovementApi.receive(detail._id, { details: payload });
+          await stockMovementApi.receive(detail.id, { details: payload });
         } catch (error) {
           toast.error(
             getStockMovementErrorMessage(error, "Không thể nhận hàng"),
@@ -409,7 +409,7 @@ export function MovementExpandedPanel({
         ? importActions?.handleCancel
         : transferActions?.handleCancel;
     if (!handleCancel) return;
-    await withRefresh(() => handleCancel(detail._id));
+    await withRefresh(() => handleCancel(detail.id));
     setCancelConfirmOpen(false);
   };
 
@@ -448,11 +448,11 @@ export function MovementExpandedPanel({
   const headerTitle =
     mode === "import"
       ? `Nhập từ ${detail.supplierName || "nhà cung cấp"}`
-      : `${detail.fromLocationName || labels?.fromColumnHeader || "—"} → ${detail.toLocationName || labels?.toColumnHeader || "—"}`;
+      : `${detail.fromLocationName || labels?.fromColumnHeader || "-"} → ${detail.toLocationName || labels?.toColumnHeader || "-"}`;
 
   const headerSubtitle =
     mode === "import"
-      ? `Nơi nhận: ${detail.toLocationName || "—"} · ${
+      ? `Nơi nhận: ${detail.toLocationName || "-"} · ${
           detail.toLocationType === "warehouse" ? "Kho" : "Chi nhánh"
         }`
       : `${detail.fromLocationType === "warehouse" ? "Kho" : "Chi nhánh"} → ${
@@ -462,7 +462,7 @@ export function MovementExpandedPanel({
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm animate-in fade-in-0 duration-200">
       <MovementDetailHeader
-        movementId={detail._id}
+        movementId={detail.id}
         title={headerTitle}
         subtitle={headerSubtitle}
         status={detail.status}
@@ -476,7 +476,7 @@ export function MovementExpandedPanel({
             <div className="flex flex-col items-center text-sm">
               <Warehouse className="mb-1 size-5 text-muted-foreground" />
               <span className="font-medium">
-                {detail.fromLocationName ?? "—"}
+                {detail.fromLocationName ?? "-"}
               </span>
               <span className="text-xs text-muted-foreground capitalize">
                 {detail.fromLocationType === "warehouse" ? "Kho" : "Chi nhánh"}
@@ -486,7 +486,7 @@ export function MovementExpandedPanel({
             <div className="flex flex-col items-center text-sm">
               <Warehouse className="mb-1 size-5 text-muted-foreground" />
               <span className="font-medium">
-                {detail.toLocationName || "—"}
+                {detail.toLocationName || "-"}
               </span>
               <span className="text-xs text-muted-foreground capitalize">
                 {detail.toLocationType === "warehouse" ? "Kho" : "Chi nhánh"}
@@ -498,7 +498,7 @@ export function MovementExpandedPanel({
             <InfoItem
               icon={<User className="size-4" />}
               label="Người yêu cầu"
-              value={detail.requestedByName || "—"}
+              value={detail.requestedByName || "-"}
             />
             <InfoItem
               icon={<CalendarDays className="size-4" />}
@@ -508,7 +508,7 @@ export function MovementExpandedPanel({
                   ? format(new Date(detail.createdAt), "dd/MM/yyyy HH:mm", {
                       locale: vi,
                     })
-                  : "—"
+                  : "-"
               }
             />
           </div>
@@ -518,7 +518,7 @@ export function MovementExpandedPanel({
           <InfoItem
             icon={<Building2 className="size-4" />}
             label="Nhà cung cấp"
-            value={detail.supplierName ?? "—"}
+            value={detail.supplierName ?? "-"}
           />
           <InfoItem
             icon={<Warehouse className="size-4" />}
@@ -528,7 +528,7 @@ export function MovementExpandedPanel({
           <InfoItem
             icon={<User className="size-4" />}
             label="Người tạo"
-            value={detail.requestedByName || "—"}
+            value={detail.requestedByName || "-"}
           />
           <InfoItem
             icon={<CalendarDays className="size-4" />}
@@ -538,7 +538,7 @@ export function MovementExpandedPanel({
                 ? format(new Date(detail.createdAt), "dd/MM/yyyy HH:mm", {
                     locale: vi,
                   })
-                : "—"
+                : "-"
             }
           />
         </div>

@@ -121,9 +121,9 @@ export function MovementProductSearch({
           ) : (
             <ul className="divide-y">
               {results.map((item) => {
-                const already = usedIds.has(item._id);
+                const already = usedIds.has(item.id);
                 return (
-                  <li key={item._id}>
+                  <li key={item.id}>
                     <div
                       role={already ? undefined : "button"}
                       tabIndex={already ? undefined : 0}

@@ -31,6 +31,10 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 
+// Mirrors branchFormSchema: `CreateWarehouseDto` gained `phoneNumber` and `email` in the
+// 2026-08-19 migration that gave warehouses the same contact details a branch has, and
+// `phoneNumber` is **required** there (`@ArrayNotEmpty`). This form never collected it, so
+// every "thêm kho hàng" was a 400 the moment the field existed server-side.
 const warehouseFormSchema = z.object({
   name: z.string().min(1, {
     message: "Tên kho hàng là bắt buộc.",
@@ -39,6 +43,14 @@ const warehouseFormSchema = z.object({
     message: "Trạng thái là bắt buộc.",
   }),
   address: z.string(),
+  phoneNumber: z.string().min(10, {
+    message: "Số điện thoại là bắt buộc và phải có ít nhất 10 số.",
+  }),
+  email: z
+    .string()
+    .email({ message: "Email không hợp lệ." })
+    .optional()
+    .or(z.literal("")),
 })
 
 export type WarehouseFormValues = z.infer<typeof warehouseFormSchema>
@@ -64,6 +76,8 @@ export function WarehouseFormDialog({
       name: "",
       status: "ACTIVE",
       address: "",
+      phoneNumber: "",
+      email: "",
       ...defaultValues,
     },
   })
@@ -74,6 +88,8 @@ export function WarehouseFormDialog({
         name: "",
         status: "ACTIVE",
         address: "",
+        phoneNumber: "",
+        email: "",
         ...defaultValues,
       })
     }
@@ -140,6 +156,32 @@ export function WarehouseFormDialog({
                   <FormLabel>Địa chỉ</FormLabel>
                   <FormControl>
                     <Input placeholder="Nhập địa chỉ kho hàng" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Số điện thoại</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nhập số điện thoại (ví dụ: 0987654321)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email (Tùy chọn)</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="Nhập địa chỉ email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

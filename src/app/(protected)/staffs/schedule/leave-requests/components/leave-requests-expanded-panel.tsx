@@ -94,10 +94,12 @@ export function LeaveRequestsExpandedPanel({
     !!request.userId &&
     String(request.userId) === String(sessionUserId);
 
+  // The requester's role no longer decides who may approve - there is no hierarchy
+  // between shop-defined roles. Holding `leaveRequests:approve`, and not being the
+  // requester, is the whole rule.
   const canReview = canReviewLeaveRequestTarget(user?.role, {
     requestUserId: effective.userId,
     currentUserId: sessionUserId,
-    requesterRole: effective.requesterRole,
   });
   const canCancel =
     canCancelOwnLeave(user?.role) &&
@@ -106,12 +108,14 @@ export function LeaveRequestsExpandedPanel({
   const isPending = effective.status === "PENDING";
   const showReviewActions = isPending && canReview && !isOwnRequest;
 
-  // List BR thường thiếu role — chỉ fetch khi cần resolve quyền duyệt Staff.
+  // List BR thường thiếu role - chỉ fetch khi cần resolve quyền duyệt Staff.
   useEffect(() => {
+    // Fetch the requester's role only when it is missing and this account may review.
+    // It used to also demand BRANCH_MANAGER, which decided nothing once the reviewer
+    // hierarchy went away.
     const needsRole =
       request.status === "PENDING" &&
-      user?.role === "BRANCH_MANAGER" &&
-      canReviewLeaveRequest(user.role) &&
+      canReviewLeaveRequest(user?.role) &&
       !request.requesterRole &&
       !isOwnRequest;
 
@@ -120,7 +124,7 @@ export function LeaveRequestsExpandedPanel({
     let cancelled = false;
     setDetailLoading(true);
     void leaveRequestApi
-      .getById(request._id)
+      .getById(request.id)
       .then((full) => {
         if (!cancelled) setDetail(full);
       })
@@ -135,7 +139,7 @@ export function LeaveRequestsExpandedPanel({
       cancelled = true;
     };
   }, [
-    request._id,
+    request.id,
     request.status,
     request.requesterRole,
     request.userId,
@@ -165,7 +169,7 @@ export function LeaveRequestsExpandedPanel({
     if (!showReviewActions || approveInvalid) return;
     setSubmitting(true);
     try {
-      await handleApprove(effective._id, {
+      await handleApprove(effective.id, {
         paidLeaveDays: paidNum,
         unpaidLeaveDays: unpaidNum,
         reviewNote: note || undefined,
@@ -181,7 +185,7 @@ export function LeaveRequestsExpandedPanel({
     if (!showReviewActions || !rejectNote.trim()) return;
     setSubmitting(true);
     try {
-      await handleReject(effective._id, rejectNote.trim());
+      await handleReject(effective.id, rejectNote.trim());
       setRejectNote("");
       setShowRejectForm(false);
     } finally {
@@ -193,7 +197,7 @@ export function LeaveRequestsExpandedPanel({
     e.stopPropagation();
     setSubmitting(true);
     try {
-      await handleCancel(effective._id);
+      await handleCancel(effective.id);
     } finally {
       setSubmitting(false);
     }
@@ -273,7 +277,7 @@ export function LeaveRequestsExpandedPanel({
         <InfoItem
           icon={<User className="size-4" />}
           label="Mã đơn"
-          value={`#${effective._id.slice(-6).toUpperCase()}`}
+          value={`#${effective.id.slice(-6).toUpperCase()}`}
         />
       </div>
 
@@ -296,9 +300,8 @@ export function LeaveRequestsExpandedPanel({
 
       {isPending && isOwnRequest && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-          {user?.role === "BRANCH_MANAGER" ||
-          user?.role === "WAREHOUSE_MANAGER"
-            ? "Đơn của bạn đang chờ Tenant Owner duyệt. Bạn không thể tự duyệt đơn này."
+          {canReviewLeaveRequest(user?.role)
+            ? "Đơn của bạn đang chờ người khác duyệt - không ai tự duyệt đơn của mình."
             : "Đơn của bạn đang chờ quản lý duyệt."}
         </div>
       )}

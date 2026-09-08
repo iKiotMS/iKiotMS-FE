@@ -21,7 +21,7 @@ export function useAIChat() {
         // Automatically select the first conversation if we don't have an active one
         if (response.data.length > 0 && !activeConversationId && !selectId) {
           // By default select the most recent one
-          setActiveConversationId(response.data[0]._id);
+          setActiveConversationId(response.data[0].id);
         } else if (selectId) {
           setActiveConversationId(selectId);
         }
@@ -131,16 +131,16 @@ export function useAIChat() {
         
         // If we deleted the active conversation, select another or start new
         if (activeConversationId === id) {
-          const remaining = conversations.filter((c) => c._id !== id);
+          const remaining = conversations.filter((c) => c.id !== id);
           if (remaining.length > 0) {
-            setActiveConversationId(remaining[0]._id);
+            setActiveConversationId(remaining[0].id);
             setConversations(remaining);
           } else {
             startNewSession();
             setConversations([]);
           }
         } else {
-          setConversations((prev) => prev.filter((c) => c._id !== id));
+          setConversations((prev) => prev.filter((c) => c.id !== id));
         }
       }
     } catch (error: any) {
@@ -157,7 +157,7 @@ export function useAIChat() {
       if (response.success) {
         toast.success("Đã đổi tên cuộc hội thoại.");
         setConversations((prev) =>
-          prev.map((c) => (c._id === id ? { ...c, title: newTitle } : c))
+          prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c))
         );
       }
     } catch (error: any) {

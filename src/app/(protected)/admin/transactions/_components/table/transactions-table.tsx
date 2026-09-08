@@ -53,9 +53,9 @@ export function TransactionsTable() {
 
       const handleTransactionUpdate = (updatedInvoice: AdminInvoice) => {
         setInvoices((prev) => {
-          const exists = prev.some((inv) => inv._id === updatedInvoice._id);
+          const exists = prev.some((inv) => inv.id === updatedInvoice.id);
           if (exists) {
-            return prev.map((inv) => (inv._id === updatedInvoice._id ? updatedInvoice : inv));
+            return prev.map((inv) => (inv.id === updatedInvoice.id ? updatedInvoice : inv));
           } else {
             return [updatedInvoice, ...prev];
           }
@@ -143,7 +143,7 @@ export function TransactionsTable() {
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
       const storeName = inv.tenantId?.name || ""
-      const searchStr = `${inv._id} ${storeName} ${inv.paymentReference || ""} ${inv.tenantId?.phoneNumber || ""}`.toLowerCase()
+      const searchStr = `${inv.id} ${storeName} ${inv.paymentReference || ""} ${inv.tenantId?.phoneNumber || ""}`.toLowerCase()
       if (globalFilter && !searchStr.includes(globalFilter.toLowerCase())) {
         return false
       }
@@ -213,13 +213,13 @@ export function TransactionsTable() {
               </TableRow>
             ) : (
               paginatedInvoices.map((inv) => (
-                <TableRow key={inv._id} className="text-sm hover:bg-muted/30">
-                  <TableCell className="font-semibold text-xs font-mono">{inv._id}</TableCell>
+                <TableRow key={inv.id} className="text-sm hover:bg-muted/30">
+                  <TableCell className="font-semibold text-xs font-mono">{inv.id}</TableCell>
                   <TableCell className="font-medium text-foreground">{inv.tenantId?.name || "N/A"}</TableCell>
-                  <TableCell className="text-muted-foreground">{inv.tenantId?.phoneNumber || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{inv.tenantId?.phoneNumber || "-"}</TableCell>
                   <TableCell>{getPlanBadge(inv.planId?.planCode)}</TableCell>
                   <TableCell className="font-bold text-primary">{inv.amount.toLocaleString()}đ</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{inv.paymentReference || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{inv.paymentReference || "-"}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {inv.createdAt ? new Date(inv.createdAt).toLocaleString("vi-VN") : "N/A"}
                   </TableCell>

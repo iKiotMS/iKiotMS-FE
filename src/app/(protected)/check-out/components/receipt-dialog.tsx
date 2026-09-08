@@ -42,7 +42,7 @@ interface ReceiptDialogProps {
       promotionId: string;
       promoName: string;
       discountAmount: number;
-      _id?: string;
+      id?: string;
     }> | null;
   } | null;
 }
@@ -261,7 +261,7 @@ export function ReceiptDialog({
                   {order.discountType === "PROMOTION" && order.appliedPromotions && order.appliedPromotions.length > 0 && (
                     <div className="pl-3 space-y-0.5 text-[11px] text-muted-foreground border-l border-primary/20">
                       {order.appliedPromotions.map((p, idx) => (
-                        <div key={p._id || idx} className="flex justify-between">
+                        <div key={p.id || idx} className="flex justify-between">
                           <span>• {p.promoName}:</span>
                           <span className="tabular-nums">-{formatVND(p.discountAmount)}</span>
                         </div>

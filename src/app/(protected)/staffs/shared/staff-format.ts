@@ -38,7 +38,7 @@ function normalizeDateText(value?: string): string | null {
 
 export function formatStaffDate(value?: string): string {
   const dateText = normalizeDateText(value);
-  if (!dateText) return "—";
+  if (!dateText) return "-";
   return formatVietnamWorkDate(dateText);
 }
 

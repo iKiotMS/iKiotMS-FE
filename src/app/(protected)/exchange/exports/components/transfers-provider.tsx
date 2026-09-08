@@ -45,8 +45,8 @@ const TransfersContext = createContext<TransfersContextType | null>(null)
 export function TransfersProvider({ children }: { children: React.ReactNode }) {
   const authScope = getAuthScope()
   const labels = React.useMemo(
-    () => getTransferUiLabels(authScope.role),
-    [authScope.role],
+    () => getTransferUiLabels(authScope.branchId, authScope.warehouseId),
+    [authScope.branchId, authScope.warehouseId],
   )
   const [transfers, setTransfers] = useState<StockMovement[]>([])
   const [total, setTotal] = useState(0)

@@ -96,11 +96,11 @@ export function ChatSidebar({
           </div>
         ) : (
           conversations.map((conv) => {
-            const isActive = conv._id === activeConversationId;
+            const isActive = conv.id === activeConversationId;
             return (
               <div
-                key={conv._id}
-                onClick={() => !isSending && onSelectConversation(conv._id)}
+                key={conv.id}
+                onClick={() => !isSending && onSelectConversation(conv.id)}
                 className={cn(
                   "w-full flex items-center justify-between p-2.5 rounded-xl border border-transparent transition-all duration-200 cursor-pointer group select-none",
                   isActive
@@ -135,14 +135,14 @@ export function ChatSidebar({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-36">
                       <DropdownMenuItem
-                        onClick={(e) => handleRename(conv._id, conv.title, e)}
+                        onClick={(e) => handleRename(conv.id, conv.title, e)}
                         className="cursor-pointer text-xs"
                       >
                         <Pencil className="h-3.5 w-3.5 mr-2" />
                         Đổi tên
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={(e) => handleDelete(conv._id, e)}
+                        onClick={(e) => handleDelete(conv.id, e)}
                         className="cursor-pointer text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-2" />

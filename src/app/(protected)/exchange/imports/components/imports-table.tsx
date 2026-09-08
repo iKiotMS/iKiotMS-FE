@@ -49,7 +49,7 @@ import { importsColumns as columns } from "./imports-columns";
 import { ImportsEmpty } from "./imports-empty";
 
 const COLUMN_LABELS: Record<string, string> = {
-  _id: "Mã đơn",
+  id: "Mã đơn",
   supplierName: "Nguồn hàng",
   toLocationName: "Nơi nhận",
   totalItems: "Số mặt hàng",

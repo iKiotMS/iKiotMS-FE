@@ -26,7 +26,7 @@ export const branchApi = {
     return res.data.data;
   },
   remove: async (id: string): Promise<void> => {
-    await client.delete(`/branches/${id}/delete`);
+    await client.delete(`/branches/${id}`);
   },
 
   assignManager: async (

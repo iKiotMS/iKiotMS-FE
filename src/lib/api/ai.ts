@@ -1,14 +1,14 @@
 import client from "./client";
 
 export interface ChatMessage {
-  _id?: string;
+  id?: string;
   role: "user" | "model";
   parts: Array<{ text: string }>;
   createdAt?: string;
 }
 
 export interface ChatSession {
-  _id: string;
+  id: string;
   title: string;
   updatedAt: string;
   messages?: ChatMessage[];

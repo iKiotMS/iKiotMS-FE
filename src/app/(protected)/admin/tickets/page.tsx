@@ -109,7 +109,7 @@ export default function AdminTicketsPage() {
       const ticketId = searchParams.get("ticketId") || searchParams.get("id");
       if (ticketId) {
         const found = tickets.find(
-          (t) => t._id === ticketId || t.ticketId === ticketId,
+          (t) => t.id === ticketId || t.ticketId === ticketId,
         );
         if (found) {
           setSelectedTicket(found);
@@ -125,7 +125,7 @@ export default function AdminTicketsPage() {
       if (customEvent.detail?.type === "/admin/tickets" && customEvent.detail?.id) {
         const ticketId = customEvent.detail.id;
         const found = tickets.find(
-          (t) => t._id === ticketId || t.ticketId === ticketId,
+          (t) => t.id === ticketId || t.ticketId === ticketId,
         );
         if (found) {
           setSelectedTicket(found);
@@ -145,7 +145,7 @@ export default function AdminTicketsPage() {
       const handleTicketUpdate = (updatedTicket: Ticket) => {
         // Update list
         setTickets((prev) => {
-          const index = prev.findIndex((t) => t._id === updatedTicket._id);
+          const index = prev.findIndex((t) => t.id === updatedTicket.id);
           if (index !== -1) {
             const copy = [...prev];
             copy[index] = updatedTicket;
@@ -157,7 +157,7 @@ export default function AdminTicketsPage() {
 
         // Notify active drawer/dialog
         setSelectedTicket((current) => {
-          if (current?._id === updatedTicket._id) {
+          if (current?.id === updatedTicket.id) {
             return updatedTicket;
           }
           return current;
@@ -194,7 +194,7 @@ export default function AdminTicketsPage() {
 
     setSendingReply(true);
     try {
-      const res = await replyTicket(selectedTicket._id, replyMessage);
+      const res = await replyTicket(selectedTicket.id, replyMessage);
       if (res.success) {
         setReplyMessage("");
         if (textareaRef.current) {
@@ -217,7 +217,7 @@ export default function AdminTicketsPage() {
 
     setClosingTicket(true);
     try {
-      const res = await closeTicket(selectedTicket._id);
+      const res = await closeTicket(selectedTicket.id);
       if (res.success) {
         setSelectedTicket(res.data);
         toast.success("Đã đóng yêu cầu hỗ trợ!");
@@ -325,7 +325,7 @@ export default function AdminTicketsPage() {
               </TableRow>
             ) : (
               tickets.map((ticket) => (
-                <TableRow key={ticket._id} className="hover:bg-muted/20">
+                <TableRow key={ticket.id} className="hover:bg-muted/20">
                   <TableCell className="font-mono text-xs font-semibold">
                     {ticket.ticketId}
                   </TableCell>
@@ -505,7 +505,7 @@ export default function AdminTicketsPage() {
               <ScrollArea className="flex-1 min-h-0 bg-background">
                 <div className="p-6 pr-10 space-y-4">
                   {selectedTicket.messages.map((msg, index) => {
-                    const isAdmin = msg.senderRole === "SUPER_ADMIN";
+                    const isAdmin = msg.senderRole === "ADMIN";
                     return (
                       <div
                         key={index}
@@ -513,7 +513,7 @@ export default function AdminTicketsPage() {
                       >
                         <div className="text-[10px] text-muted-foreground mb-1 px-1">
                           {msg.senderName} (
-                          {msg.senderRole === "SUPER_ADMIN" ? "Admin" : "Store"}
+                          {msg.senderRole === "ADMIN" ? "Admin" : "Store"}
                           )
                         </div>
                         <div

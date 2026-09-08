@@ -13,7 +13,7 @@ export interface PaySheetBasicPay {
 }
 
 export interface PaySheetListItem {
-  _id: string;
+  id: string;
   name: string;
   status?: PaySheetStatus;
   basicPay?: PaySheetBasicPay;
@@ -34,6 +34,6 @@ export interface PaySheetOption {
 
 export interface PaySheetListQueryParams {
   page?: number;
-  recordPerPage?: number;
+  limit?: number;
   name?: string;
 }

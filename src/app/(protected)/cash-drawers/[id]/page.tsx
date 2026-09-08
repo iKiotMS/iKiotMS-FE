@@ -110,7 +110,7 @@ export default function CashDrawerDetailPage() {
     const currentSessionBranchId =
       typeof session.branchId === "string"
         ? session.branchId
-        : session.branchId?._id;
+        : session.branchId?.id;
 
     // Switched to Tổng Branch ("all")
     if (locationKey === "all") {
@@ -130,8 +130,8 @@ export default function CashDrawerDetailPage() {
       cashDrawerApi
         .getCurrentSession(parsed.locationId)
         .then((newSession) => {
-          if (newSession && newSession._id) {
-            router.push(`/cash-drawers/${newSession._id}`);
+          if (newSession && newSession.id) {
+            router.push(`/cash-drawers/${newSession.id}`);
           } else {
             router.push("/cash-drawers");
           }
@@ -151,7 +151,7 @@ export default function CashDrawerDetailPage() {
     const branchId =
       typeof session.branchId === "string"
         ? session.branchId
-        : session.branchId?._id;
+        : session.branchId?.id;
     if (!branchId) return;
 
     const fetchStaffs = async () => {
@@ -159,12 +159,12 @@ export default function CashDrawerDetailPage() {
         const response = await staffApi.getList({
           branchId,
           status: "ACTIVE",
-          recordPerPage: 100,
+          limit: 100,
         });
-        // Active roles: STAFF and BRANCH_MANAGER
-        const filtered = (response.data || []).filter(
-          (s) => s.role === "STAFF" || s.role === "BRANCH_MANAGER"
-        );
+        // No role filter any more: every /users row is already a staff account of this
+        // tenant, and the backend checks the rest (active, posted at this branch) when
+        // the drawer is opened or handed over.
+        const filtered = response.data || [];
         setBranchStaffs(filtered);
       } catch (error) {
         console.error(error);
@@ -295,8 +295,8 @@ export default function CashDrawerDetailPage() {
     const keeperId =
       typeof session.currentStaffId === "string"
         ? session.currentStaffId
-        : session.currentStaffId?._id;
-    return branchStaffs.filter((s) => s._id !== keeperId);
+        : session.currentStaffId?.id;
+    return branchStaffs.filter((s) => s.id !== keeperId);
   }, [branchStaffs, session]);
 
   // Handover Info for Staff User
@@ -308,7 +308,7 @@ export default function CashDrawerDetailPage() {
           log.nextStaffId &&
           (typeof log.nextStaffId === "string"
             ? log.nextStaffId === user.id
-            : log.nextStaffId._id === user.id)
+            : log.nextStaffId.id === user.id)
       );
       if (lastLogIdx !== -1) {
         return session.shiftLogs[lastLogIdx].amount;
@@ -325,7 +325,7 @@ export default function CashDrawerDetailPage() {
           log.nextStaffId &&
           (typeof log.nextStaffId === "string"
             ? log.nextStaffId === user.id
-            : log.nextStaffId._id === user.id)
+            : log.nextStaffId.id === user.id)
       );
       if (lastLogIdx !== -1) {
         return getUserFullName(session.shiftLogs[lastLogIdx].staffId);
@@ -342,7 +342,7 @@ export default function CashDrawerDetailPage() {
           log.nextStaffId &&
           (typeof log.nextStaffId === "string"
             ? log.nextStaffId === user.id
-            : log.nextStaffId._id === user.id)
+            : log.nextStaffId.id === user.id)
       );
       if (lastLogIdx !== -1) {
         return session.shiftLogs[lastLogIdx].loggedAt;
@@ -356,7 +356,7 @@ export default function CashDrawerDetailPage() {
     const keeperId =
       typeof session.currentStaffId === "string"
         ? session.currentStaffId
-        : session.currentStaffId?._id;
+        : session.currentStaffId?.id;
     return keeperId === user.id;
   }, [session, user]);
 
@@ -504,7 +504,7 @@ export default function CashDrawerDetailPage() {
 
                   {/* Shift logs list */}
                   {session.shiftLogs.map((log, idx) => (
-                    <div key={log._id || idx} className="relative">
+                    <div key={log.id || idx} className="relative">
                       <div className="absolute -left-6 top-1.5 w-3 h-3 rounded-full border-2 border-amber-500 bg-background ring-4 ring-amber-500/10" />
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
@@ -705,8 +705,8 @@ export default function CashDrawerDetailPage() {
                       --- Không bàn giao (Kết ca kết thúc ngày) ---
                     </SelectItem>
                     {nextStaffCandidates.map((staff) => (
-                      <SelectItem key={staff._id} value={staff._id}>
-                        {staff.fullName} ({staff.role === "BRANCH_MANAGER" ? "Quản lý" : "Nhân viên"})
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.fullName} ({staff.roleName})
                       </SelectItem>
                     ))}
                   </SelectContent>

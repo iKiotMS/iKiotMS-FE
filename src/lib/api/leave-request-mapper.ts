@@ -6,21 +6,21 @@ import type {
   LeaveRequestKind,
 } from "@/types/leave-request";
 
-function resolveId(ref: { _id?: string } | string | undefined | null): string {
+function resolveId(ref: { id?: string } | string | undefined | null): string {
   if (!ref) return "";
-  return typeof ref === "string" ? ref : (ref._id ?? "");
+  return typeof ref === "string" ? ref : (ref.id ?? "");
 }
 
 function resolveStaffName(userId: ApiLeaveRequest["userId"]): string {
-  if (!userId || typeof userId === "string") return "—";
+  if (!userId || typeof userId === "string") return "-";
   const first = userId.profile?.firstName ?? "";
   const last = userId.profile?.lastName ?? "";
   const name = `${last} ${first}`.trim();
-  return name || userId.email || userId.phoneNumber || "—";
+  return name || userId.email || userId.phoneNumber || "-";
 }
 
 function resolveWorkplaceName(userId: ApiLeaveRequest["userId"]): string {
-  if (!userId || typeof userId === "string") return "—";
+  if (!userId || typeof userId === "string") return "-";
 
   if (userId.branchId && typeof userId.branchId === "object") {
     return userId.branchId.name ?? "Chi nhánh";
@@ -30,7 +30,7 @@ function resolveWorkplaceName(userId: ApiLeaveRequest["userId"]): string {
   }
   if (typeof userId.branchId === "string") return "Chi nhánh";
   if (typeof userId.warehouseId === "string") return "Kho hàng";
-  return "—";
+  return "-";
 }
 
 export function calculateLeaveDays(startDate: string, endDate: string): number {
@@ -59,9 +59,9 @@ export function todayIsoDate(): string {
 }
 
 export function formatLeaveDate(value?: string, withTime = false): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const parsed = parseISO(value);
-  if (!isValid(parsed)) return "—";
+  if (!isValid(parsed)) return "-";
   return format(parsed, withTime ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy", {
     locale: vi,
   });
@@ -90,7 +90,7 @@ export function mapLeaveRequestFromApi(item: ApiLeaveRequest): LeaveRequest {
       : undefined;
 
   return {
-    _id: item._id,
+    id: item.id,
     branchName: resolveWorkplaceName(item.userId),
     userId: resolveId(item.userId),
     staffName: resolveStaffName(item.userId),
@@ -122,7 +122,7 @@ export function extractCreatedLeaveRequest(
   if (data.leaveRequest && typeof data.leaveRequest === "object") {
     return data.leaveRequest as ApiLeaveRequest;
   }
-  if (typeof data._id === "string") {
+  if (typeof data.id === "string") {
     return data as unknown as ApiLeaveRequest;
   }
   return null;

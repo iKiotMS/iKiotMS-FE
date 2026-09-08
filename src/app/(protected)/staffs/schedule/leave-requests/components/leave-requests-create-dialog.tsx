@@ -131,7 +131,8 @@ export function LeaveRequestsEmergencyDialog({
 }) {
   const { user } = useAuth();
   const { handleCreateEmergency, staffOptions } = useLeaveRequests();
-  const isBranchManager = user?.role === "BRANCH_MANAGER";
+  // Posted at a location ⇒ the people you may file for are the ones there.
+  const isPosted = Boolean(user?.branchId || user?.warehouseId);
 
   const allowedStaffIds = useMemo(
     () => new Set(staffOptions.map((o) => o.value)),
@@ -203,7 +204,7 @@ export function LeaveRequestsEmergencyDialog({
           userId,
           startDate,
           endDate,
-          recordPerPage: 500,
+          limit: 500,
         });
         if (cancelled) return;
 
@@ -394,7 +395,7 @@ export function LeaveRequestsEmergencyDialog({
               )}
             />
 
-            {isBranchManager && (
+            {isPosted && (
               <FormField
                 control={form.control}
                 name="approveImmediately"

@@ -142,10 +142,10 @@ export default function TenantTicketsPage() {
     if (!ticketToDelete) return;
     setDeleting(true);
     try {
-      await deleteTicket(ticketToDelete._id);
+      await deleteTicket(ticketToDelete.id);
       toast.success("Đã xóa phiếu phản ánh thành công!");
-      setTickets((prev) => prev.filter((t) => t._id !== ticketToDelete._id));
-      if (selectedTicket?._id === ticketToDelete._id) {
+      setTickets((prev) => prev.filter((t) => t.id !== ticketToDelete.id));
+      if (selectedTicket?.id === ticketToDelete.id) {
         setSelectedTicket(null);
       }
       setTicketToDelete(null);
@@ -199,7 +199,7 @@ export default function TenantTicketsPage() {
       const ticketId = searchParams.get("ticketId") || searchParams.get("id");
       if (ticketId) {
         const found = tickets.find(
-          (t) => t._id === ticketId || t.ticketId === ticketId,
+          (t) => t.id === ticketId || t.ticketId === ticketId,
         );
         if (found) {
           setSelectedTicket(found);
@@ -215,7 +215,7 @@ export default function TenantTicketsPage() {
       if (customEvent.detail?.type === "/tickets" && customEvent.detail?.id) {
         const ticketId = customEvent.detail.id;
         const found = tickets.find(
-          (t) => t._id === ticketId || t.ticketId === ticketId,
+          (t) => t.id === ticketId || t.ticketId === ticketId,
         );
         if (found) {
           setSelectedTicket(found);
@@ -233,7 +233,7 @@ export default function TenantTicketsPage() {
       const socket = getSocket();
       const handleUpdate = (updated: Ticket) => {
         setTickets((prev) => {
-          const idx = prev.findIndex((t) => t._id === updated._id);
+          const idx = prev.findIndex((t) => t.id === updated.id);
           if (idx !== -1) {
             const copy = [...prev];
             copy[idx] = updated;
@@ -241,12 +241,12 @@ export default function TenantTicketsPage() {
           }
           return [updated, ...prev];
         });
-        setSelectedTicket((cur) => (cur?._id === updated._id ? updated : cur));
+        setSelectedTicket((cur) => (cur?.id === updated.id ? updated : cur));
       };
 
-      const handleDelete = (payload: { _id: string }) => {
-        setTickets((prev) => prev.filter((t) => t._id !== payload._id));
-        setSelectedTicket((cur) => (cur?._id === payload._id ? null : cur));
+      const handleDelete = (payload: { id: string }) => {
+        setTickets((prev) => prev.filter((t) => t.id !== payload.id));
+        setSelectedTicket((cur) => (cur?.id === payload.id ? null : cur));
       };
 
       socket.on("ticket-update", handleUpdate);
@@ -297,7 +297,7 @@ export default function TenantTicketsPage() {
 
     setSendingReply(true);
     try {
-      const res = await replyMyTicket(selectedTicket._id, replyMessage);
+      const res = await replyMyTicket(selectedTicket.id, replyMessage);
       if (res.success) {
         setReplyMessage("");
         if (textareaRef.current) {
@@ -306,7 +306,7 @@ export default function TenantTicketsPage() {
         setIsOverflowing(false);
         setSelectedTicket(res.data);
         setTickets((prev) =>
-          prev.map((t) => (t._id === res.data._id ? res.data : t)),
+          prev.map((t) => (t.id === res.data.id ? res.data : t)),
         );
         toast.success("Phản hồi đã được gửi!");
       }
@@ -392,16 +392,16 @@ export default function TenantTicketsPage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="LOW">
-                            Thấp — Không ảnh hưởng nghiêm trọng
+                            Thấp - Không ảnh hưởng nghiêm trọng
                           </SelectItem>
                           <SelectItem value="MEDIUM">
-                            Trung bình — Cần giải quyết sớm
+                            Trung bình - Cần giải quyết sớm
                           </SelectItem>
                           <SelectItem value="HIGH">
-                            Cao — Ảnh hưởng hoạt động kinh doanh
+                            Cao - Ảnh hưởng hoạt động kinh doanh
                           </SelectItem>
                           <SelectItem value="URGENT">
-                            Khẩn cấp — Hệ thống ngừng hoạt động
+                            Khẩn cấp - Hệ thống ngừng hoạt động
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -475,7 +475,7 @@ export default function TenantTicketsPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {tickets.map((ticket) => (
-                <div key={ticket._id} className="relative group w-full">
+                <div key={ticket.id} className="relative group w-full">
                   <button
                     onClick={() => setSelectedTicket(ticket)}
                     className="w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-xs"
@@ -589,7 +589,7 @@ export default function TenantTicketsPage() {
                     </div>
                   ) : (
                     selectedTicket.messages.map((msg, idx) => {
-                      const isAdmin = msg.senderRole === "SUPER_ADMIN";
+                      const isAdmin = msg.senderRole === "ADMIN";
                       return (
                         <div
                           key={idx}

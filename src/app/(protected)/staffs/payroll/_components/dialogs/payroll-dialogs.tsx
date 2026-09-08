@@ -52,7 +52,7 @@ export function PayrollDialogs() {
           }}
           currentPayslip={currentPayslip}
           periodStatus={currentRow?.status}
-          periodId={currentRow?._id}
+          periodId={currentRow?.id}
           onSaved={(updated) => {
             setCurrentPayslip(updated)
           }}

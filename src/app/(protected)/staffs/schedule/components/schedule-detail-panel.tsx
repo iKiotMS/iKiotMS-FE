@@ -63,7 +63,7 @@ export function ScheduleDetailPanel() {
   const showDayList = selectedDayDate !== null && selectedSchedule === null;
   const showDetail = selectedSchedule !== null;
   const isOpen = showDayList || showDetail;
-  const selectedScheduleId = selectedSchedule?._id;
+  const selectedScheduleId = selectedSchedule?.id;
 
   const dateLabel = selectedDayDate
     ? format(parseISO(selectedDayDate), "EEEE, dd/MM/yyyy", { locale: vi })
@@ -77,9 +77,9 @@ export function ScheduleDetailPanel() {
     ? leaveByDate.get(selectedDayDate) ?? []
     : [];
 
-  /** Mỗi ca (schedule._id) cần đếm riêng để hiển thị số người. */
+  /** Mỗi ca (schedule.id) cần đếm riêng để hiển thị số người. */
   const dayScheduleCount = useMemo(
-    () => new Set(dayEntries.map((e) => e.schedule._id)).size,
+    () => new Set(dayEntries.map((e) => e.schedule.id)).size,
     [dayEntries],
   );
 
@@ -92,7 +92,7 @@ export function ScheduleDetailPanel() {
     let cancelled = false;
     setLoading(true);
     void fetchScheduleDetail(
-      selectedSchedule._id,
+      selectedSchedule.id,
       selectedAssigneeUserId,
     ).then((fresh) => {
       if (!cancelled) {
@@ -133,8 +133,8 @@ export function ScheduleDetailPanel() {
     targetAssigneeUserId,
   );
 
+  // Shown when the only reason you cannot edit this shift is that you are on it.
   const readOnlyHint =
-    userRole === "BRANCH_MANAGER" &&
     !scheduleLocked &&
     !canEdit &&
     !canDelete &&
@@ -143,7 +143,7 @@ export function ScheduleDetailPanel() {
       sessionUserId,
       targetAssigneeUserId,
     )
-      ? "Đây là ca của bạn — quản lý chi nhánh không thể tự sửa hoặc xóa ca được gán cho mình."
+      ? "Đây là ca của bạn - quản lý chi nhánh không thể tự sửa hoặc xóa ca được gán cho mình."
       : undefined;
 
   function clearPanel() {
@@ -244,7 +244,7 @@ export function ScheduleDetailPanel() {
             <div className="space-y-2 p-4">
               {dayLeaveItems.map((leave) => (
                 <div
-                  key={`${leave._id}-${leave.date}`}
+                  key={`${leave.id}-${leave.date}`}
                   className={
                     leave.status === "PENDING"
                       ? "rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-3"
@@ -298,7 +298,7 @@ export function ScheduleDetailPanel() {
                     key={entry.chipKey}
                     entry={entry}
                     isActive={
-                      selectedScheduleId === entry.schedule._id &&
+                      selectedScheduleId === entry.schedule.id &&
                       selectedAssigneeUserId === (entry.assignee?.userId ?? null)
                     }
                     onSelect={() => {

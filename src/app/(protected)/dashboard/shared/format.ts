@@ -13,7 +13,7 @@ export const formatCompactVND = (value: number): string =>
 export const formatNumber = (value: number): string => new Intl.NumberFormat('vi-VN').format(value)
 
 export const formatPercent = (value: number | null): string => {
-  if (value === null) return '—'
+  if (value === null) return '-'
   const sign = value > 0 ? '+' : ''
   return `${sign}${value}%`
 }

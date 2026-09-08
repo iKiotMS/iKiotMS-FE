@@ -15,18 +15,20 @@ import type {
   PromotionCandidatesResponse,
 } from '@/types/promotion'
 
-// Backend trả về document Mongoose với `_id`; FE dùng `id`.
-type PromotionDoc = Omit<Promotion, 'id'> & { _id: string }
-type PromotionLogDoc = Omit<PromotionLog, 'id'> & { _id: string }
+// Kiểu phản hồi của API. Bản Express cũ trả document Mongo khoá `_id`; bản NestJS
+// trả `id`, nên phép ánh xạ dưới đây giờ là đồng nhất - giữ lại làm chỗ duy nhất phải
+// sửa nếu hình dạng phản hồi đổi lần nữa.
+type PromotionDoc = Omit<Promotion, 'id'> & { id: string }
+type PromotionLogDoc = Omit<PromotionLog, 'id'> & { id: string }
 
 function mapPromotion(doc: PromotionDoc): Promotion {
-  const { _id, ...rest } = doc
-  return { ...rest, id: _id, _id }
+  const { id, ...rest } = doc
+  return { ...rest, id }
 }
 
 function mapPromotionLog(doc: PromotionLogDoc): PromotionLog {
-  const { _id, ...rest } = doc
-  return { ...rest, id: _id, _id }
+  const { id, ...rest } = doc
+  return { ...rest, id }
 }
 
 export const promotionApi = {
@@ -91,7 +93,7 @@ export const promotionApi = {
 
   getLogs: async (
     id: string,
-    params?: { page?: number; recordPerPage?: number },
+    params?: { page?: number; limit?: number },
   ): Promise<PromotionLogListResponse> => {
     const res = await client.get<{
       success: boolean

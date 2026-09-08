@@ -88,7 +88,7 @@ export function SuppliersExpandedPanel({
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Người liên hệ</span>
-          <span>{supplier.contactName || "—"}</span>
+          <span>{supplier.contactName || "-"}</span>
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Số điện thoại</span>
@@ -102,7 +102,7 @@ export function SuppliersExpandedPanel({
               {supplier.phoneNumber}
             </a>
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">-</span>
           )}
         </div>
         <div className="flex flex-col gap-0.5">
@@ -117,7 +117,7 @@ export function SuppliersExpandedPanel({
               {supplier.email}
             </a>
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">-</span>
           )}
         </div>
         <div className="flex flex-col gap-0.5">

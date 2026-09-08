@@ -48,7 +48,7 @@ import { adjustmentsColumns as columns } from "./adjustments-columns";
 import { AdjustmentsExpandedPanel } from "./adjustments-expanded-panel";
 
 const COLUMN_LABELS: Record<string, string> = {
-  _id: "Mã phiếu",
+  id: "Mã phiếu",
   fromLocationName: "Kho / Chi nhánh",
   totalItems: "Số mặt hàng",
   totalQtyChange: "Tổng thay đổi SL",

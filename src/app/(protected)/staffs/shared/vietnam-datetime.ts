@@ -1,5 +1,5 @@
 /**
- * Đồng bộ với BE WorkingScheduleDateUtils — múi giờ Việt Nam (UTC+7).
+ * Đồng bộ với BE WorkingScheduleDateUtils - múi giờ Việt Nam (UTC+7).
  * BE lưu startAt/endAt dạng UTC nhưng biểu diễn giờ địa phương VN
  * (vd. 08:00 VN → 2026-07-01T01:00:00.000Z).
  */
@@ -32,7 +32,7 @@ export function extractVietnamDateFromIso(iso?: string | null): string {
 }
 
 /**
- * workDate từ BE được neo ở UTC 00:00 cho ngày làm việc — lấy YYYY-MM-DD trực tiếp.
+ * workDate từ BE được neo ở UTC 00:00 cho ngày làm việc - lấy YYYY-MM-DD trực tiếp.
  * Nếu thiếu workDate, suy ra từ startAt theo giờ VN.
  */
 export function resolveWorkDateText(
@@ -51,7 +51,7 @@ export function resolveWorkDateText(
 /** Hiển thị ngày dd/MM/yyyy từ chuỗi YYYY-MM-DD (ngày làm việc, không lệch TZ). */
 export function formatVietnamWorkDate(dateText?: string | null): string {
   const iso = dateText?.slice(0, 10) ?? "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "—";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "-";
 
   const [year, month, day] = iso.split("-").map(Number);
   const utcAnchor = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
@@ -66,7 +66,7 @@ export function formatVietnamWorkDate(dateText?: string | null): string {
 
 /** Hiển thị ngày giờ thực tế (check-in/out, createdAt...) theo giờ VN. */
 export function formatVietnamDateTime(iso?: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Intl.DateTimeFormat("vi-VN", {
       timeZone: VIETNAM_TIMEZONE,
@@ -77,6 +77,6 @@ export function formatVietnamDateTime(iso?: string | null): string {
       minute: "2-digit",
     }).format(new Date(iso));
   } catch {
-    return "—";
+    return "-";
   }
 }

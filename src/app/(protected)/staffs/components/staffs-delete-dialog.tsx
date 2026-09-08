@@ -12,13 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Staff } from "@/types/staff";
-import {
-  getManagerRoleLabel,
-  isOrphanManagerRecord,
-  requiresManagerReplacement,
-} from "@/app/(protected)/staffs/shared/staff-manager-utils";
 import { useStaffs } from "./staffs-provider";
-import { StaffReplacementSelect } from "./staff-replacement-select";
 
 type StaffsDeleteDialogProps = {
   open: boolean;
@@ -26,47 +20,46 @@ type StaffsDeleteDialogProps = {
   currentRow: Staff | null;
 };
 
+/**
+ * Xóa nhân viên.
+ *
+ * This dialog used to ask for a replacement manager first, because the old backend took a
+ * `replacementManagerId` and swapped the outgoing manager out in the same call. That flow
+ * is gone: running a location is `Branch.managerId` / `Warehouse.managerId`, appointed
+ * through its own endpoint, and `DELETE /users/:id` now takes **no body** - anything sent
+ * would be dropped silently.
+ *
+ * So the check moved to where it is actually enforced. The backend refuses while the
+ * account still runs a location or is named as the handover contact on a leave request in
+ * force, and says which; that message is what the toast shows.
+ */
 export function StaffsDeleteDialog({
   open,
   onOpenChange,
   currentRow,
 }: StaffsDeleteDialogProps) {
   const { handleDelete } = useStaffs();
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [replacementManagerId, setReplacementManagerId] = useState("");
-
-  const needsReplacement =
-    currentRow !== null && requiresManagerReplacement(currentRow);
-  const orphanManager =
-    currentRow !== null && isOrphanManagerRecord(currentRow);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setReplacementManagerId("");
-      setIsDeleting(false);
-    }
-  }, [open, currentRow?._id]);
+    if (!open) setIsSubmitting(false);
+  }, [open, currentRow?.id]);
 
   function handleOpenChange(value: boolean) {
-    if (!isDeleting) onOpenChange(value);
+    if (!isSubmitting) onOpenChange(value);
   }
 
   async function onConfirm() {
-    if (!currentRow || isDeleting) return;
-    if (needsReplacement && !replacementManagerId) return;
-    if (orphanManager) return;
-
-    setIsDeleting(true);
+    if (!currentRow || isSubmitting) return;
+    setIsSubmitting(true);
     try {
-      await handleDelete(
-        currentRow._id,
-        needsReplacement ? replacementManagerId : undefined,
-      );
+      await handleDelete(currentRow.id);
       onOpenChange(false);
     } catch {
-      // Error toast handled in provider.
+      // The provider toasts the backend's reason - including "reassign the branch this
+      // person runs first", which is the case this dialog used to try to handle itself.
     } finally {
-      setIsDeleting(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -76,49 +69,20 @@ export function StaffsDeleteDialog({
         <DialogHeader>
           <DialogTitle>Xóa nhân viên</DialogTitle>
           <DialogDescription>
-            {needsReplacement && currentRow ? (
-              <>
-                Bạn đang xóa {getManagerRoleLabel(currentRow.role)}{" "}
-                <strong className="text-foreground">{currentRow.fullName}</strong>.
-                Theo quy tắc hệ thống, bạn phải chọn một nhân viên STAFF active
-                để thay thế trước khi xóa.
-              </>
-            ) : (
-              <>
-                Bạn có chắc muốn xóa{" "}
-                <strong className="text-foreground">
-                  {currentRow?.fullName ?? ""}
-                </strong>
-                ? Hồ sơ sẽ bị đánh dấu xóa và không còn hiển thị trong danh
-                sách.
-              </>
-            )}
+            Bạn có chắc muốn xóa nhân viên{" "}
+            <strong className="text-foreground">
+              {currentRow?.fullName ?? ""}
+            </strong>{" "}
+            ({currentRow?.roleName ?? "-"})? Hồ sơ được giữ lại nhưng thông tin
+            cá nhân sẽ bị xóa và không khôi phục được.
           </DialogDescription>
         </DialogHeader>
-
-        {orphanManager && currentRow && (
-          <p className="text-sm text-destructive rounded-md border border-dashed px-3 py-2">
-            {currentRow.role === "BRANCH_MANAGER"
-              ? "Quản lý chi nhánh chưa được gán chi nhánh. Vui lòng dùng chức năng «Đổi quản lý chi nhánh» hoặc cập nhật phân công trước khi xóa."
-              : "Quản lý kho chưa được gán kho. Vui lòng cập nhật phân công trước khi xóa."}
-          </p>
-        )}
-
-        {needsReplacement && currentRow && !orphanManager && (
-          <StaffReplacementSelect
-            key={`delete-${currentRow._id}`}
-            manager={currentRow}
-            value={replacementManagerId}
-            onChange={setReplacementManagerId}
-            disabled={isDeleting}
-          />
-        )}
 
         <DialogFooter className="gap-2">
           <Button
             variant="outline"
             className="cursor-pointer"
-            disabled={isDeleting}
+            disabled={isSubmitting}
             onClick={() => handleOpenChange(false)}
           >
             Hủy
@@ -126,15 +90,11 @@ export function StaffsDeleteDialog({
           <Button
             variant="destructive"
             className="cursor-pointer"
-            disabled={
-              isDeleting ||
-              orphanManager ||
-              (needsReplacement && !replacementManagerId)
-            }
+            disabled={isSubmitting}
             onClick={onConfirm}
           >
             <Trash2 className="mr-2 size-4" />
-            {isDeleting ? "Đang xóa..." : "Xóa"}
+            {isSubmitting ? "Đang xử lý..." : "Xóa nhân viên"}
           </Button>
         </DialogFooter>
       </DialogContent>

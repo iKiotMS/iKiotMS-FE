@@ -26,7 +26,7 @@ type MyPayslipDetailDialogProps = {
 }
 
 const formatDMY = (dateStr?: string) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return '-'
   try {
     return new Intl.DateTimeFormat('vi-VN').format(new Date(dateStr))
   } catch {
@@ -141,13 +141,11 @@ export function MyPayslipDetailDialog({
               <div className="min-w-0">
                 <span className="text-[12px] text-muted-foreground block uppercase font-medium">Vai trò</span>
                 <Badge variant="secondary" className="text-[9px] px-2 py-0.5 mt-0.5 font-bold uppercase">
+                  {/* Vai trò do cửa hàng tự đặt tên, nên hiện đúng tên đó. Ba nhánh cũ
+                      là ba role cố định của backend cũ, hai trong số đó không còn. */}
                   {role === 'TENANT_OWNER'
                     ? 'Chủ cửa hàng'
-                    : role === 'BRANCH_MANAGER'
-                      ? 'Quản lý'
-                      : role === 'WAREHOUSE_MANAGER'
-                        ? 'Quản lý kho'
-                        : 'Nhân viên'}
+                    : user?.roleName || 'Nhân viên'}
                 </Badge>
               </div>
             </div>

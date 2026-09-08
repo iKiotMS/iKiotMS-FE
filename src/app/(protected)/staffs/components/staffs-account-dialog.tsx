@@ -62,9 +62,9 @@ export function StaffsAccountDialog({
 
     try {
       if (isActivate) {
-        await handleActivate(currentRow._id, data);
+        await handleActivate(currentRow.id, data);
       } else {
-        await handleUpdatePassword(currentRow._id, data);
+        await handleUpdatePassword(currentRow.id, data);
       }
       form.reset();
       onOpenChange(false);

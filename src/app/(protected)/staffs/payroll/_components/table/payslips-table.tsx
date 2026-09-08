@@ -13,7 +13,7 @@ import { formatVND, STATUS_MAP } from '../../_constants/payroll.constants'
 import type { Payslip, DeductionLine } from '@/types/payroll'
 
 const formatDMY = (dateStr: string) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return '-'
   try { return new Intl.DateTimeFormat('vi-VN').format(new Date(dateStr)) } catch { return dateStr }
 }
 
@@ -59,7 +59,7 @@ export function PayslipsTable() {
     e.stopPropagation()
     setCurrentRow(activePeriod)
     setCurrentPayslip(slip)
-    // Open the detail dialog — manual adjustments are edited inline in DRAFT mode
+    // Open the detail dialog - manual adjustments are edited inline in DRAFT mode
     setOpen('viewPayslipDetail')
   }
 
@@ -115,7 +115,7 @@ export function PayslipsTable() {
           </div>
         </div>
 
-        {/* Action Controls — follow business rules */}
+        {/* Action Controls - follow business rules */}
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={`${statusStyle.className} border font-medium px-3 py-1 rounded-full text-xs`}>
             {statusStyle.label}
@@ -126,7 +126,7 @@ export function PayslipsTable() {
             <Button
               variant="default"
               size="sm"
-              onClick={() => handleSubmitPeriod(activePeriod._id)}
+              onClick={() => handleSubmitPeriod(activePeriod.id)}
               className="cursor-pointer"
               disabled={payslips.length === 0}
               title={payslips.length === 0 ? 'Phải có ít nhất một phiếu lương để gửi duyệt' : 'Gửi kỳ lương để phê duyệt'}
@@ -155,9 +155,9 @@ export function PayslipsTable() {
               <Button
                 variant="default"
                 size="sm"
-                onClick={() => handleApprovePeriod(activePeriod._id)}
+                onClick={() => handleApprovePeriod(activePeriod.id)}
                 className="cursor-pointer bg-green-600 hover:bg-green-700 text-white"
-                title="Phê duyệt — nhân viên sẽ nhận thông báo và xem được phiếu lương"
+                title="Phê duyệt - nhân viên sẽ nhận thông báo và xem được phiếu lương"
               >
                 <CheckCircle2 className="mr-1.5 size-4" />
                 Phê duyệt lương
@@ -183,7 +183,7 @@ export function PayslipsTable() {
         </div>
       </div>
 
-      {/* Info Banner — context-aware hints */}
+      {/* Info Banner - context-aware hints */}
       {isDraft && (
         <div className="flex items-start gap-2 text-xs bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/20 rounded-lg px-3 py-2.5 text-blue-700 dark:text-blue-400">
           <Info className="size-3.5 shrink-0 mt-0.5" />
@@ -240,7 +240,7 @@ export function PayslipsTable() {
             Thời điểm tổng hợp
           </p>
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mt-2.5">
-            {activePeriod.createdAt ? new Date(activePeriod.createdAt).toLocaleString('vi-VN') : '—'}
+            {activePeriod.createdAt ? new Date(activePeriod.createdAt).toLocaleString('vi-VN') : '-'}
           </p>
         </div>
       </div>
@@ -309,14 +309,14 @@ export function PayslipsTable() {
               const negativeAdjustments = Math.abs((slip.manualAdjustments || []).filter(a => a.amount < 0).reduce((sum, a) => sum + a.amount, 0))
               const totalDeductions = latePenalty + unpaidLeaveDeduction + otherDeductionLines + negativeAdjustments
 
-              const isExpanded = expandedSlipId === slip._id
+              const isExpanded = expandedSlipId === slip.id
 
               return (
-                <React.Fragment key={slip._id}>
+                <React.Fragment key={slip.id}>
                   <TableRow
                     className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/10 align-middle cursor-pointer transition-colors border-b ${isExpanded ? 'bg-slate-50/60 dark:bg-slate-900/20' : ''
                       }`}
-                    onClick={() => handleToggleExpand(slip._id)}
+                    onClick={() => handleToggleExpand(slip.id)}
                   >
                     <TableCell>
                       <div className="font-semibold text-slate-800 dark:text-slate-100">{name}</div>
@@ -332,13 +332,13 @@ export function PayslipsTable() {
                       {formatVND(earningsFromWork)}
                     </TableCell>
                     <TableCell className="text-right bg-blue-50/30 dark:bg-blue-950/15 border-r border-slate-200 dark:border-slate-800 tabular-nums text-green-600 dark:text-green-400">
-                      {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '—'}
+                      {overtimePay > 0 ? `+${formatVND(overtimePay)}` : '-'}
                     </TableCell>
                     <TableCell className="text-right bg-emerald-50/30 dark:bg-emerald-950/15 border-r border-slate-200 dark:border-slate-800 tabular-nums text-green-600 dark:text-green-400 font-semibold">
-                      {totalAdditions > 0 ? `+${formatVND(totalAdditions)}` : '—'}
+                      {totalAdditions > 0 ? `+${formatVND(totalAdditions)}` : '-'}
                     </TableCell>
                     <TableCell className="text-right bg-rose-50/30 dark:bg-rose-950/15 border-r border-slate-200 dark:border-slate-800 tabular-nums text-red-600 dark:text-red-400 font-semibold">
-                      {totalDeductions > 0 ? `-${formatVND(totalDeductions)}` : '—'}
+                      {totalDeductions > 0 ? `-${formatVND(totalDeductions)}` : '-'}
                     </TableCell>
                     <TableCell className="text-right font-bold text-slate-800 dark:text-slate-100 tabular-nums text-base">
                       {formatVND(slip.netSalary)}
@@ -370,7 +370,7 @@ export function PayslipsTable() {
                           variant="ghost"
                           size="icon"
                           className="cursor-pointer h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
-                          onClick={() => handleToggleExpand(slip._id)}
+                          onClick={() => handleToggleExpand(slip.id)}
                           title="Xem chi tiết"
                         >
                           <ChevronDown className={`size-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -554,13 +554,13 @@ export function PayslipsTable() {
                   {formatVND(sumWorkedBasePay)}
                 </TableCell>
                 <TableCell className="text-right bg-blue-50/50 dark:bg-blue-950/25 border-r border-slate-200 dark:border-slate-800 tabular-nums text-green-600 dark:text-green-400">
-                  {sumOvertimePay > 0 ? `+${formatVND(sumOvertimePay)}` : '—'}
+                  {sumOvertimePay > 0 ? `+${formatVND(sumOvertimePay)}` : '-'}
                 </TableCell>
                 <TableCell className="text-right bg-emerald-50/50 dark:bg-emerald-950/25 border-r border-slate-200 dark:border-slate-800 tabular-nums text-green-600 dark:text-green-400">
-                  {sumTotalAdditions > 0 ? `+${formatVND(sumTotalAdditions)}` : '—'}
+                  {sumTotalAdditions > 0 ? `+${formatVND(sumTotalAdditions)}` : '-'}
                 </TableCell>
                 <TableCell className="text-right bg-rose-50/50 dark:bg-rose-950/25 border-r border-slate-200 dark:border-slate-800 tabular-nums text-red-600 dark:text-red-400">
-                  {sumTotalDeductions > 0 ? `-${formatVND(sumTotalDeductions)}` : '—'}
+                  {sumTotalDeductions > 0 ? `-${formatVND(sumTotalDeductions)}` : '-'}
                 </TableCell>
                 <TableCell className="text-right font-extrabold text-slate-900 dark:text-slate-50 tabular-nums text-base">
                   {formatVND(sumNetSalary)}

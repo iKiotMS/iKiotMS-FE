@@ -51,7 +51,7 @@ export function MetricsOverview() {
       change: data.tenants.changePct,
       icon: UserPlus,
       footer: "Đăng ký mới trong kỳ",
-      subfooter: `Tỷ lệ trial→trả phí: ${data.subscriptions.conversionRate === null ? "—" : data.subscriptions.conversionRate + "%"}`,
+      subfooter: `Tỷ lệ trial→trả phí: ${data.subscriptions.conversionRate === null ? "-" : data.subscriptions.conversionRate + "%"}`,
     },
     {
       title: "Đã liên kết SePay",

@@ -14,7 +14,7 @@ interface PaySheetListApiResponse {
   pagination?: {
     total: number;
     page: number;
-    recordPerPage: number;
+    limit: number;
     totalPages: number;
   };
 }
@@ -26,7 +26,7 @@ const PAY_TYPE_LABELS: Record<PaySheetPayType, string> = {
 };
 
 export function formatVnd(amount?: number | null): string {
-  if (amount == null || !Number.isFinite(Number(amount))) return "—";
+  if (amount == null || !Number.isFinite(Number(amount))) return "-";
   return `${Number(amount).toLocaleString("vi-VN")} đ`;
 }
 
@@ -46,7 +46,7 @@ export function describeBasicPay(basicPay?: PaySheetBasicPay | null): string {
 }
 
 function mapPaySheetOption(item: PaySheetListItem): PaySheetOption | null {
-  const id = item?._id;
+  const id = item?.id;
   if (!id || typeof id !== "string") return null;
   if (item.status === "DELETED") return null;
   const summary = describeBasicPay(item.basicPay);
@@ -58,7 +58,7 @@ function mapPaySheetOption(item: PaySheetListItem): PaySheetOption | null {
 }
 
 export const paySheetApi = {
-  /** GET /payroll/paysheets — TO & BR (paysheets:read). */
+  /** GET /payroll/paysheets - TO & BR (paysheets:read). */
   getList: async (
     params?: PaySheetListQueryParams,
   ): Promise<{
@@ -72,7 +72,7 @@ export const paySheetApi = {
       {
         params: {
           page: params?.page ?? 1,
-          recordPerPage: params?.recordPerPage ?? 100,
+          limit: params?.limit ?? 100,
           name: params?.name?.trim() || undefined,
         },
       },
@@ -80,7 +80,7 @@ export const paySheetApi = {
 
     const data = response.data?.data ?? [];
     const pagination = response.data?.pagination;
-    const recordPerPage = pagination?.recordPerPage ?? (data.length || 1);
+    const limit = pagination?.limit ?? (data.length || 1);
     const total = pagination?.total ?? data.length;
 
     return {
@@ -89,7 +89,7 @@ export const paySheetApi = {
       page: pagination?.page ?? params?.page ?? 1,
       totalPages:
         pagination?.totalPages ??
-        Math.max(1, Math.ceil(total / (recordPerPage || 1))),
+        Math.max(1, Math.ceil(total / (limit || 1))),
     };
   },
 
@@ -101,9 +101,9 @@ export const paySheetApi = {
     const payload = response.data;
     if (payload && typeof payload === "object" && "data" in payload) {
       const nested = (payload as { data?: PaySheetDetail }).data;
-      if (nested?._id) return nested;
+      if (nested?.id) return nested;
     }
-    if (payload && typeof payload === "object" && "_id" in payload) {
+    if (payload && typeof payload === "object" && "id" in payload) {
       return payload as PaySheetDetail;
     }
     throw new Error("Không nhận được dữ liệu bảng lương");
@@ -118,7 +118,7 @@ export const paySheetApi = {
     while (page <= totalPages && page <= 10) {
       const response = await paySheetApi.getList({
         page,
-        recordPerPage: 100,
+        limit: 100,
       });
       for (const item of response.data) {
         const option = mapPaySheetOption(item);

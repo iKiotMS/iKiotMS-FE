@@ -10,18 +10,18 @@ export type LeaveRequestStatus =
 export type LeaveRequestKind = "PAID" | "UNPAID" | "MIXED" | "PENDING";
 
 export interface ApiLeaveRequest {
-  _id: string;
+  id: string;
   tenantId?: string;
   userId:
     | string
     | {
-        _id?: string;
+        id?: string;
         email?: string;
         phoneNumber?: string;
         role?: string;
         profile?: { firstName?: string; lastName?: string };
-        branchId?: { _id?: string; name?: string } | string | null;
-        warehouseId?: { _id?: string; name?: string } | string | null;
+        branchId?: { id?: string; name?: string } | string | null;
+        warehouseId?: { id?: string; name?: string } | string | null;
       };
   paidLeaveDays?: number;
   unpaidLeaveDays?: number;
@@ -32,16 +32,16 @@ export interface ApiLeaveRequest {
   reviewNote?: string;
   handoverToUserId?:
     | string
-    | { _id?: string; profile?: { firstName?: string; lastName?: string } };
+    | { id?: string; profile?: { firstName?: string; lastName?: string } };
   approvedBy?:
     | string
-    | { _id?: string; profile?: { firstName?: string; lastName?: string } };
+    | { id?: string; profile?: { firstName?: string; lastName?: string } };
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface LeaveRequest {
-  _id: string;
+  id: string;
   branchName: string;
   userId: string;
   staffName: string;
@@ -61,26 +61,25 @@ export interface LeaveRequest {
 
 export interface LeaveListQuery {
   page: number;
-  recordPerPage: number;
+  limit: number;
   status: LeaveRequestStatus | "all";
-  keyword: string;
+  search: string;
 }
 
 export interface LeaveRequestQueryParams {
   page?: number;
-  recordPerPage?: number;
+  limit?: number;
   status?: LeaveRequestStatus;
-  role?: "BRANCH_MANAGER" | "WAREHOUSE_MANAGER" | "STAFF";
   branchId?: string;
   warehouseId?: string;
-  keyword?: string;
+  search?: string;
   startDate?: string;
   endDate?: string;
 }
 
 /** Calendar overlay from GET /leave-requests/me/per-day */
 export interface LeaveRequestPerDay {
-  _id: string;
+  id: string;
   date: string;
   status: LeaveRequestStatus;
   reason: string;
@@ -88,7 +87,7 @@ export interface LeaveRequestPerDay {
 
 export interface LeaveRequestPerDayQueryParams {
   status?: LeaveRequestStatus;
-  keyword?: string;
+  search?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -100,8 +99,8 @@ export interface LeaveRequestListApiResponse {
   pagination?: {
     total: number;
     page: number;
-    recordPerPage: number;
-    totalPage: number;
+    limit: number;
+    totalPages: number;
   };
 }
 

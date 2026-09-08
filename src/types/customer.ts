@@ -32,11 +32,15 @@ export interface Customer {
   orders: CustomerOrder[]
 }
 
+/**
+ * What `GET /customers` actually filters on (`QueryCustomerDto`).
+ *
+ * `gender`, `dateFrom` and `dateTo` used to be declared here as though the server honoured
+ * them; it never has. The customers table applies all three **in the browser** over the
+ * rows it already holds (see `customers-table.tsx`), so listing them here only invited
+ * somebody to pass them and wonder why nothing narrowed.
+ */
 export interface CustomerQueryParams {
-  keyword?: string
-  gender?: CustomerGender
-  dateFrom?: string
-  dateTo?: string
   page?: number
   limit?: number
   search?: string

@@ -9,7 +9,7 @@ import type {
 } from '@/types/customer'
 
 function mapCustomer(cust: any): Customer {
-  const id = cust._id || cust.id;
+  const id = cust.id || cust.id;
   return {
     id,
     customerCode: cust.customerCode || `KH-${id ? id.slice(-6).toUpperCase() : Math.floor(1000 + Math.random() * 9000)}`,

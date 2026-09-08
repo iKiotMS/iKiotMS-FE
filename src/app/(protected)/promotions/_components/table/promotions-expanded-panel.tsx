@@ -55,7 +55,7 @@ export function PromotionsExpandedPanel({
   useEffect(() => {
     if (!isExpanded || logs !== null) return
     promotionApi
-      .getLogs(promotion.id, { recordPerPage: 50 })
+      .getLogs(promotion.id, { limit: 50 })
       .then((res) => res.data)
       .catch(() => [] as PromotionLog[])
       .then((data) => setLogs(data))
@@ -118,7 +118,7 @@ export function PromotionsExpandedPanel({
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">Thời gian áp dụng</span>
               <span>
-                {formatDateTime(promotion.startDate)} — {formatDateTime(promotion.endDate)}
+                {formatDateTime(promotion.startDate)} - {formatDateTime(promotion.endDate)}
               </span>
             </div>
             <div className="flex flex-col gap-0.5">
@@ -206,7 +206,7 @@ export function PromotionsExpandedPanel({
                 <TableBody>
                   {(logs ?? []).map((log) => (
                     <TableRow key={log.id} className="text-sm">
-                      <TableCell className="font-mono text-xs">{log.paymentReference ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-xs">{log.paymentReference ?? '-'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDateTime(log.createdAt)}
                       </TableCell>

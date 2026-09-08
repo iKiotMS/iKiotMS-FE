@@ -56,7 +56,7 @@ export function InfoItem({
       <span className="mt-0.5 text-muted-foreground">{icon}</span>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium">{value || "—"}</p>
+        <p className="text-sm font-medium">{value || "-"}</p>
       </div>
     </div>
   );
@@ -227,7 +227,7 @@ export function ProductDetailsChips({
   );
 }
 
-/** Hiển thị SP dạng tóm tắt (ảnh + tên + chip + SKU) — dùng trên phiếu xem/sửa. */
+/** Hiển thị SP dạng tóm tắt (ảnh + tên + chip + SKU) - dùng trên phiếu xem/sửa. */
 export function ProductSummary({
   product,
   name,
@@ -239,7 +239,7 @@ export function ProductSummary({
   sku?: string;
   metaMode?: ProductMetaMode;
 }) {
-  const resolvedName = product?.name || name || "—";
+  const resolvedName = product?.name || name || "-";
   const resolvedSku = product?.sku || sku || "";
 
   return (
@@ -363,8 +363,8 @@ function resolveSelectedProduct(
   displayProduct?: StockMovementProductItemOption,
 ) {
   return (
-    products.find((p) => p._id === value) ??
-    (displayProduct?._id === value ? displayProduct : undefined)
+    products.find((p) => p.id === value) ??
+    (displayProduct?.id === value ? displayProduct : undefined)
   );
 }
 
@@ -389,9 +389,9 @@ function ProductSelect({
 }) {
   const resolvedDisplay = displayProduct
     ? displayProduct
-    : value && !products.some((p) => p._id === value)
+    : value && !products.some((p) => p.id === value)
       ? ({
-          _id: value,
+          id: value,
           name: "Đang tải...",
           sku: "",
         } satisfies StockMovementProductItemOption)
@@ -400,8 +400,8 @@ function ProductSelect({
   const selected = resolveSelectedProduct(products, value, resolvedDisplay);
   const orphan =
     !!resolvedDisplay &&
-    resolvedDisplay._id === value &&
-    !products.some((p) => p._id === resolvedDisplay._id);
+    resolvedDisplay.id === value &&
+    !products.some((p) => p.id === resolvedDisplay.id);
 
   return (
     <Select
@@ -421,7 +421,7 @@ function ProductSelect({
         className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]"
       >
         {orphan && resolvedDisplay ? (
-          <SelectItem value={resolvedDisplay._id} className="py-2.5" disabled>
+          <SelectItem value={resolvedDisplay.id} className="py-2.5" disabled>
             <ProductOptionLabel product={resolvedDisplay} mode={metaMode} />
           </SelectItem>
         ) : null}
@@ -432,8 +432,8 @@ function ProductSelect({
         ) : (
           products.map((p) => (
             <SelectItem
-              key={p._id}
-              value={p._id}
+              key={p.id}
+              value={p.id}
               className="items-start overflow-hidden py-2.5"
             >
               <ProductOptionLabel product={p} mode={metaMode} />

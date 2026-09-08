@@ -15,7 +15,8 @@ export interface AuthTokens {
 
 export interface User {
   id: string;
-  email: string;
+  /** Optional on the backend - `phoneNumber` is the required identifier. */
+  email?: string | null;
   full_name?: string;
   display_name?: string;
   avatar_url?: string;
@@ -23,7 +24,50 @@ export interface User {
   bio?: string;
   created_at?: string;
   updated_at?: string;
+  /**
+   * The **account kind** - `ADMIN | TENANT_OWNER | STAFF | CUSTOMER`.
+   *
+   * Normalised at the API boundary from the backend's `systemRole`. The rewrite renamed
+   * this concept and reused the name `role` for the tenant-defined `Role` relation, so a
+   * raw `/auth/me` row carries `role: {id,name} | null` - an object, never one of these
+   * strings. Every `user.role === "…"` gate in the app was silently false until this was
+   * mapped; see `normalizeSessionUser`.
+   */
   role?: string;
+  /**
+   * Every `"resource:action"` this account holds, as `GET /auth/me` returned it.
+   *
+   * **Empty for ADMIN and TENANT_OWNER** - they short-circuit the backend's guard before it
+   * is consulted, so empty means "not applicable", not "nothing". Read it through `allows()`
+   * in `role-permissions.ts`, which handles that.
+   */
+  permissions?: string[];
+  /** The backend's own name for the account kind, kept beside the normalised `role`. */
+  systemRole?: string;
+  /** The tenant-defined role's display name, when the account holds one. */
+  roleName?: string;
+  /**
+   * The shop this account belongs to.
+   *
+   * **Never populated.** `/auth/me` returns the user row and its role relation and
+   * nothing else (`AuthService.toPublicUser` strips only the password), so every reader of
+   * this falls through its optional chain to a blank. `GET /tenant/me` (`getMyTenant()` in
+   * `lib/api/tenant.ts`) is the real source and `/settings` now reads it; this stays typed
+   * so anyone tempted to reach for `me.tenant` sees why it is empty.
+   */
+  tenant?: {
+    id?: string;
+    name?: string;
+    phoneNumber?: string;
+    mainAddress?: string;
+    taxNumber?: string;
+    hasSepayKey?: boolean;
+    banking?: {
+      accountNumber?: string;
+      accountName?: string;
+      bankName?: string;
+    };
+  };
   phoneNumber?: string;
   status?: string;
   tenantId?: string;
@@ -100,7 +144,7 @@ export function clearTokens(): void {
 }
 
 /**
- * Decode JWT payload (không verify — chỉ đọc role/branch từ access token).
+ * Decode JWT payload (không verify - chỉ đọc role/branch từ access token).
  */
 export function getJwtPayload(): Record<string, unknown> | null {
   const token = getAccessToken();

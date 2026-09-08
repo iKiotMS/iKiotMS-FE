@@ -51,11 +51,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     branchApi
       .getList({ limit: 100 })
-      .then((res) => setBranchOptions((res.data ?? []).map((b) => ({ value: b._id, label: b.name }))))
+      .then((res) => setBranchOptions((res.data ?? []).map((b) => ({ value: b.id, label: b.name }))))
       .catch(() => setBranchOptions([]))
     warehouseApi
       .getList({ limit: 100 })
-      .then((res) => setWarehouseOptions((res.data ?? []).map((w) => ({ value: w._id, label: w.name }))))
+      .then((res) => setWarehouseOptions((res.data ?? []).map((w) => ({ value: w.id, label: w.name }))))
       .catch(() => setWarehouseOptions([]))
   }, [])
 

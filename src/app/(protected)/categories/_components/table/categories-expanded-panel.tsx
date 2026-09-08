@@ -15,7 +15,7 @@ import { CategoriesMutateDialog } from '../dialogs/categories-mutate-dialog'
 function resolveParentId(category: Category): string | null {
   if (!category.parentId) return null
   if (typeof category.parentId === 'string') return category.parentId
-  return (category.parentId as { _id: string })._id
+  return (category.parentId as { id: string }).id
 }
 
 type CategoriesExpandedPanelProps = {

@@ -82,7 +82,6 @@ export function AssignBranchManagerDialog({
       allStaff.find(
         (staff) =>
           staff.status === "ACTIVE" &&
-          staff.role === "BRANCH_MANAGER" &&
           staff.branchId === selectedBranchId,
       ) ?? null
     );
@@ -93,7 +92,6 @@ export function AssignBranchManagerDialog({
     return allStaff.filter(
       (staff) =>
         staff.status === "ACTIVE" &&
-        staff.role === "STAFF" &&
         staff.branchId === selectedBranchId,
     );
   }, [allStaff, selectedBranchId]);
@@ -194,7 +192,7 @@ export function AssignBranchManagerDialog({
                     </FormControl>
                     <SelectContent>
                       {branches.map((branch) => (
-                        <SelectItem key={branch._id} value={branch._id}>
+                        <SelectItem key={branch.id} value={branch.id}>
                           {branch.name}
                         </SelectItem>
                       ))}
@@ -211,7 +209,7 @@ export function AssignBranchManagerDialog({
                 <p className="mt-0.5 font-medium truncate">
                   {currentManager
                     ? formatStaffOptionLabel(currentManager)
-                    : "—"}
+                    : "-"}
                 </p>
               </div>
             )}

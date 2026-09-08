@@ -105,7 +105,7 @@ export function ScheduleMutateDialog({
 
     try {
       if (isEdit && currentRow) {
-        await handleEdit(currentRow._id, payload);
+        await handleEdit(currentRow.id, payload);
       } else {
         await handleAdd(payload);
       }
@@ -136,7 +136,7 @@ export function ScheduleMutateDialog({
                     <ScheduleStaffPicker
                       key={
                         isEdit && currentRow
-                          ? `edit-${currentRow._id}`
+                          ? `edit-${currentRow.id}`
                           : open
                             ? "add"
                             : "closed"

@@ -47,7 +47,7 @@ const EMPTY_VALUES: ProductItemFormValues = {
   barcode: '',
   retailPrice: '',
   costPrice: '',
-  VAT: '',
+  vat: '',
   warrantyPeriod: '',
   description: '',
   images: [],
@@ -103,7 +103,7 @@ export function ProductsItemMutateDialog(props: Props) {
         barcode: existingItem.barcode ?? '',
         retailPrice: formatPriceAmount(existingItem.retailPrice),
         costPrice: formatPriceAmount(existingItem.costPrice),
-        VAT: existingItem.VAT != null ? String(existingItem.VAT) : '',
+        vat: existingItem.vat != null ? String(existingItem.vat) : '',
         warrantyPeriod: existingItem.warrantyPeriod ?? '',
         description: existingItem.description ?? '',
         images: existingItem.images ?? [],
@@ -150,7 +150,7 @@ export function ProductsItemMutateDialog(props: Props) {
       ...rest,
       costPrice: parsePriceAmount(data.costPrice),
       retailPrice: parsePriceAmount(data.retailPrice),
-      VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
+      vat: data.vat ? Math.min(Number(data.vat), 100) : undefined,
       productDetails: data.productDetails?.filter((d) => d.name.trim() && d.value.trim()),
       initialStock: isEdit
         ? undefined
@@ -397,7 +397,7 @@ export function ProductsItemMutateDialog(props: Props) {
               />
               <FormField
                 control={form.control}
-                name="VAT"
+                name="vat"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>VAT (%)</FormLabel>
@@ -487,7 +487,7 @@ export function ProductsItemMutateDialog(props: Props) {
               </div>
               {detailFields.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  VD: Màu sắc — Đỏ, Dung lượng — 512GB
+                  VD: Màu sắc - Đỏ, Dung lượng - 512GB
                 </p>
               )}
               <div className="space-y-2">

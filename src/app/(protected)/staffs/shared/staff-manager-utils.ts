@@ -1,79 +1,35 @@
-import type { Staff, StaffRole } from "@/types/staff";
-
-const MANAGER_ROLES = new Set<StaffRole>([
-  "BRANCH_MANAGER",
-  "WAREHOUSE_MANAGER",
-]);
-
-export function isManagerRole(role: StaffRole): boolean {
-  return MANAGER_ROLES.has(role);
-}
-
-/** Khớp BE isActiveBranchManager — role BM và đã gán branchId. */
-export function isActiveBranchManager(staff: Staff): boolean {
-  return staff.role === "BRANCH_MANAGER" && Boolean(staff.branchId);
-}
-
-/** Khớp BE isActiveWarehouseManager — role WM và đã gán warehouseId. */
-export function isActiveWarehouseManager(staff: Staff): boolean {
-  return staff.role === "WAREHOUSE_MANAGER" && Boolean(staff.warehouseId);
-}
+/**
+ * What is left of the old role-hierarchy rules.
+ *
+ * The previous backend had three fixed roles and decided who could edit whom by comparing
+ * them - BRANCH_MANAGER could act on STAFF at their own branch, and deleting a manager
+ * required handing their location to somebody else in the same call
+ * (`replacementManagerId`). None of that exists any more:
+ *
+ *  - roles are rows a shop owner defines, so "is this person a manager" is not something a
+ *    role name can answer;
+ *  - who may edit staff is a single permission (`users:update` / `users:delete`), not a
+ *    comparison between two roles;
+ *  - running a location is `Branch.managerId` / `Warehouse.managerId`, appointed through
+ *    `PATCH /branches/:id/manager`. The delete and deactivate routes take **no body** now,
+ *    so a `replacementManagerId` sent from here is silently dropped. The backend refuses
+ *    the delete instead and says to reassign the location first - which is the message the
+ *    dialogs surface.
+ *
+ * Only the caller-side check survives, and only in the form the backend still enforces.
+ */
 
 /**
- * Delete/deactivate manager cần replacementManagerId (BE promote STAFF trước).
- * Nhân viên STAFF thường không cần.
+ * Whether this account may deactivate or delete somebody else's staff record.
+ *
+ * It takes only the caller: the old version also weighed the *target's* role, and there is
+ * no longer a role hierarchy to weigh.
  */
-export function requiresManagerReplacement(staff: Staff): boolean {
-  return isActiveBranchManager(staff) || isActiveWarehouseManager(staff);
-}
-
-export function canDeactivateStaffRow(
-  userRole: string | undefined | null,
-  staff: Staff,
-  requesterBranchId?: string | null,
-): boolean {
+export function canManageStaffRow(userRole: string | undefined | null): boolean {
   if (!userRole) return false;
-  if (isManagerRole(staff.role)) {
-    return userRole === "TENANT_OWNER";
-  }
-  if (userRole === "TENANT_OWNER") return true;
-  if (userRole === "BRANCH_MANAGER") {
-    if (staff.role !== "STAFF" || !staff.branchId || !requesterBranchId) {
-      return false;
-    }
-    return staff.branchId === requesterBranchId;
-  }
-  return false;
+  // The backend re-checks this; the button is hidden so the refusal isn't a surprise.
+  return userRole === "TENANT_OWNER" || userRole === "ADMIN";
 }
 
-export function canDeleteStaffRow(
-  userRole: string | undefined | null,
-  staff: Staff,
-  requesterBranchId?: string | null,
-): boolean {
-  if (!userRole) return false;
-  if (isManagerRole(staff.role)) {
-    return userRole === "TENANT_OWNER";
-  }
-  if (userRole === "TENANT_OWNER") return true;
-  if (userRole === "BRANCH_MANAGER") {
-    if (staff.role !== "STAFF" || !staff.branchId || !requesterBranchId) {
-      return false;
-    }
-    return staff.branchId === requesterBranchId;
-  }
-  return false;
-}
-
-export function getManagerRoleLabel(role: StaffRole): string {
-  if (role === "BRANCH_MANAGER") return "quản lý chi nhánh";
-  if (role === "WAREHOUSE_MANAGER") return "quản lý kho";
-  return "quản lý";
-}
-
-/** BM/WM chưa gán nơi làm việc — BE không xử lý được delete/deactivate. */
-export function isOrphanManagerRecord(staff: Staff): boolean {
-  if (staff.role === "BRANCH_MANAGER" && !staff.branchId) return true;
-  if (staff.role === "WAREHOUSE_MANAGER" && !staff.warehouseId) return true;
-  return false;
-}
+export const canDeactivateStaffRow = canManageStaffRow;
+export const canDeleteStaffRow = canManageStaffRow;

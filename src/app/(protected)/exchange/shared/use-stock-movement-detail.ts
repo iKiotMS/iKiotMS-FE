@@ -37,7 +37,7 @@ export function useStockMovementDetail(
 
     async function load() {
       setLoading(true);
-      const next = await fetchMovement(request._id, request);
+      const next = await fetchMovement(request.id, request);
       if (!cancelled) {
         setDetail(next);
         setLoading(false);
@@ -52,7 +52,7 @@ export function useStockMovementDetail(
 
   const refreshDetail = useCallback(async () => {
     setLoading(true);
-    setDetail(await fetchMovement(request._id, request));
+    setDetail(await fetchMovement(request.id, request));
     setLoading(false);
   }, [request]);
 
@@ -83,7 +83,7 @@ export function useOpeningEditor({
   const [openingProducts, setOpeningProducts] = useState<
     StockMovementProductItemOption[]
   >([]);
-  /** Catalog tenant — enrich hiển thị + search pick (IMPORT). */
+  /** Catalog tenant - enrich hiển thị + search pick (IMPORT). */
   const [catalogProducts, setCatalogProducts] = useState<
     StockMovementProductItemOption[]
   >([]);
@@ -261,12 +261,12 @@ export function useOpeningEditor({
       // IMPORT: giữ openingProducts = SP NCC; hàng từ ô tìm gắn vào catalog
       if (detail.movementType === "IMPORT") {
         setCatalogProducts((prev) =>
-          prev.some((p) => p._id === item._id) ? prev : [...prev, item],
+          prev.some((p) => p.id === item.id) ? prev : [...prev, item],
         );
         return;
       }
       setOpeningProducts((prev) =>
-        prev.some((p) => p._id === item._id) ? prev : [...prev, item],
+        prev.some((p) => p.id === item.id) ? prev : [...prev, item],
       );
     },
     [detail.movementType],
@@ -282,7 +282,7 @@ export function useOpeningEditor({
       setOpeningDetails((prev) => {
         const emptyIdx = prev.findIndex((row) => !row.productItemId);
         const row: OpeningDetailRow = {
-          productItemId: item._id,
+          productItemId: item.id,
           quantity: 1,
           importPrice,
           note: "",

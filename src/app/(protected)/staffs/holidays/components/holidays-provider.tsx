@@ -150,7 +150,7 @@ export function HolidaysProvider({
 
   async function handleStatusChange(holiday: Holiday) {
     try {
-      await holidayApi.updateStatus(holiday._id, !holiday.isActive);
+      await holidayApi.updateStatus(holiday.id, !holiday.isActive);
       toast.success(holiday.isActive ? "Đã tắt ngày lễ" : "Đã bật ngày lễ");
       await fetchHolidays();
     } catch (error) {

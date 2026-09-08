@@ -51,7 +51,7 @@ export function useProductsMutations() {
             barcode: data.barcode,
             retailPrice: parsePriceAmount(data.retailPrice),
             costPrice: parsePriceAmount(data.costPrice),
-            VAT: data.VAT ? Math.min(Number(data.VAT), 100) : undefined,
+            vat: data.vat ? Math.min(Number(data.vat), 100) : undefined,
             warrantyPeriod: data.warrantyPeriod,
             description: data.description,
             images: data.itemImages?.length ? data.itemImages : data.images,

@@ -9,7 +9,7 @@ export async function assignFreeTrial() {
 }
 
 export interface Plan {
-  _id: string;
+  id: string;
   planName: string;
   planCode: string;
   price: number;
@@ -34,14 +34,14 @@ export async function listPlans(): Promise<Plan[]> {
 }
 
 /**
- * List every plan including inactive ones (SUPER_ADMIN management table)
+ * List every plan including inactive ones (ADMIN management table)
  */
 export async function listAllPlans(): Promise<Plan[]> {
   const response = await client.get("/admin/plans");
   return response.data.data;
 }
 
-/** Fields a SUPER_ADMIN may edit on a plan. */
+/** Fields a ADMIN may edit on a plan. */
 export type UpdatePlanPayload = Partial<
   Pick<
     Plan,
@@ -60,7 +60,7 @@ export type UpdatePlanPayload = Partial<
 >;
 
 /**
- * Update a plan's editable fields (SUPER_ADMIN). planCode/billingCycle are immutable.
+ * Update a plan's editable fields (ADMIN). planCode/billingCycle are immutable.
  */
 export async function updatePlan(
   id: string,
@@ -71,7 +71,7 @@ export async function updatePlan(
 }
 
 /**
- * Enable/disable a plan (SUPER_ADMIN). Inactive plans drop off the public list.
+ * Enable/disable a plan (ADMIN). Inactive plans drop off the public list.
  */
 export async function setPlanActive(
   id: string,
@@ -126,7 +126,7 @@ export async function initiateUpgrade(planCode: string): Promise<InitiateUpgrade
 }
 
 /**
- * Renew the tenant's current plan (no planCode needed — backend uses the active plan)
+ * Renew the tenant's current plan (no planCode needed - backend uses the active plan)
  */
 export async function initiateRenewal(): Promise<InitiateUpgradeResult> {
   const response = await client.post("/subscription/renew/initiate", {});
@@ -134,7 +134,7 @@ export async function initiateRenewal(): Promise<InitiateUpgradeResult> {
 }
 
 export interface Invoice {
-  _id: string;
+  id: string;
   planId: { planName: string; planCode: string };
   amount: number;
   currency: string;
@@ -153,7 +153,7 @@ export async function listInvoices(): Promise<Invoice[]> {
 
 export interface AdminInvoice extends Omit<Invoice, "planId"> {
   planId?: { planName: string; planCode: string };
-  tenantId?: { _id: string; name: string; phoneNumber?: string };
+  tenantId?: { id: string; name: string; phoneNumber?: string };
 }
 
 export async function listAllInvoices(): Promise<AdminInvoice[]> {

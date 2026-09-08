@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { type InitiateUpgradeResult } from "@/lib/api/subscription"
 import { useAuthStore } from "@/store/auth-store"
-import { getSocket, joinRoom } from "@/lib/socket"
+import { getSocket } from "@/lib/socket"
 
 interface PaymentDialogProps {
   open: boolean
@@ -30,7 +30,6 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
   const [secondsLeft, setSecondsLeft] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const fetchMe = useAuthStore((state) => state.fetchMe)
-  const user = useAuthStore((state) => state.user)
 
   useEffect(() => {
     if (!open || !invoice) {
@@ -53,9 +52,9 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
     tick()
     intervalRef.current = setInterval(tick, 1000)
 
-    // Socket: lắng nghe subscription:activated từ room "tenant:<tenantId>"
+    // The backend joins this socket to `tenant:<id>` itself, so there is nothing to
+    // subscribe to here - only something to listen for.
     const socket = getSocket()
-    const room = user?.tenantId ? `tenant:${user.tenantId}` : null
 
     const handleActivated = async () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -64,10 +63,7 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
       toast.success(`Nâng cấp lên gói ${invoice.plan.planName} thành công!`)
     }
 
-    if (room) {
-      joinRoom(room)
-      socket.on("subscription:activated", handleActivated)
-    }
+    socket.on("subscription:activated", handleActivated)
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)

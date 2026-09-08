@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Customer } from '@/types/customer'
+import { branchIdOf } from '@/lib/location-key'
 import type { CustomerFormValues } from '../_types/customer.types'
 import { customerApi } from '@/lib/api/customer'
 import { useAuthStore } from '@/store/auth-store'
@@ -18,15 +19,10 @@ export function useCustomersMutations() {
   const fetchCustomers = useCallback(async () => {
     setIsLoading(true)
     try {
-      let branchId: string | undefined = undefined
-      if (locationKey && locationKey !== 'all') {
-        const [type, id] = locationKey.split('-')
-        if (type === 'branch' && id) {
-          branchId = id
-        }
-      }
-
-      const res = await customerApi.getList({ limit: 1000, branchId })
+      const res = await customerApi.getList({
+        limit: 1000,
+        branchId: branchIdOf(locationKey),
+      })
       const customersData = res.data
 
       // Map raw ISO date strings of orders into the formatDateTime string format

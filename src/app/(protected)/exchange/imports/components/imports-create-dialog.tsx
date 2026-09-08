@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { getSessionBranchId } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -139,7 +140,7 @@ function ImportDetailLine({
   });
   const priceOver = isPriceOverRetail(importPrice, product?.retailPrice);
   const displayOrphan =
-    product && !lineProducts.some((p) => p._id === product._id)
+    product && !lineProducts.some((p) => p.id === product.id)
       ? product
       : undefined;
 
@@ -165,7 +166,7 @@ function ImportDetailLine({
               metaMode="price"
               placeholder="Chọn hàng hóa"
               onValueChange={(id) => {
-                const item = lineProducts.find((p) => p._id === id);
+                const item = lineProducts.find((p) => p.id === id);
                 if (item) onPick(item);
                 else field.onChange(id);
               }}
@@ -297,7 +298,7 @@ export function ImportsCreateDialog({
 
   const productById = useMemo(() => {
     const map = new Map(extraById);
-    for (const p of supplierProducts) map.set(p._id, p);
+    for (const p of supplierProducts) map.set(p.id, p);
     return map;
   }, [extraById, supplierProducts]);
 
@@ -329,9 +330,9 @@ export function ImportsCreateDialog({
 
   const cacheProduct = useCallback((item: StockMovementProductItemOption) => {
     setExtraById((prev) => {
-      if (prev.has(item._id)) return prev;
+      if (prev.has(item.id)) return prev;
       const next = new Map(prev);
-      next.set(item._id, item);
+      next.set(item.id, item);
       return next;
     });
   }, []);
@@ -341,9 +342,9 @@ export function ImportsCreateDialog({
       const current = form.getValues("details") ?? [];
       const dup =
         lineIndex == null
-          ? current.some((d) => d.productItemId === item._id)
+          ? current.some((d) => d.productItemId === item.id)
           : current.some(
-              (d, i) => i !== lineIndex && d.productItemId === item._id,
+              (d, i) => i !== lineIndex && d.productItemId === item.id,
             );
       if (dup) {
         toast.message("Hàng hóa này đã có trong danh sách");
@@ -352,7 +353,7 @@ export function ImportsCreateDialog({
 
       cacheProduct(item);
       const base: DetailValues = {
-        productItemId: item._id,
+        productItemId: item.id,
         quantity: 1,
         importPrice: clampImportPrice(item),
         note: "",
@@ -425,7 +426,9 @@ export function ImportsCreateDialog({
   }, [open, fromSupplierId]);
 
   async function onSubmit(data: ImportFormValues) {
-    if (role === "BRANCH_MANAGER") {
+    // Nhập hàng về kho. Backend cũng đã chặn từ 2026-09-07 (`assertCanActAt` cho đích của
+    // phiếu IMPORT); trước đó luật này chỉ tồn tại ở đúng dòng JavaScript này.
+    if (getSessionBranchId()) {
       toast.error("Chi nhánh không được tạo đơn nhập hàng");
       return;
     }
@@ -440,7 +443,7 @@ export function ImportsCreateDialog({
     }
 
     const toType =
-      visibleLocations.find((l) => l._id === data.toLocationId)?.type ??
+      visibleLocations.find((l) => l.id === data.toLocationId)?.type ??
       "warehouse";
 
     try {
@@ -505,7 +508,7 @@ export function ImportsCreateDialog({
                       </FormControl>
                       <SelectContent>
                         {suppliers.map((s) => (
-                          <SelectItem key={s._id} value={s._id}>
+                          <SelectItem key={s.id} value={s.id}>
                             {s.name}
                           </SelectItem>
                         ))}
@@ -536,7 +539,7 @@ export function ImportsCreateDialog({
                       </FormControl>
                       <SelectContent>
                         {visibleLocations.map((l) => (
-                          <SelectItem key={l._id} value={l._id}>
+                          <SelectItem key={l.id} value={l.id}>
                             {l.name} (
                             {l.type === "warehouse" ? "Kho" : "Chi nhánh"})
                           </SelectItem>
@@ -611,7 +614,7 @@ export function ImportsCreateDialog({
                 const itemId = details[idx]?.productItemId ?? "";
                 const product = itemId ? productById.get(itemId) : undefined;
                 const lineProducts = supplierProducts.filter(
-                  (p) => p._id === itemId || !usedIds.has(p._id),
+                  (p) => p.id === itemId || !usedIds.has(p.id),
                 );
                 return (
                   <ImportDetailLine

@@ -1,12 +1,15 @@
 export type BranchStatus = "ACTIVE" | "INACTIVE";
 
 export interface Branch {
-  _id: string;
+  id: string;
   name: string;
   phoneNumber: string[];
   address?: string;
   email?: string;
   status: BranchStatus;
+  /** Who runs this location. Appointed through `PATCH /:id/manager`, not by holding a
+   *  particular role - the rewrite moved that from `User.role` onto the location itself. */
+  managerId?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

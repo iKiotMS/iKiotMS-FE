@@ -9,12 +9,14 @@ import type {
   BrandUpdatePayload,
 } from '@/types/brand'
 
-// Backend trả về document Mongoose với `_id`; FE dùng `id`.
-type BrandDoc = Omit<Brand, 'id'> & { _id: string }
+// Kiểu phản hồi của API. Bản Express cũ trả document Mongo khoá `_id`; bản NestJS
+// trả `id`, nên phép ánh xạ dưới đây giờ là đồng nhất - giữ lại làm chỗ duy nhất phải
+// sửa nếu hình dạng phản hồi đổi lần nữa.
+type BrandDoc = Omit<Brand, 'id'> & { id: string }
 
 function mapBrand(doc: BrandDoc): Brand {
-  const { _id, ...rest } = doc
-  return { ...rest, id: _id, _id }
+  const { id, ...rest } = doc
+  return { ...rest, id }
 }
 
 export const brandApi = {

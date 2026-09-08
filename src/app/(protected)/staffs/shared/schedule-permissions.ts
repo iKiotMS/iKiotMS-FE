@@ -1,50 +1,44 @@
-/** Aligned with BE permissions.json schedules module. */
-
-const SCHEDULE_CREATE_ROLES = new Set(["TENANT_OWNER", "BRANCH_MANAGER"]);
-const SCHEDULE_DELETE_ROLES = new Set(["TENANT_OWNER", "BRANCH_MANAGER"]);
-const SCHEDULE_UPDATE_ROLES = new Set(["TENANT_OWNER", "BRANCH_MANAGER"]);
-const SCHEDULE_SHIFT_TEMPLATE_ROLES = new Set([
-  "TENANT_OWNER",
-  "BRANCH_MANAGER",
-]);
-
-const SCHEDULE_VIEW_ROLES = new Set([
-  "TENANT_OWNER",
-  "BRANCH_MANAGER",
-  "WAREHOUSE_MANAGER",
-  "STAFF",
-]);
+/**
+ * Who may do what with the shift roster.
+ *
+ * These were sets of role names mirroring the old backend's `permissions.json`. Their two
+ * manager values no longer exist, so every gate here had collapsed to "TENANT_OWNER only" -
+ * hiding rostering from the very staff the shop had granted it to. Each one now asks the
+ * permission catalogue through `allows()`.
+ *
+ * The location scope below moved the same way: which slice of the roster you see follows
+ * from **where you are posted**, not from a role name.
+ */
+import { allows } from "@/components/sidebar/constants/role-permissions";
+import { getSessionBranchId, getSessionWarehouseId } from "@/lib/auth";
 
 export type ScheduleListScope = "all" | "branch" | "warehouse" | "own";
 
 export function canViewSchedule(userRole?: string | null): boolean {
-  if (!userRole) return false;
-  return SCHEDULE_VIEW_ROLES.has(userRole);
+  return allows(userRole, 'schedules', 'read');
 }
 
 export function canCreateSchedule(userRole?: string | null): boolean {
-  if (!userRole) return false;
-  return SCHEDULE_CREATE_ROLES.has(userRole);
+  return allows(userRole, 'schedules', 'create');
 }
 
 export function canDeleteSchedule(userRole?: string | null): boolean {
-  if (!userRole) return false;
-  return SCHEDULE_DELETE_ROLES.has(userRole);
+  return allows(userRole, 'schedules', 'delete');
 }
 
 export function canUpdateSchedule(userRole?: string | null): boolean {
-  if (!userRole) return false;
-  return SCHEDULE_UPDATE_ROLES.has(userRole);
+  return allows(userRole, 'schedules', 'update');
 }
 
 /** BM không được sửa/xóa ca được gán cho chính mình. */
 export function isBranchManagerOwnScheduleAssignee(
-  userRole?: string | null,
+  _userRole?: string | null,
   sessionUserId?: string | null,
   assigneeUserId?: string | null,
 ): boolean {
-  if (userRole !== "BRANCH_MANAGER") return false;
   if (!sessionUserId || !assigneeUserId) return false;
+  // Anybody who manages the roster is barred from editing the shift they are on -
+  // the rule was never about the role, only about being both parties at once.
   return String(sessionUserId) === String(assigneeUserId);
 }
 
@@ -86,44 +80,36 @@ export function canUpdateScheduleAssignee(
 }
 
 export function canManageShiftTemplates(userRole?: string | null): boolean {
-  if (!userRole) return false;
-  return SCHEDULE_SHIFT_TEMPLATE_ROLES.has(userRole);
+  return allows(userRole, 'schedules', 'update');
 }
 
 export function canFilterScheduleByStaff(userRole?: string | null): boolean {
-  return (
-    userRole === "TENANT_OWNER" ||
-    userRole === "BRANCH_MANAGER" ||
-    userRole === "WAREHOUSE_MANAGER"
-  );
+  // Anyone who can see more than their own shifts can filter within them.
+  return allows(userRole, 'schedules', 'read_all') ||
+    allows(userRole, 'schedules', 'readBR') ||
+    allows(userRole, 'schedules', 'readWH');
 }
 
 export function getScheduleListScope(
   userRole?: string | null,
 ): ScheduleListScope | null {
-  switch (userRole) {
-    case "TENANT_OWNER":
-      return "all";
-    case "BRANCH_MANAGER":
-      return "branch";
-    case "WAREHOUSE_MANAGER":
-      return "warehouse";
-    case "STAFF":
-      return "own";
-    default:
-      return null;
-  }
+  if (!userRole) return null;
+  // Where you are posted decides the slice - an owner is posted nowhere and sees everything.
+  if (getSessionBranchId()) return "branch";
+  if (getSessionWarehouseId()) return "warehouse";
+  if (userRole === "TENANT_OWNER" || userRole === "ADMIN") return "all";
+  return "own";
 }
 
 export function getScheduleScopeLabel(userRole?: string | null): string | null {
-  switch (userRole) {
-    case "TENANT_OWNER":
+  switch (getScheduleListScope(userRole)) {
+    case "all":
       return "Toàn bộ tenant";
-    case "BRANCH_MANAGER":
+    case "branch":
       return "Nhân viên trong chi nhánh";
-    case "WAREHOUSE_MANAGER":
+    case "warehouse":
       return "Nhân viên trong kho";
-    case "STAFF":
+    case "own":
       return "Ca của tôi";
     default:
       return null;

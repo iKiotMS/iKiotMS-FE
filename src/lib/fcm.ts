@@ -69,7 +69,7 @@ export async function disablePushNotifications(): Promise<void> {
 /**
  * Nhận push khi tab đang mở và đang được focus.
  *
- * Lưu ý: lúc này service worker KHÔNG tự hiện popup — trình duyệt cố tình để
+ * Lưu ý: lúc này service worker KHÔNG tự hiện popup - trình duyệt cố tình để
  * app tự quyết. Đó là chỗ nên bắn toast thay vì notification hệ thống.
  *
  * @returns hàm unsubscribe

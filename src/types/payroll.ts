@@ -4,7 +4,7 @@ export type PeriodStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PAID';
 export type AdjustmentType = 'BONUS' | 'DEDUCTION';
 
 export interface PayrollSettings {
-  _id?: string;
+  id?: string;
   cycle: PayrollCycle;
   approveAfterPeriodEndDays: number;
   payAfterPeriodEndDays: number;
@@ -16,7 +16,7 @@ export interface PayrollSettings {
 }
 
 export interface PaySheet {
-  _id: string;
+  id: string;
   tenantId?: string;
   createdBy?: string;
   name: string;
@@ -55,11 +55,11 @@ export interface PaySheet {
   updatedAt?: string;
 }
 
-export type PaySheetCreatePayload = Omit<PaySheet, '_id' | 'createdAt' | 'updatedAt'>;
+export type PaySheetCreatePayload = Omit<PaySheet, 'id' | 'createdAt' | 'updatedAt'>;
 export type PaySheetUpdatePayload = Partial<PaySheetCreatePayload>;
 
 export interface ManualAdjustment {
-  _id?: string;
+  id?: string;
   category: 'SALARY_ADVANCE' | 'TET_BONUS' | 'OTHER';
   name: string;
   amount: number;
@@ -103,13 +103,13 @@ export interface DeductionLine {
 }
 
 export interface Payslip {
-  _id: string;
+  id: string;
   paySheetId?: string;
   payrollPeriodId?: string;
   periodStart?: string;
   periodEnd?: string;
   userId: {
-    _id: string;
+    id: string;
     phoneNumber: string;
     role: string;
     profile?: {
@@ -161,7 +161,7 @@ export interface Payslip {
 }
 
 export interface PayrollPeriod {
-  _id: string;
+  id: string;
   periodStart: string;
   periodEnd: string;
   status: PeriodStatus;
@@ -177,11 +177,17 @@ export interface PeriodCreatePayload {
   userIds?: string[];
 }
 
+/**
+ * `POST /payroll/preview` takes the explicit range - `PreviewPayrollDto` is
+ * `{ periodStartDate, periodEndDate, userIds }`.
+ *
+ * `payrollMonth` used to sit here too, under a comment about staying compatible "while the
+ * new BE rolls out to Render". That rollout is done and the key has never been read: it is
+ * `POST /payroll/periods` (`GeneratePayrollDto`) that takes a month.
+ */
 export interface PreviewPayload {
-  payrollMonth: string;
-  // Temporary rolling-deployment compatibility with the previous preview API.
-  periodStartDate?: string;
-  periodEndDate?: string;
+  periodStartDate: string;
+  periodEndDate: string;
   userIds?: string[];
 }
 

@@ -82,7 +82,6 @@ export function AssignWarehouseManagerDialog({
       allStaff.find(
         (staff) =>
           staff.status === "ACTIVE" &&
-          staff.role === "WAREHOUSE_MANAGER" &&
           staff.warehouseId === selectedWarehouseId,
       ) ?? null
     );
@@ -91,7 +90,7 @@ export function AssignWarehouseManagerDialog({
   const staffCandidates = useMemo(
     () =>
       allStaff.filter(
-        (staff) => staff.status === "ACTIVE" && staff.role === "STAFF",
+        (staff) => staff.status === "ACTIVE",
       ),
     [allStaff],
   );
@@ -188,7 +187,7 @@ export function AssignWarehouseManagerDialog({
                     </FormControl>
                     <SelectContent>
                       {warehouses.map((warehouse) => (
-                        <SelectItem key={warehouse._id} value={warehouse._id}>
+                        <SelectItem key={warehouse.id} value={warehouse.id}>
                           {warehouse.name}
                         </SelectItem>
                       ))}
@@ -205,7 +204,7 @@ export function AssignWarehouseManagerDialog({
                 <p className="mt-0.5 font-medium truncate">
                   {currentManager
                     ? formatStaffOptionLabel(currentManager)
-                    : "—"}
+                    : "-"}
                 </p>
               </div>
             )}

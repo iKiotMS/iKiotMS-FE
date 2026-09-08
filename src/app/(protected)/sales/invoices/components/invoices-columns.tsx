@@ -49,7 +49,7 @@ export interface Invoice {
     promotionId: string;
     promoName: string;
     discountAmount: number;
-    _id?: string;
+    id?: string;
   }[] | null;
   createdAt: string;
   updatedAt: string;
@@ -243,7 +243,7 @@ export const invoicesColumns: ColumnDef<Invoice>[] = [
     header: "Thanh toán",
     cell: ({ row }) => {
       const method = row.getValue("paymentMethod") as Invoice["paymentMethod"];
-      return PAYMENT_METHOD_MAP[method] || "—";
+      return PAYMENT_METHOD_MAP[method] || "-";
     },
     filterFn: (row, columnId, value: string) => {
       if (!value || value === "all") return true;

@@ -38,7 +38,7 @@ export function PayrollReturnDraftDialog({ open, onOpenChange, currentRow }: Pay
   async function handleConfirm() {
     if (!currentRow) return
     setSubmitting(true)
-    const success = await handleReturnToDraft(currentRow._id, reason)
+    const success = await handleReturnToDraft(currentRow.id, reason)
     setSubmitting(false)
     if (success) {
       handleOpenChange(false)
@@ -52,9 +52,9 @@ export function PayrollReturnDraftDialog({ open, onOpenChange, currentRow }: Pay
           <DialogTitle>Trả kỳ lương về nháp</DialogTitle>
           <DialogDescription>
             Đưa kỳ lương từ ngày{' '}
-            <strong>{currentRow?.periodStart ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodStart)) : '—'}</strong>
+            <strong>{currentRow?.periodStart ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodStart)) : '-'}</strong>
             {' '}đến{' '}
-            <strong>{currentRow?.periodEnd ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodEnd)) : '—'}</strong>
+            <strong>{currentRow?.periodEnd ? new Intl.DateTimeFormat('vi-VN').format(new Date(currentRow.periodEnd)) : '-'}</strong>
             {' '}về trạng thái <strong>Bản nháp (Draft)</strong> để cho phép điều chỉnh tiếp. Nhân viên sẽ không nhận thông báo ở bước này.
           </DialogDescription>
         </DialogHeader>

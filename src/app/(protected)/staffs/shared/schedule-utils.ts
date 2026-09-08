@@ -18,7 +18,7 @@ export function isOvernightShift(startTime: string, endTime: string): boolean {
   return Boolean(startTime && endTime && startTime >= endTime);
 }
 
-/** @deprecated Dùng extractVietnamTimeFromIso — BE lưu giờ VN, không phải UTC wall clock. */
+/** @deprecated Dùng extractVietnamTimeFromIso - BE lưu giờ VN, không phải UTC wall clock. */
 export function extractUtcTimeFromIso(iso?: string): string {
   return extractVietnamTimeFromIso(iso);
 }
@@ -65,7 +65,7 @@ export function filterScheduleToAssignee(
   };
 }
 
-/** Tách mỗi assignee thành một chip trên lịch — tiện filter và đọc lịch nhiều người/ca. */
+/** Tách mỗi assignee thành một chip trên lịch - tiện filter và đọc lịch nhiều người/ca. */
 export function expandSchedulesForCalendar(
   schedules: WorkingSchedule[],
   filterUserId: string = "all",
@@ -78,7 +78,7 @@ export function expandSchedulesForCalendar(
       entries.push({
         schedule,
         assignee: null,
-        chipKey: schedule._id,
+        chipKey: schedule.id,
         displayName: schedule.staffName,
         displayAvatarUrl: schedule.staffAvatarUrl,
         displayAttendance: schedule.attendance,
@@ -94,7 +94,7 @@ export function expandSchedulesForCalendar(
       entries.push({
         schedule,
         assignee,
-        chipKey: `${schedule._id}-${assignee.userId}`,
+        chipKey: `${schedule.id}-${assignee.userId}`,
         displayName: assignee.staffName,
         displayAvatarUrl: assignee.staffAvatarUrl,
         displayAttendance: assignee.attendance,

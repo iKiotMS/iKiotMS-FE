@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { staffApi } from "@/lib/api/staff";
+import { parseLocationKey } from "@/lib/location-key";
 import { branchApi } from "@/lib/api/branch";
 import { warehouseApi } from "@/lib/api/warehouse";
 import { paySheetApi } from "@/lib/api/paysheet";
@@ -10,7 +11,6 @@ import { getSessionRole } from "@/lib/auth";
 import { useAuthStore } from "@/store/auth-store";
 import {
   getApiErrorMessage,
-  getStaffRoleLabel,
 } from "@/lib/api/staff-mapper";
 import { canViewStaff } from "@/components/sidebar/constants/role-permissions";
 import type {
@@ -18,7 +18,6 @@ import type {
   CreateStaffPayload,
   Staff,
   StaffListQuery,
-  StaffRole,
   StaffRoleOption,
   StaffStatus,
   UpdateStaffPayload,
@@ -35,9 +34,9 @@ type StaffsDialogType =
 
 const DEFAULT_LIST_QUERY: StaffListQuery = {
   page: 1,
-  recordPerPage: 10,
-  keyword: "",
-  role: "all",
+  limit: 10,
+  search: "",
+  roleId: "all",
   status: "all",
   branchId: "all",
   warehouseId: "all",
@@ -57,7 +56,7 @@ type StaffsContextType = {
   branchOptions: { value: string; label: string }[];
   warehouseOptions: { value: string; label: string }[];
   warehouseOptionsFailed: boolean;
-  /** The global branch/warehouse switcher's current key ("all" | "branch-<id>" | "warehouse-<id>") — takes precedence over the manual filters below. */
+  /** The global branch/warehouse switcher's current key ("all" | "branch-<id>" | "warehouse-<id>") - takes precedence over the manual filters below. */
   locationKey: string;
   open: StaffsDialogType | null;
   setOpen: (value: StaffsDialogType | null) => void;
@@ -79,12 +78,12 @@ type StaffsContextType = {
     id: string,
     payload: CreateStaffAccountPayload,
   ) => Promise<void>;
-  updateRoleFilter: (role: StaffRole | "all") => void;
+  updateRoleFilter: (roleId: string | "all") => void;
   updateStatusFilter: (status: StaffStatus | "all") => void;
   updateBranchFilter: (branchId: string) => void;
   updateWarehouseFilter: (warehouseId: string) => void;
   updatePage: (page: number) => void;
-  updatePageSize: (recordPerPage: number) => void;
+  updatePageSize: (limit: number) => void;
   assignManagerOpen: boolean;
   assignManagerBranchId?: string;
   assignManagerBranchName?: string;
@@ -102,11 +101,15 @@ type StaffsContextType = {
 
 const StaffsContext = React.createContext<StaffsContextType | null>(null);
 
-const DEFAULT_ROLE_OPTIONS: StaffRoleOption[] = [
-  { value: "STAFF", label: "Nhân viên bán hàng" },
-  { value: "WAREHOUSE_MANAGER", label: "Quản lý kho" },
-  { value: "BRANCH_MANAGER", label: "Quản lý chi nhánh" },
-];
+/**
+ * Empty, and that is the correct default.
+ *
+ * This used to hold the three roles the old backend had built in. Sending one of those
+ * names as a `roleId` would now be rejected - a role is a row this shop created, and a
+ * brand-new tenant has none until somebody defines them. Falling back to a made-up list
+ * would turn "you have not set up roles yet" into a 400 at the end of the hiring form.
+ */
+const DEFAULT_ROLE_OPTIONS: StaffRoleOption[] = [];
 
 type StaffsProviderProps = {
   children: React.ReactNode;
@@ -164,8 +167,8 @@ export function StaffsProvider({
 
     const timer = setTimeout(() => {
       setListQuery((prev) => {
-        if (prev.keyword === keywordInput) return prev;
-        return { ...prev, keyword: keywordInput, page: 1 };
+        if (prev.search === keywordInput) return prev;
+        return { ...prev, search: keywordInput, page: 1 };
       });
     }, 400);
 
@@ -180,7 +183,7 @@ export function StaffsProvider({
         const response = await branchApi.getList({ limit: 100 });
         setBranchOptions(
           (response.data ?? []).map((branch) => ({
-            value: branch._id,
+            value: branch.id,
             label: branch.name,
           })),
         );
@@ -192,7 +195,7 @@ export function StaffsProvider({
         const response = await warehouseApi.getList({ limit: 100 });
         setWarehouseOptions(
           (response.data ?? []).map((warehouse) => ({
-            value: warehouse._id,
+            value: warehouse.id,
             label: warehouse.name,
           })),
         );
@@ -240,27 +243,27 @@ export function StaffsProvider({
     setIsFetching(true);
     try {
       // The global branch/warehouse switcher takes precedence over the page's own
-      // filter dropdowns — same reactive scoping products/checkout apply via
-      // locationKey — so switching branch immediately scopes the staff list.
-      const [locationType, locationId] = locationKey.split("-");
+      // filter dropdowns - same reactive scoping products/checkout apply via
+      // locationKey - so switching branch immediately scopes the staff list.
+      const scope = parseLocationKey(locationKey);
       const branchId =
-        locationKey !== "all" && locationType === "branch"
-          ? locationId
+        scope?.locationType === "branch"
+          ? scope.locationId
           : listQuery.branchId === "all"
             ? undefined
             : listQuery.branchId;
       const warehouseId =
-        locationKey !== "all" && locationType === "warehouse"
-          ? locationId
+        scope?.locationType === "warehouse"
+          ? scope.locationId
           : listQuery.warehouseId === "all"
             ? undefined
             : listQuery.warehouseId;
 
       const response = await staffApi.getList({
         page: listQuery.page,
-        recordPerPage: listQuery.recordPerPage,
-        keyword: listQuery.keyword || undefined,
-        role: listQuery.role === "all" ? undefined : listQuery.role,
+        limit: listQuery.limit,
+        search: listQuery.search || undefined,
+        roleId: listQuery.roleId === "all" ? undefined : listQuery.roleId,
         status: listQuery.status === "all" ? undefined : listQuery.status,
         branchId,
         warehouseId,
@@ -291,12 +294,8 @@ export function StaffsProvider({
     try {
       const roles = await staffApi.getRoles();
       if (roles.length > 0) {
-        setRoleOptions(
-          roles.map((role) => ({
-            value: role.value,
-            label: getStaffRoleLabel(role.value),
-          })),
-        );
+        // `getRoles` already returns { value: role id, label: role name }.
+        setRoleOptions(roles);
       }
     } catch {
       setRoleOptions(DEFAULT_ROLE_OPTIONS);
@@ -323,8 +322,8 @@ useEffect(() => {
   loadData();
 }, [fetchStaffs, fetchRoles]);
 
-  function updateRoleFilter(role: StaffRole | "all") {
-    setListQuery((prev) => ({ ...prev, role, page: 1 }));
+  function updateRoleFilter(roleId: string | "all") {
+    setListQuery((prev) => ({ ...prev, roleId, page: 1 }));
   }
 
   function updateStatusFilter(status: StaffStatus | "all") {
@@ -343,8 +342,8 @@ useEffect(() => {
     setListQuery((prev) => ({ ...prev, page }));
   }
 
-  function updatePageSize(recordPerPage: number) {
-    setListQuery((prev) => ({ ...prev, recordPerPage, page: 1 }));
+  function updatePageSize(limit: number) {
+    setListQuery((prev) => ({ ...prev, limit, page: 1 }));
   }
 
   async function handleAdd(payload: CreateStaffPayload) {
@@ -353,7 +352,7 @@ useEffect(() => {
 
       if (payload.newPassword && payload.reEnterPassword) {
         try {
-          await staffApi.createAccount(created._id, {
+          await staffApi.createAccount(created.id, {
             newPassword: payload.newPassword,
             reEnterPassword: payload.reEnterPassword,
           });
@@ -385,10 +384,10 @@ useEffect(() => {
     }
   }
 
-  async function handleDelete(id: string, replacementManagerId?: string) {
+  async function handleDelete(id: string) {
     try {
-      await staffApi.remove(id, { replacementManagerId });
-      setStaffs((prev) => prev.filter((staff) => staff._id !== id));
+      await staffApi.remove(id);
+      setStaffs((prev) => prev.filter((staff) => staff.id !== id));
       setTotal((prev) => Math.max(0, prev - 1));
       toast.success("Đã xóa nhân viên");
       await fetchStaffs();
@@ -398,9 +397,9 @@ useEffect(() => {
     }
   }
 
-  async function handleDeactivate(id: string, replacementManagerId?: string) {
+  async function handleDeactivate(id: string) {
     try {
-      await staffApi.deactivateAccount(id, { replacementManagerId });
+      await staffApi.deactivateAccount(id);
       toast.success("Đã khóa tài khoản nhân viên");
       await fetchStaffs();
     } catch (error) {

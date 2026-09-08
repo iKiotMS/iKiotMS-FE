@@ -4,13 +4,18 @@
 import { useState, useEffect } from 'react'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
+import { branchIdOf } from '@/lib/location-key'
 import type { Promotion } from '@/types/promotion'
 import type { PromotionFormValues } from '../_types/promotion.types'
 import { promotionApi } from '@/lib/api/promotion'
+import { getApiErrorBody, messageForCode } from '@/lib/api/error-codes'
 import { useAuthStore } from '@/store/auth-store'
 import { vnStartOfDayToIso, vnEndOfDayToIso } from '../_shared/promotion-date'
 
 function getErrorMessage(err: unknown, fallback: string): string {
+  const mapped = messageForCode(getApiErrorBody(err)?.code)
+  if (mapped) return mapped
+
   if (err instanceof AxiosError) {
     const data = err.response?.data as { message?: string } | undefined
     if (typeof data?.message === 'string' && data.message.trim()) return data.message
@@ -32,7 +37,7 @@ function toPayload(data: PromotionFormValues) {
       categoryIds: data.applicableRuleType === 'category' ? data.categoryIds : [],
       productItemIds: data.applicableRuleType === 'product' ? data.productItemIds : [],
     },
-    // Ngày chọn trên form là ngày lịch VN (input date-only, không có timezone) — quy đổi
+    // Ngày chọn trên form là ngày lịch VN (input date-only, không có timezone) - quy đổi
     // đúng sang mốc UTC của đầu/cuối ngày giờ VN thay vì hiểu nhầm thành UTC midnight.
     startDate: vnStartOfDayToIso(data.startDate),
     endDate: vnEndOfDayToIso(data.endDate),
@@ -43,12 +48,6 @@ function toPayload(data: PromotionFormValues) {
   }
 }
 
-function resolveBranchId(locationKey: string | null | undefined): string | undefined {
-  if (!locationKey || locationKey === 'all') return undefined
-  const [type, id] = locationKey.split('-')
-  return type === 'branch' && id ? id : undefined
-}
-
 export function usePromotionsMutations() {
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -56,7 +55,7 @@ export function usePromotionsMutations() {
 
   useEffect(() => {
     promotionApi
-      .getList({ recordPerPage: 100, branchId: resolveBranchId(locationKey) })
+      .getList({ limit: 100, branchId: branchIdOf(locationKey) })
       .then((res) => res.data)
       .catch(() => {
         toast.error('Tải danh sách khuyến mãi thất bại')

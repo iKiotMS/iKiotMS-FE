@@ -35,7 +35,7 @@ export type OpeningRowFieldErrors = {
   importPrice?: string
 }
 
-/** Parse ô giá — chỉ lấy chữ số, clamp ≤ 1000 tỷ (tránh số quá lớn làm vỡ UI). */
+/** Parse ô giá - chỉ lấy chữ số, clamp ≤ 1000 tỷ (tránh số quá lớn làm vỡ UI). */
 export function parseImportPriceInput(raw: string): number {
   const digits = raw.replace(/[^\d]/g, "").slice(0, 13)
   if (!digits) return 0
@@ -45,7 +45,7 @@ export function parseImportPriceInput(raw: string): number {
 }
 
 export function formatMoneyVnd(value: number): string {
-  if (!Number.isFinite(value)) return "—"
+  if (!Number.isFinite(value)) return "-"
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
@@ -63,7 +63,7 @@ export function findDuplicateProductIds(details: { productItemId: string }[]): s
   return [...dupes]
 }
 
-/** Lỗi theo từng dòng — hiện ngay dưới field. */
+/** Lỗi theo từng dòng - hiện ngay dưới field. */
 export function getOpeningRowFieldErrors(
   details: MovementDetailInput[],
   options: {
@@ -115,7 +115,7 @@ export type MovementDetailValidateOptions = {
 
 /** Build map giá bán từ danh sách product options (search / catalog). */
 export function buildRetailPriceByItemId(
-  products: { _id: string; retailPrice?: number }[],
+  products: { id: string; retailPrice?: number }[],
 ): Record<string, number> {
   const map: Record<string, number> = {}
   for (const p of products) {
@@ -124,7 +124,7 @@ export function buildRetailPriceByItemId(
       Number.isFinite(p.retailPrice) &&
       p.retailPrice > 0
     ) {
-      map[p._id] = p.retailPrice
+      map[p.id] = p.retailPrice
     }
   }
   return map

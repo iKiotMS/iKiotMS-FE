@@ -8,7 +8,7 @@ import {
   getStaffInitials,
 } from "@/app/(protected)/staffs/shared/staff-format";
 import {
-  STAFF_ROLE_MAP,
+  STAFF_ROLE_BADGE_VARIANT,
   getStaffStatusDisplay,
 } from "@/app/(protected)/staffs/shared/staff-status";
 import type { Staff } from "@/types/staff";
@@ -55,15 +55,13 @@ export const staffsColumns: ColumnDef<Staff>[] = [
     enableSorting: false,
   },
   {
-    accessorKey: "role",
+    accessorKey: "roleName",
     header: "Vai trò",
-    cell: ({ row }) => {
-      const config = STAFF_ROLE_MAP[row.original.role] ?? {
-        label: row.original.role,
-        variant: "outline" as const,
-      };
-      return <Badge variant={config.variant}>{config.label}</Badge>;
-    },
+    // Roles are rows the shop owner defines, so there is no fixed set to colour-code -
+    // one neutral badge showing whatever they named it.
+    cell: ({ row }) => (
+      <Badge variant={STAFF_ROLE_BADGE_VARIANT}>{row.original.roleName}</Badge>
+    ),
     enableSorting: false,
   },
   {
@@ -108,4 +106,4 @@ export const staffsColumns: ColumnDef<Staff>[] = [
   },
 ];
 
-export { STAFF_ROLE_MAP as ROLE_LABELS };
+export { STAFF_ROLE_BADGE_VARIANT as ROLE_LABELS };

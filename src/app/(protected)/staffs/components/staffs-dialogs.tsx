@@ -42,7 +42,7 @@ export function StaffsDialogs() {
       />
       {currentRow && (
         <StaffsMutateDialog
-          key={`staff-edit-${currentRow._id}`}
+          key={`staff-edit-${currentRow.id}`}
           open={open === "edit"}
           onOpenChange={(value) => {
             if (!value) closeDialog();

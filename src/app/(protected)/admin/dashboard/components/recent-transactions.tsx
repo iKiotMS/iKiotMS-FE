@@ -64,7 +64,7 @@ export function RecentTransactions() {
           invoices.map((inv) => {
             const st = STATUS[inv.status] ?? STATUS.PENDING;
             return (
-              <div key={inv._id} className="flex p-3 rounded-lg border gap-3 items-center">
+              <div key={inv.id} className="flex p-3 rounded-lg border gap-3 items-center">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="text-xs">{initials(inv.tenantId?.name)}</AvatarFallback>
                 </Avatar>
@@ -72,7 +72,7 @@ export function RecentTransactions() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{inv.tenantId?.name || "Cửa hàng"}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {inv.planId?.planName || inv.planId?.planCode || "—"}
+                      {inv.planId?.planName || inv.planId?.planCode || "-"}
                       {inv.paymentReference ? ` · ${inv.paymentReference}` : ""}
                     </p>
                   </div>

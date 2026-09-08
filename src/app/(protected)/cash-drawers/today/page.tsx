@@ -80,21 +80,21 @@ export default function CashDrawersTodayPage() {
       { session: CashDrawerSession | null; isLoading: boolean }
     > = {};
     branchList.forEach((b) => {
-      initialMap[b._id] = { session: null, isLoading: true };
+      initialMap[b.id] = { session: null, isLoading: true };
     });
     setBranchSessions(initialMap);
 
     branchList.forEach(async (b) => {
       try {
-        const sess = await cashDrawerApi.getCurrentSession(b._id);
+        const sess = await cashDrawerApi.getCurrentSession(b.id);
         setBranchSessions((prev) => ({
           ...prev,
-          [b._id]: { session: sess, isLoading: false },
+          [b.id]: { session: sess, isLoading: false },
         }));
       } catch {
         setBranchSessions((prev) => ({
           ...prev,
-          [b._id]: { session: null, isLoading: false },
+          [b.id]: { session: null, isLoading: false },
         }));
       }
     });
@@ -146,8 +146,8 @@ export default function CashDrawersTodayPage() {
   const fetchSession = async (branchId: string) => {
     try {
       const data = await cashDrawerApi.getCurrentSession(branchId);
-      if (data && data._id) {
-        router.push(`/cash-drawers/${data._id}`);
+      if (data && data.id) {
+        router.push(`/cash-drawers/${data.id}`);
       } else {
         setIsLoading(false);
       }
@@ -173,18 +173,16 @@ export default function CashDrawersTodayPage() {
       .getList({
         branchId: activeBranchId,
         status: "ACTIVE",
-        recordPerPage: 100,
+        limit: 100,
       })
       .then((res) => {
-        const valid = (res.data || []).filter(
-          (s) => s.role === "STAFF" || s.role === "BRANCH_MANAGER",
-        );
+        const valid = res.data || [];
         setBranchStaffs(valid);
-        const me = valid.find((s) => s._id === user?.id);
+        const me = valid.find((s) => s.id === user?.id);
         if (me) {
-          setSelectedStaffId(me._id);
+          setSelectedStaffId(me.id);
         } else if (valid.length > 0) {
-          setSelectedStaffId(valid[0]._id);
+          setSelectedStaffId(valid[0].id);
         }
       })
       .catch((err) => {
@@ -206,18 +204,16 @@ export default function CashDrawersTodayPage() {
       const res = await staffApi.getList({
         branchId,
         status: "ACTIVE",
-        recordPerPage: 100,
+        limit: 100,
       });
-      const valid = (res.data || []).filter(
-        (s) => s.role === "STAFF" || s.role === "BRANCH_MANAGER",
-      );
+      const valid = res.data || [];
       setBranchStaffs(valid);
 
-      const me = valid.find((s) => s._id === user?.id);
+      const me = valid.find((s) => s.id === user?.id);
       if (me) {
-        setSelectedStaffId(me._id);
+        setSelectedStaffId(me.id);
       } else if (valid.length > 0) {
-        setSelectedStaffId(valid[0]._id);
+        setSelectedStaffId(valid[0].id);
       }
       setIsDialogOpen(true);
     } catch (err) {
@@ -255,8 +251,8 @@ export default function CashDrawersTodayPage() {
       setIsDialogOpen(false);
       setOpenBranchId(null);
       setOpenBranchName("");
-      if (data && data._id) {
-        router.push(`/cash-drawers/${data._id}`);
+      if (data && data.id) {
+        router.push(`/cash-drawers/${data.id}`);
       }
     } catch (error: any) {
       console.error(error);
@@ -321,7 +317,7 @@ export default function CashDrawersTodayPage() {
     );
   }
 
-  // Branch Selector (Tenant Owner — "all" mode)
+  // Branch Selector (Tenant Owner - "all" mode)
   if (!activeBranchId && user?.role === "TENANT_OWNER") {
     return (
       <div className="flex flex-col gap-6 px-4  lg:px-6">
@@ -339,21 +335,21 @@ export default function CashDrawersTodayPage() {
               </div>
             ) : (
               branches.map((branch) => {
-                const state = branchSessions[branch._id];
+                const state = branchSessions[branch.id];
                 const sessionInfo = state?.session;
                 const isSessionLoading = state?.isLoading;
 
                 return (
                   <Button
-                    key={branch._id}
+                    key={branch.id}
                     variant="outline"
                     className="h-auto flex flex-col items-start gap-2 p-4 justify-between hover:border-primary hover:bg-primary/5 transition cursor-pointer"
-                    disabled={openBranchId === branch._id && isStaffLoading}
+                    disabled={openBranchId === branch.id && isStaffLoading}
                     onClick={() => {
-                      if (sessionInfo && sessionInfo._id) {
-                        router.push(`/cash-drawers/${sessionInfo._id}`);
+                      if (sessionInfo && sessionInfo.id) {
+                        router.push(`/cash-drawers/${sessionInfo.id}`);
                       } else {
-                        handleGridBranchClick(branch._id, branch.name);
+                        handleGridBranchClick(branch.id, branch.name);
                       }
                     }}
                   >
@@ -392,7 +388,7 @@ export default function CashDrawersTodayPage() {
                         <>
                           Xem chi tiết <ArrowRight className="h-3 w-3" />
                         </>
-                      ) : openBranchId === branch._id && isStaffLoading ? (
+                      ) : openBranchId === branch.id && isStaffLoading ? (
                         <>
                           <Loader2 className="h-3 w-3 animate-spin me-1 text-primary shrink-0" />{" "}
                           Đang tải...
@@ -410,7 +406,7 @@ export default function CashDrawersTodayPage() {
           </div>
         </div>
 
-        {/* Dialog Mở két đầu ngày — must render inside this block */}
+        {/* Dialog Mở két đầu ngày - must render inside this block */}
         <Dialog
           open={isDialogOpen}
           onOpenChange={(open) => {
@@ -425,7 +421,7 @@ export default function CashDrawersTodayPage() {
             <form onSubmit={handleOpenCashDrawer}>
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold">
-                  Mở két đầu ngày — {openBranchName}
+                  Mở két đầu ngày - {openBranchName}
                 </DialogTitle>
                 <DialogDescription>
                   Thiết lập số tiền bàn giao ban đầu và chọn nhân viên giữ két.
@@ -476,11 +472,9 @@ export default function CashDrawersTodayPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {branchStaffs.map((staff) => (
-                          <SelectItem key={staff._id} value={staff._id}>
+                          <SelectItem key={staff.id} value={staff.id}>
                             {staff.fullName} (
-                            {staff.role === "BRANCH_MANAGER"
-                              ? "Quản lý"
-                              : "Nhân viên"}
+                            {staff.roleName}
                             )
                           </SelectItem>
                         ))}
@@ -584,7 +578,7 @@ export default function CashDrawersTodayPage() {
           <form onSubmit={handleOpenCashDrawer}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold">
-                Mở két đầu ngày — {activeBranchName}
+                Mở két đầu ngày - {activeBranchName}
               </DialogTitle>
               <DialogDescription>
                 Thiết lập số tiền bàn giao ban đầu và chọn nhân viên giữ két.
@@ -635,11 +629,9 @@ export default function CashDrawersTodayPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {branchStaffs.map((staff) => (
-                        <SelectItem key={staff._id} value={staff._id}>
+                        <SelectItem key={staff.id} value={staff.id}>
                           {staff.fullName} (
-                          {staff.role === "BRANCH_MANAGER"
-                            ? "Quản lý"
-                            : "Nhân viên"}
+                          {staff.roleName}
                           )
                         </SelectItem>
                       ))}
