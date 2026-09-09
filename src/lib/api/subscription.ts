@@ -111,6 +111,43 @@ export function groupPlansByTier(plans: Plan[]): PlanTierGroup[] {
   })).filter((g) => g.monthly || g.yearly);
 }
 
+/** The tenant's live subscription, as `GET /subscription/current` returns it. */
+export interface CurrentSubscription {
+  id: string;
+  planId: string;
+  planName: string;
+  planCode: string;
+  billingCycle: "MONTHLY" | "YEARLY" | "NONE" | null;
+  status: "TRIAL" | "ACTIVE" | "EXPIRED" | "PAST_DUE" | "CANCELLED";
+  startDate: string;
+  endDate: string;
+  trialEndDate: string | null;
+  autoRenew: boolean;
+  /** Quotas frozen onto the subscription when the plan was bought - `-1` means unlimited. */
+  currentQuotaSnapshot: {
+    maxBranches: number | null;
+    maxWarehouses: number | null;
+    maxUsers: number | null;
+    maxProducts: number | null;
+  };
+}
+
+/**
+ * The plan this shop is on right now.
+ *
+ * **Not on `/auth/me`.** The old Express backend joined the subscription into the profile
+ * and the billing screen read `user.subscription`; the NestJS rewrite's `AuthService.me`
+ * returns the user row and its role and nothing else, so that field was `undefined` on
+ * every request and the "Gói hiện tại" card could never draw the real plan - nor change
+ * after a payment, since re-fetching the profile brought back the same blank.
+ *
+ * Answers `null` when the tenant has no subscription row at all.
+ */
+export async function getCurrentSubscription(): Promise<CurrentSubscription | null> {
+  const response = await client.get("/subscription/current");
+  return response.data?.data ?? null;
+}
+
 export interface InitiateUpgradeResult {
   invoiceId: string;
   paymentReference: string;

@@ -6,11 +6,16 @@ import { Separator } from "@/components/ui/separator"
 import { CurrentPlanCard } from "./components/current-plan-card"
 import { BillingHistoryCard } from "./components/billing-history-card"
 import { UpgradePlanSection } from "./components/upgrade-plan-section"
+import { useBilling } from "./_hooks/use-billing"
 import { useAuthStore } from "@/store/auth-store"
 import { canManageBilling } from "@/components/sidebar/constants/role-permissions"
 
 export default function BillingSettings() {
   const user = useAuthStore((state) => state.user)
+  // The plan comes from `GET /subscription/current`, not from the session user: `/auth/me`
+  // carries no `subscription` (see `getCurrentSubscription`), and a value this page can
+  // refetch is what lets it redraw itself the moment a payment is confirmed.
+  const { subscription, invoices, isLoading, refresh } = useBilling()
 
   return (
     <div className="space-y-6 px-4 lg:px-6">
@@ -25,15 +30,18 @@ export default function BillingSettings() {
       />
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        <CurrentPlanCard subscription={user?.subscription} />
-        <BillingHistoryCard />
+        <CurrentPlanCard subscription={subscription} isLoading={isLoading} />
+        <BillingHistoryCard invoices={invoices} isLoading={isLoading} />
       </div>
 
       {canManageBilling(user?.role) && (
         <>
           <Separator />
           <Suspense fallback={null}>
-            <UpgradePlanSection subscription={user?.subscription} />
+            <UpgradePlanSection
+              subscription={subscription}
+              onActivated={refresh}
+            />
           </Suspense>
         </>
       )}

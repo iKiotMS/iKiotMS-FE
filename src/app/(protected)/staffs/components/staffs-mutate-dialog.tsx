@@ -67,6 +67,7 @@ import {
   validateStaffWorkplace,
 } from "@/app/(protected)/staffs/shared/staff-workplace";
 import { useStaffs } from "./staffs-provider";
+import { EmptyOptionsNotice, EmptyOptionsLink } from "@/components/empty-options-notice";
 
 /** Tránh Zod union hiện "Invalid input" khi email rỗng / sai định dạng. */
 const optionalEmailSchema = z
@@ -323,8 +324,9 @@ export function StaffsMutateDialog({
   const canAssignWarehouse = canAssignWarehouseOnStaffForm(userRole);
   // "Promoting to manager" was a role change. Running a location is an appointment now
   // (`PATCH /branches/:id/manager`), so what is left here is simply whether this account
-  // may edit somebody's role and workplace at all.
-  const canEditRoleWorkplace = canEditStaffRoleAndWorkplace(userRole);
+  // may set somebody's role and workplace - which is `users:create` while hiring and
+  // `users:update` while editing, exactly as the two backend routes are gated.
+  const canEditRoleWorkplace = canEditStaffRoleAndWorkplace(userRole, isEdit);
 
   const { handleAdd, handleEdit, roleOptions, branchOptions, warehouseOptions, warehouseOptionsFailed } =
     useStaffs();
@@ -736,16 +738,13 @@ export function StaffsMutateDialog({
                     {roleOptions.length === 0 ? (
                       // `POST /users` bắt buộc roleId, nên một dropdown rỗng ở đây là ngõ
                       // cụt: form không gửi được và không nói vì sao. Chỉ đúng chỗ cần đi.
-                      <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-sm">
+                      <EmptyOptionsNotice>
                         Cửa hàng chưa có vai trò nào. Hãy tạo vai trò ở{' '}
-                        <Link
-                          href="/staffs/roles"
-                          className="text-foreground font-medium underline underline-offset-4"
-                        >
+                        <EmptyOptionsLink href="/staffs/roles">
                           Nhân viên › Phân quyền
-                        </Link>{' '}
+                        </EmptyOptionsLink>{' '}
                         trước khi thêm nhân viên.
-                      </p>
+                      </EmptyOptionsNotice>
                     ) : (
                       <Select
                         onValueChange={field.onChange}

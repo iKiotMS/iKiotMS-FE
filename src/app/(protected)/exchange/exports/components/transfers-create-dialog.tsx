@@ -36,8 +36,15 @@ import type {
 } from '@/types/stock-movement'
 import { useTransfers } from './transfers-provider'
 
-/** BR: chọn loại yêu cầu trước khi điền phiếu. */
-type BranchRequestKind = 'transfer' | 'return'
+/**
+ * BR: chọn loại yêu cầu trước khi điền phiếu.
+ *
+ * `inbound` là chiều ngược lại của hai cái kia - chi nhánh đang xin hàng về chỗ mình chứ
+ * không gửi đi, nên nơi nhận bị khoá vào chi nhánh của họ và nơi gửi mới là ô để chọn.
+ * Backend cho phép cả hai đầu tạo phiếu chuyển (`create` chỉ đòi một trong hai đầu là chỗ
+ * của người tạo), và bên gửi là bên nhận thông báo vì họ là bên phải soạn hàng.
+ */
+type BranchRequestKind = 'transfer' | 'return' | 'inbound'
 
 type TransferFormValues = {
   fromLocationId: string
@@ -83,7 +90,9 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     effectiveScope.locationType === 'branch' && !!effectiveScope.locationId
   const isWarehouseActor =
     effectiveScope.locationType === 'warehouse' && !!effectiveScope.locationId
-  const isFromLocationLocked = !!effectiveScope.locationId
+  /** Chi nhánh xin hàng về: nơi nhận là chỗ mình, nơi gửi mới là ô chọn. */
+  const isInboundRequest = isBranchActor && branchRequestKind === 'inbound'
+  const isFromLocationLocked = !!effectiveScope.locationId && !isInboundRequest
 
   const transferFormSchema = useMemo(
     () =>
@@ -173,6 +182,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (!isBranchActor) {
       return {
         title: labels.createDialogTitle,
+        fromLabel: labels.fromLabel,
+        fromPlaceholder: labels.fromPlaceholder,
         toLabel: labels.toLabel,
         toPlaceholder: labels.toPlaceholder,
         listTitle: 'Danh sách hàng hóa cần chuyển',
@@ -182,14 +193,29 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     if (branchRequestKind === 'return') {
       return {
         title: 'Tạo yêu cầu trả hàng',
+        fromLabel: labels.fromLabel,
+        fromPlaceholder: labels.fromPlaceholder,
         toLabel: 'Nơi nhận',
         toPlaceholder: 'Chọn chi nhánh hoặc kho nhận',
         listTitle: 'Danh sách hàng hóa cần trả / chuyển',
         submit: 'Tạo yêu cầu trả hàng',
       }
     }
+    if (branchRequestKind === 'inbound') {
+      return {
+        title: 'Tạo yêu cầu nhận hàng',
+        fromLabel: 'Nơi gửi',
+        fromPlaceholder: 'Chọn kho hoặc chi nhánh gửi',
+        toLabel: 'Chi nhánh nhận',
+        toPlaceholder: 'Chi nhánh của bạn',
+        listTitle: 'Danh sách hàng hóa cần nhận',
+        submit: 'Gửi yêu cầu nhận hàng',
+      }
+    }
     return {
       title: 'Tạo yêu cầu chuyển hàng',
+      fromLabel: labels.fromLabel,
+      fromPlaceholder: labels.fromPlaceholder,
       toLabel: 'Nơi nhận',
       toPlaceholder: 'Chọn chi nhánh nhận',
       listTitle: 'Danh sách hàng hóa cần chuyển',
@@ -214,13 +240,20 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
       .finally(() => setIsOptionsLoading(false))
   }, [open, labels.loadLocationsError])
 
-  const visibleFromLocations = useMemo(
-    () => filterLocationsByAuthScope(locations, effectiveScope),
-    [locations, effectiveScope],
-  )
+  const visibleFromLocations = useMemo(() => {
+    // Xin hàng về: nơi gửi là chỗ khác, nên không lọc theo scope của chính mình.
+    if (isInboundRequest) {
+      return locations.filter((l) => l.id !== effectiveScope.locationId)
+    }
+    return filterLocationsByAuthScope(locations, effectiveScope)
+  }, [locations, effectiveScope, isInboundRequest])
   const fromLocation = visibleFromLocations.find((l) => l.id === fromLocationId)
 
   const visibleToLocations = useMemo(() => {
+    if (isInboundRequest) {
+      // Chỉ đúng một nơi nhận: chi nhánh của người tạo.
+      return locations.filter((l) => l.id === effectiveScope.locationId)
+    }
     if (!fromLocationId) return []
     if (isWarehouseActor) {
       return locations.filter((l) => l.type === 'branch' && l.id !== fromLocationId)
@@ -240,6 +273,8 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
     fromLocationId,
     isWarehouseActor,
     isBranchActor,
+    isInboundRequest,
+    effectiveScope.locationId,
     branchRequestKind,
   ])
 
@@ -264,22 +299,35 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
 
   useEffect(() => {
     if (!open) return
-    if (effectiveScope.locationId) {
-      form.setValue('fromLocationId', effectiveScope.locationId)
-      form.setValue('toLocationId', '')
+    if (!effectiveScope.locationId) return
+    if (isInboundRequest) {
+      // Chiều ngược lại: chỗ mình là nơi nhận, nơi gửi để người dùng chọn.
+      form.setValue('toLocationId', effectiveScope.locationId)
+      form.setValue('fromLocationId', '')
+      return
     }
-  }, [open, effectiveScope.locationId, form])
+    form.setValue('fromLocationId', effectiveScope.locationId)
+    form.setValue('toLocationId', '')
+  }, [open, effectiveScope.locationId, isInboundRequest, form])
 
   const onBranchRequestKindChange = (value: string) => {
-    if (value !== 'transfer' && value !== 'return') return
+    if (value !== 'transfer' && value !== 'return' && value !== 'inbound') return
     setBranchRequestKind(value)
+    // Hai đầu đổi vai nhau nên xoá cả hai; effect ở trên gán lại đầu bị khoá.
+    form.setValue('fromLocationId', '')
     form.setValue('toLocationId', '')
+    form.setValue('details', [{ ...EMPTY_DETAIL }])
   }
 
   async function onSubmit(data: TransferFormValues) {
     const fromLoc = locations.find((l) => l.id === data.fromLocationId)
     const toLoc = locations.find((l) => l.id === data.toLocationId)
-    if (
+    if (isInboundRequest) {
+      if (data.toLocationId !== effectiveScope.locationId) {
+        toast.error('Chi nhánh chỉ được xin hàng về chi nhánh của bạn')
+        return
+      }
+    } else if (
       effectiveScope.locationId &&
       data.fromLocationId !== effectiveScope.locationId
     ) {
@@ -322,9 +370,11 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
         })),
       })
       toast.success(
-        movementType === 'RETURN'
-          ? 'Tạo yêu cầu trả hàng về kho thành công'
-          : labels.successToast,
+        isInboundRequest
+          ? 'Đã gửi yêu cầu nhận hàng, chờ nơi gửi chuẩn bị'
+          : movementType === 'RETURN'
+            ? 'Tạo yêu cầu trả hàng về kho thành công'
+            : labels.successToast,
       )
       onOpenChange(false)
       await fetchTransfers()
@@ -352,7 +402,7 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   variant="outline"
                   value={branchRequestKind}
                   onValueChange={onBranchRequestKindChange}
-                  className="grid w-full grid-cols-2 gap-2"
+                  className="grid w-full grid-cols-3 gap-2"
                 >
                   <ToggleGroupItem
                     value="transfer"
@@ -366,21 +416,32 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                   >
                     Yêu cầu trả hàng
                   </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="inbound"
+                    className="h-10 cursor-pointer data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                  >
+                    Yêu cầu nhận hàng
+                  </ToggleGroupItem>
                 </ToggleGroup>
+                <p className="text-xs text-muted-foreground">
+                  {branchRequestKind === 'inbound'
+                    ? 'Xin hàng về chi nhánh của bạn - nơi gửi sẽ nhận thông báo và soạn hàng.'
+                    : 'Chi nhánh của bạn là nơi gửi hàng đi.'}
+                </p>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="fromLocationId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{labels.fromLabel} <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>{dialogCopy.fromLabel} <span className="text-destructive">*</span></FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={isFromLocationLocked}
                   >
                     <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder={labels.fromPlaceholder} /></SelectTrigger>
+                      <SelectTrigger className="cursor-pointer w-full"><SelectValue placeholder={dialogCopy.fromPlaceholder} /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {visibleFromLocations.map((l) => (
@@ -395,7 +456,11 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
               <FormField control={form.control} name="toLocationId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{dialogCopy.toLabel} <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isInboundRequest}
+                  >
                     <FormControl>
                       <SelectTrigger className="cursor-pointer w-full">
                         <SelectValue placeholder={dialogCopy.toPlaceholder} />
@@ -411,9 +476,11 @@ export function TransfersCreateDialog({ open, onOpenChange }: TransfersCreateDia
                     <p className="text-xs text-amber-600">
                       {isWarehouseActor
                         ? 'Chưa có chi nhánh đích để chuyển từ kho hiện tại.'
-                        : isBranchActor && branchRequestKind === 'transfer'
-                          ? 'Chưa có chi nhánh khác để chuyển hàng.'
-                          : 'Không có nơi nhận phù hợp.'}
+                        : isInboundRequest
+                          ? 'Không xác định được chi nhánh của bạn để nhận hàng.'
+                          : isBranchActor && branchRequestKind === 'transfer'
+                            ? 'Chưa có chi nhánh khác để chuyển hàng.'
+                            : 'Không có nơi nhận phù hợp.'}
                     </p>
                   )}
                   <FormMessage />

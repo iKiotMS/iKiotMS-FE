@@ -11,11 +11,11 @@ import {
   initiateUpgrade,
   initiateRenewal,
   listPlans,
+  type CurrentSubscription,
   type InitiateUpgradeResult,
   type Plan,
 } from "@/lib/api/subscription";
 import { PaymentDialog } from "./payment-dialog";
-import type { User } from "@/lib/auth";
 
 const TIER_ORDER = ["TRIAL", "PLUS", "PRO"] as const;
 
@@ -25,10 +25,15 @@ const baseTier = (planCode: string) => planCode.replace(/_YEARLY$/, "");
 const formatVnd = (amount: number) => `${amount.toLocaleString("vi-VN")}đ`;
 
 interface UpgradePlanSectionProps {
-  subscription: NonNullable<User["subscription"]> | undefined;
+  subscription: CurrentSubscription | null;
+  /** Reloads the plan and invoices once a payment is confirmed. */
+  onActivated: () => void | Promise<void>;
 }
 
-export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
+export function UpgradePlanSection({
+  subscription,
+  onActivated,
+}: UpgradePlanSectionProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [isYearly, setIsYearly] = useState(false);
@@ -306,6 +311,7 @@ export function UpgradePlanSection({ subscription }: UpgradePlanSectionProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         invoice={invoice}
+        onActivated={onActivated}
       />
     </>
   );

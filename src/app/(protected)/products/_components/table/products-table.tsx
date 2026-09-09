@@ -23,6 +23,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { parseLocationKey } from '@/lib/location-key'
+import { useAuthStore } from '@/store/auth-store'
 import { useProducts } from '../../_context/products-provider'
 import { getProductsColumns } from './products-columns'
 import { ProductsToolbar } from './products-toolbar'
@@ -33,7 +35,12 @@ import { ProductsEmpty } from '../products-empty'
 export function ProductsTable() {
   const { products, setSelectedIds, selectionVersion, brands, categories, skuSearchIndex } =
     useProducts()
-  const columns = useMemo(() => getProductsColumns(brands, categories), [brands, categories])
+  const locationKey = useAuthStore((state) => state.locationKey)
+  const isLocationScoped = parseLocationKey(locationKey) !== null
+  const columns = useMemo(
+    () => getProductsColumns(brands, categories, isLocationScoped),
+    [brands, categories, isLocationScoped],
+  )
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'status', desc: false }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])

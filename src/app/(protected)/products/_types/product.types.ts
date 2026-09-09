@@ -8,11 +8,6 @@ const productDetailEntrySchema = z.object({
   value: z.string(),
 })
 
-const initialStockEntrySchema = z.object({
-  locationId: z.string(),
-  locationType: z.enum(['branch', 'warehouse']),
-})
-
 // Schema cho form tạo/chỉnh sửa Product (item fields optional - validate thủ công khi create)
 export const productFormSchema = z.object({
   name: z.string().min(1, 'Tên hàng hóa là bắt buộc'),
@@ -44,7 +39,6 @@ export const productFormSchema = z.object({
   warrantyPeriod: z.string().optional(),
   description: z.string().optional(),
   productDetails: z.array(productDetailEntrySchema).optional(),
-  initialStock: z.array(initialStockEntrySchema).optional(),
 })
 
 export type ProductFormValues = z.infer<typeof productFormSchema>
@@ -71,7 +65,6 @@ export const productItemFormSchema = z.object({
     )
     .optional(),
   productDetails: z.array(productDetailEntrySchema).optional(),
-  initialStock: z.array(initialStockEntrySchema).optional(),
 })
 
 export type ProductItemFormValues = z.infer<typeof productItemFormSchema>

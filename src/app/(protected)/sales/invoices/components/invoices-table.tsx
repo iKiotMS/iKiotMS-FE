@@ -108,7 +108,7 @@ export function InvoicesTable() {
   useEffect(() => {
     setLoading(true);
     orderApi
-      .getList({ limit: 200 })
+      .getList({ limit: 100 })
       .then((res) => {
         const mapped = (res.data || []).map(mapBEOrderToInvoice);
         setInvoices(mapped);

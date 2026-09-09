@@ -44,9 +44,6 @@ import {
 } from "@/app/(protected)/exchange/shared/auth-scope";
 import { getStockMovementErrorMessage } from "@/app/(protected)/exchange/shared/stock-movement-error";
 import { normalizeOptionalNote } from "@/app/(protected)/exchange/shared/qty";
-import {
-  canSearchImportCatalog,
-} from "@/app/(protected)/exchange/shared/product-item-search";
 import { MovementProductSearch } from "@/app/(protected)/exchange/shared/movement-product-search";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -66,6 +63,10 @@ import type {
   StockMovementSupplierOption,
 } from "@/types/stock-movement";
 import { useImports } from "./imports-provider";
+import {
+  EmptyOptionsNotice,
+  EmptyOptionsLink,
+} from "@/components/empty-options-notice";
 
 const detailSchema = z.object({
   productItemId: z.string().min(1, "Vui lòng chọn hàng hóa"),
@@ -255,8 +256,7 @@ export function ImportsCreateDialog({
     () => getEffectiveLocationScope(locationKey),
     [locationKey],
   );
-  const { role, locationId: lockedLocationId } = effectiveScope;
-  const searchAllCatalog = canSearchImportCatalog(role);
+  const { locationId: lockedLocationId } = effectiveScope;
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
@@ -275,15 +275,11 @@ export function ImportsCreateDialog({
     name: "details",
   });
 
-  const fromSupplierId = useWatch({
-    control: form.control,
-    name: "fromSupplierId",
-  });
   const details = useWatch({ control: form.control, name: "details" }) ?? [];
 
   const [suppliers, setSuppliers] = useState<StockMovementSupplierOption[]>([]);
   const [locations, setLocations] = useState<StockMovementLocationOption[]>([]);
-  const [supplierProducts, setSupplierProducts] = useState<
+  const [catalogProducts, setCatalogProducts] = useState<
     StockMovementProductItemOption[]
   >([]);
   const [extraById, setExtraById] = useState(
@@ -298,9 +294,9 @@ export function ImportsCreateDialog({
 
   const productById = useMemo(() => {
     const map = new Map(extraById);
-    for (const p of supplierProducts) map.set(p.id, p);
+    for (const p of catalogProducts) map.set(p.id, p);
     return map;
-  }, [extraById, supplierProducts]);
+  }, [extraById, catalogProducts]);
 
   const usedIds = useMemo(() => {
     const set = new Set<string>();
@@ -385,7 +381,6 @@ export function ImportsCreateDialog({
       note: "",
       details: [],
     });
-    setSupplierProducts([]);
     setExtraById(new Map());
   }, [open, form, lockedLocationId]);
 
@@ -395,35 +390,16 @@ export function ImportsCreateDialog({
     Promise.all([
       stockMovementApi.getSupplierOptions(),
       stockMovementApi.getLocationOptions(),
+      stockMovementApi.getCatalogProductItems(),
     ])
-      .then(([s, l]) => {
+      .then(([s, l, products]) => {
         setSuppliers(s);
         setLocations(l);
+        setCatalogProducts(products);
       })
       .catch(() => toast.error("Không thể tải dữ liệu tạo đơn nhập hàng"))
       .finally(() => setIsOptionsLoading(false));
   }, [open]);
-
-  useEffect(() => {
-    if (!open || !fromSupplierId) {
-      setSupplierProducts([]);
-      return;
-    }
-    let cancelled = false;
-    void stockMovementApi
-      .getSupplierProductItems(fromSupplierId)
-      .then((options) => {
-        if (!cancelled) setSupplierProducts(options);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSupplierProducts([]);
-        toast.error("Không thể tải danh sách hàng thuộc nhà cung cấp");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, fromSupplierId]);
 
   async function onSubmit(data: ImportFormValues) {
     // Nhập hàng về kho. Backend cũng đã chặn từ 2026-09-07 (`assertCanActAt` cho đích của
@@ -493,27 +469,36 @@ export function ImportsCreateDialog({
                     <FormLabel>
                       Nhà cung cấp <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Select
-                      onValueChange={(v) => {
-                        field.onChange(v);
-                        form.setValue("details", [{ ...EMPTY_DETAIL }]);
-                        setExtraById(new Map());
-                      }}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full cursor-pointer">
-                          <SelectValue placeholder="Chọn nhà cung cấp" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {suppliers.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {!isOptionsLoading && suppliers.length === 0 ? (
+                      <EmptyOptionsNotice>
+                        Cửa hàng chưa có nhà cung cấp nào. Hãy thêm nhà cung cấp ở{" "}
+                        <EmptyOptionsLink href="/exchange/suppliers">
+                          Giao dịch › Nhà cung cấp
+                        </EmptyOptionsLink>{" "}
+                        trước khi tạo đơn nhập hàng.
+                      </EmptyOptionsNotice>
+                    ) : (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-full cursor-pointer">
+                            <SelectValue
+                              placeholder={
+                                isOptionsLoading
+                                  ? "Đang tải..."
+                                  : "Chọn nhà cung cấp"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {suppliers.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -527,25 +512,47 @@ export function ImportsCreateDialog({
                     <FormLabel>
                       Kho nhận <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={!!lockedLocationId}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full cursor-pointer">
-                          <SelectValue placeholder="Chọn kho nhận" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {visibleLocations.map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.name} (
-                            {l.type === "warehouse" ? "Kho" : "Chi nhánh"})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {!isOptionsLoading && visibleLocations.length === 0 ? (
+                      // Rỗng vì hai lý do khác hẳn nhau: cửa hàng chưa tạo kho/chi nhánh
+                      // nào, hay có nhưng người này không được phân công chỗ nào.
+                      <EmptyOptionsNotice>
+                        {locations.length === 0 ? (
+                          <>
+                            Cửa hàng chưa có kho hay chi nhánh nào. Hãy tạo ở{" "}
+                            <EmptyOptionsLink href="/settings">
+                              Cài đặt › Chi nhánh / Kho tổng
+                            </EmptyOptionsLink>{" "}
+                            trước khi tạo đơn nhập hàng.
+                          </>
+                        ) : (
+                          "Bạn chưa được phân công kho hay chi nhánh nào để nhận hàng."
+                        )}
+                      </EmptyOptionsNotice>
+                    ) : (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!!lockedLocationId}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full cursor-pointer">
+                            <SelectValue
+                              placeholder={
+                                isOptionsLoading ? "Đang tải..." : "Chọn kho nhận"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {visibleLocations.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.name} (
+                              {l.type === "warehouse" ? "Kho" : "Chi nhánh"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -574,23 +581,14 @@ export function ImportsCreateDialog({
             <Separator />
 
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">
-                {searchAllCatalog ? "Tìm hàng khác" : "Tìm trong hàng NCC"}
-              </h3>
+              <h3 className="text-sm font-semibold">Tìm hàng</h3>
               <MovementProductSearch
                 usedIds={usedIds}
                 onPick={(item) => applyProduct(item)}
-                searchScope={searchAllCatalog ? "catalog" : "list"}
-                poolProducts={supplierProducts}
-                disabled={!fromSupplierId}
+                searchScope="catalog"
+                poolProducts={catalogProducts}
                 metaMode="price"
-                placeholder={
-                  !fromSupplierId
-                    ? "Chọn nhà cung cấp trước"
-                    : searchAllCatalog
-                      ? "Tìm theo tên, mã, SKU (toàn catalog)..."
-                      : "Tìm theo tên, SKU trong hàng của NCC..."
-                }
+                placeholder="Tìm theo tên, mã, SKU (toàn catalog)..."
               />
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -602,7 +600,6 @@ export function ImportsCreateDialog({
                   variant="outline"
                   size="sm"
                   className="cursor-pointer"
-                  disabled={!fromSupplierId}
                   onClick={() => append({ ...EMPTY_DETAIL })}
                 >
                   <Plus className="mr-1 size-4" />
@@ -613,7 +610,7 @@ export function ImportsCreateDialog({
               {fields.map((f, idx) => {
                 const itemId = details[idx]?.productItemId ?? "";
                 const product = itemId ? productById.get(itemId) : undefined;
-                const lineProducts = supplierProducts.filter(
+                const lineProducts = catalogProducts.filter(
                   (p) => p.id === itemId || !usedIds.has(p.id),
                 );
                 return (

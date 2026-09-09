@@ -34,6 +34,7 @@ import { getVietnamDateString } from "@/app/(protected)/staffs/shared/vietnam-da
 import type { WorkingSchedule } from "@/types/working-schedule";
 import { ScheduleStaffPicker } from "./schedule-staff-picker";
 import { useSchedule } from "./schedule-provider";
+import { EmptyOptionsNotice } from "@/components/empty-options-notice";
 
 const scheduleFormSchema = z.object({
   userIds: z.array(z.string()).min(1, "Vui lòng chọn ít nhất một nhân viên"),
@@ -208,7 +209,7 @@ export function ScheduleMutateDialog({
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
+                    <EmptyOptionsNotice>
                       Chưa có ca mẫu.{" "}
                       <button
                         type="button"
@@ -220,7 +221,7 @@ export function ScheduleMutateDialog({
                       >
                         Tạo ca mẫu
                       </button>
-                    </p>
+                    </EmptyOptionsNotice>
                   )}
                   <FormMessage />
                 </FormItem>

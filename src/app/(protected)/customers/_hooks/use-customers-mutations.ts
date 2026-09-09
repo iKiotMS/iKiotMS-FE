@@ -20,7 +20,7 @@ export function useCustomersMutations() {
     setIsLoading(true)
     try {
       const res = await customerApi.getList({
-        limit: 1000,
+        limit: 100,
         branchId: branchIdOf(locationKey),
       })
       const customersData = res.data

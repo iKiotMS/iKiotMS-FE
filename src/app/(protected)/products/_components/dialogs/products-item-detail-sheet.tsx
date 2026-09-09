@@ -285,6 +285,19 @@ export function ProductsItemDetailSheet({
                   </span>
                 </InfoRow>
               </div>
+              {/* Khi đang xem theo một chi nhánh/kho, "Tổng tồn kho" ở trên là tồn TẠI ĐÓ và
+                  có thể là 0 vì nơi đó chưa nhập hàng về. Số toàn chuỗi trả lời câu khác:
+                  cửa hàng có mặt hàng này không, để còn đề nghị chuyển kho. */}
+              {item.stockAllLocations !== undefined &&
+                item.stockAllLocations !== (item.stock ?? 0) && (
+                  <div className="px-4">
+                    <InfoRow label="Tồn toàn chuỗi">
+                      <span className="font-semibold tabular-nums text-muted-foreground">
+                        {item.stockAllLocations}
+                      </span>
+                    </InfoRow>
+                  </div>
+                )}
               {item.stockDetails && item.stockDetails.length > 0 && (
                 <div className="px-4 py-2.5 space-y-1.5">
                   <span className="text-sm text-muted-foreground">

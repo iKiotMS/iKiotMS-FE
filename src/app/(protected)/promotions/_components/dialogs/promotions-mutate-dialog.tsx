@@ -222,7 +222,7 @@ export function PromotionsMutateDialog({
       .then((res) => setBranchOptions(res.data.map((b) => ({ value: b.id, label: b.name }))))
       .catch(() => setBranchOptions([]))
     categoryApi
-      .getList({ limit: 200 })
+      .getList({ limit: 100 })
       .then((res) => setCategoryOptions(res.data.map((c) => ({ value: c.id, label: c.name }))))
       .catch(() => setCategoryOptions([]))
   }, [open])
@@ -264,8 +264,10 @@ export function PromotionsMutateDialog({
   const branchIds = form.watch('branchIds')
   const branchIdsKey = branchIds.join(',')
 
-  // Toàn hệ thống -> toàn bộ sản phẩm trong cửa hàng (theo tenant); chọn chi nhánh cụ thể
-  // -> chỉ sản phẩm thuộc (các) chi nhánh đó. Không có API lấy toàn bộ sản phẩm ngoài scope tenant.
+  // Danh sách luôn là toàn bộ hàng hóa của cửa hàng (theo tenant). Chọn chi nhánh cụ thể thì
+  // `branchIds` chỉ gắn thêm tồn kho của (các) chi nhánh đó vào nhãn - KHÔNG lọc bớt: hàng
+  // chưa nhập về chi nhánh vẫn phải chọn được, vì đặt khuyến mãi cho lô hàng tuần sau là
+  // chuyện bình thường. Hàng còn tồn được xếp lên trước cho dễ chọn.
   useEffect(() => {
     if (!open) return
     if (!applyToAllBranches && branchIds.length === 0) {
@@ -277,14 +279,20 @@ export function PromotionsMutateDialog({
         limit: 300,
         ...(applyToAllBranches ? {} : { branchIds: branchIdsKey }),
       })
-      .then((items) =>
+      .then((items) => {
+        const scoped = !applyToAllBranches
+        const sorted = scoped
+          ? [...items].sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))
+          : items
         setProductItemOptions(
-          items.map((item) => ({
+          sorted.map((item) => ({
             value: item.id,
-            label: `${item.productName} - ${item.sku}`,
+            label: scoped
+              ? `${item.productName} - ${item.sku} (tồn: ${item.stock ?? 0})`
+              : `${item.productName} - ${item.sku}`,
           })),
-        ),
-      )
+        )
+      })
       .catch(() => setProductItemOptions([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, applyToAllBranches, branchIdsKey])

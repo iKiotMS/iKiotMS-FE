@@ -97,17 +97,10 @@ export const sidebarItems = {
       { title: "Điều chỉnh tồn kho", url: "/exchange/adjustments" },
     ],
   },
-  /** BM: không nhập hàng; chuyển kho đổi label thành Chuyển hàng. */
-  giaoDichBranch: {
-    title: "Giao dịch",
-    url: "/#",
-    icon: Shuffle,
-    items: [
-      { title: "Nhà cung cấp", url: "/exchange/suppliers" },
-      { title: "Chuyển hàng", url: "/exchange/exports" },
-      { title: "Điều chỉnh tồn kho", url: "/exchange/adjustments" },
-    ],
-  },
+  // `giaoDichBranch` (a BRANCH_MANAGER-only variant without "Nhập hàng") lived here until
+  // 2026-09-09. Its only reader was the BRANCH_MANAGER block deleted on 2026-09-07, so it
+  // was config nothing could match. Per-role trimming of this menu is a permission question
+  // now - see `nav-exchange-permissions.ts`.
   donHang: {
     title: "Đơn hàng",
     url: "/#",

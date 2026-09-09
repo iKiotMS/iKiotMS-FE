@@ -38,7 +38,6 @@ import { productFormSchema, type ProductFormValues } from '../../_types/product.
 import { useProducts } from '../../_context/products-provider'
 import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
 import { CascadeSelect } from '@/components/ui/cascade-select'
-import { InitialStockSection, type StockLocation } from '../initial-stock-section'
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
@@ -58,7 +57,6 @@ const EMPTY_VALUES: ProductFormValues = {
   warrantyPeriod: '',
   description: '',
   productDetails: [],
-  initialStock: [],
 }
 
 type ProductsMutateDialogProps = {
@@ -74,9 +72,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
     handleEdit,
     brands,
     categories,
-    branchOptions,
-    warehouseOptions,
-    ensureLocationOptionsLoaded,
   } = useProducts()
   const [uploading, setUploading] = useState(false)
 
@@ -107,14 +102,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
       form.reset(EMPTY_VALUES)
     }
   }, [open, isEdit, currentRow, form])
-
-  // Branch/warehouse options are only needed once this dialog is open -
-  // fetched lazily here instead of eagerly on the products page mount.
-  useEffect(() => {
-    if (!open) return
-    ensureLocationOptionsLoaded()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -650,12 +637,6 @@ export function ProductsMutateDialog({ open, onOpenChange, currentRow }: Product
                   </div>
                 </div>
 
-                <InitialStockSection
-                  branchOptions={branchOptions}
-                  warehouseOptions={warehouseOptions}
-                  value={(form.watch('initialStock') ?? []) as StockLocation[]}
-                  onChange={(v) => form.setValue('initialStock', v)}
-                />
               </>
             )}
 

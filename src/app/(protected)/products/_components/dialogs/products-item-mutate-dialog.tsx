@@ -37,7 +37,6 @@ import type { ProductItem } from '@/types/product'
 import { productApi } from '@/lib/api/product'
 import { productItemFormSchema, type ProductItemFormValues } from '../../_types/product.types'
 import { formatPriceAmount, parsePriceAmount } from '../../_constants/product.constants'
-import { InitialStockSection, type StockLocation } from '../initial-stock-section'
 
 const EMPTY_VALUES: ProductItemFormValues = {
   useParentNameForItem: true,
@@ -52,10 +51,8 @@ const EMPTY_VALUES: ProductItemFormValues = {
   description: '',
   images: [],
   productDetails: [],
-  initialStock: [],
 }
 
-type LocationOption = { value: string; label: string }
 
 type Props =
   | {
@@ -65,8 +62,6 @@ type Props =
       open: boolean
       onOpenChange: (open: boolean) => void
       onSuccess: (item: ProductItem) => void
-      branchOptions: LocationOption[]
-      warehouseOptions: LocationOption[]
     }
   | {
       mode: 'edit'
@@ -80,8 +75,6 @@ export function ProductsItemMutateDialog(props: Props) {
   const { open, onOpenChange, onSuccess } = props
   const isEdit = props.mode === 'edit'
   const existingItem = props.mode === 'edit' ? props.item : undefined
-  const branchOptions = props.mode === 'create' ? props.branchOptions : []
-  const warehouseOptions = props.mode === 'create' ? props.warehouseOptions : []
   const [uploading, setUploading] = useState(false)
 
   const form = useForm<ProductItemFormValues>({
@@ -108,7 +101,6 @@ export function ProductsItemMutateDialog(props: Props) {
         description: existingItem.description ?? '',
         images: existingItem.images ?? [],
         productDetails: existingItem.productDetails?.map((d) => ({ name: d.name, value: d.value })) ?? [],
-        initialStock: [],
         // Not used in edit mode (only create needs the parent/custom choice),
         // but the schema requires a value.
         useParentNameForItem: true,
@@ -152,14 +144,6 @@ export function ProductsItemMutateDialog(props: Props) {
       retailPrice: parsePriceAmount(data.retailPrice),
       vat: data.vat ? Math.min(Number(data.vat), 100) : undefined,
       productDetails: data.productDetails?.filter((d) => d.name.trim() && d.value.trim()),
-      initialStock: isEdit
-        ? undefined
-        : data.initialStock
-            ?.filter((s) => s.locationId)
-            .map((s) => ({
-              locationId: s.locationId,
-              locationType: s.locationType,
-            })),
     }
     try {
       let result: ProductItem
@@ -516,15 +500,6 @@ export function ProductsItemMutateDialog(props: Props) {
                 ))}
               </div>
             </div>
-
-            {!isEdit && (
-              <InitialStockSection
-                branchOptions={branchOptions}
-                warehouseOptions={warehouseOptions}
-                value={(form.watch('initialStock') ?? []) as StockLocation[]}
-                onChange={(v) => form.setValue('initialStock', v)}
-              />
-            )}
 
             <DialogFooter>
               <Button

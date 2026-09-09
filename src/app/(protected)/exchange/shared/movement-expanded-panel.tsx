@@ -224,9 +224,12 @@ export function MovementExpandedPanel({
     !!transferActions?.handleReturnGoods &&
     (isReceived || isInTransit);
 
-  // Doc: cancel from fromLocation; không hủy RECEIVED / COMPLETED / CANCELLED.
+  // Huỷ được từ cả hai đầu, đúng như backend cho phép (`cancel` kiểm tra source HOẶC
+  // destination): bên nhận cũng tạo được phiếu chuyển nên phải rút lại được phiếu của mình,
+  // và phiếu nhập từ NCC vốn không có nơi gửi để mà khớp. Không huỷ RECEIVED / COMPLETED /
+  // CANCELLED.
   const canCancel =
-    canActAsFromLocation &&
+    (canActAsFromLocation || canActAsToLocation) &&
     !isReceived &&
     detail.status !== "COMPLETED" &&
     detail.status !== "CANCELLED";
@@ -585,9 +588,6 @@ export function MovementExpandedPanel({
         }
         totalQty={totalQty}
         openingTotalQty={openingTotalQty}
-        importSearchScope={
-          isTenantOwner ? "catalog" : "list"
-        }
       />
 
       <MovementActionBar

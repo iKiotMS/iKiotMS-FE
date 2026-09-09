@@ -165,18 +165,15 @@ export function useOpeningEditor({
       };
     }
 
-    // IMPORT: dropdown = SP thuộc NCC; catalog = enrich + tìm tất cả
+    // IMPORT: dropdown = toàn catalog. NCC chỉ là thông tin trên giấy tờ, không ràng buộc
+    // hàng hóa - trước đây dropdown chỉ liệt kê SP đã gắn NCC nên hàng mới nhập lần đầu
+    // của một NCC không bao giờ chọn được.
     if (detail.movementType === "IMPORT") {
-      const supplierId = detail.fromSupplierId?.trim();
-      Promise.all([
-        supplierId
-          ? stockMovementApi.getSupplierProductItems(supplierId)
-          : Promise.resolve([] as StockMovementProductItemOption[]),
-        stockMovementApi.getCatalogProductItems(),
-      ])
-        .then(([supplierItems, catalog]) => {
+      stockMovementApi
+        .getCatalogProductItems()
+        .then((catalog) => {
           if (cancelled) return;
-          setOpeningProducts(supplierItems);
+          setOpeningProducts(catalog);
           setCatalogProducts(catalog);
         })
         .catch(() => {
@@ -199,7 +196,6 @@ export function useOpeningEditor({
     enabled,
     detail.status,
     detail.movementType,
-    detail.fromSupplierId,
     detail.fromLocationId,
     detail.fromLocationType,
   ]);

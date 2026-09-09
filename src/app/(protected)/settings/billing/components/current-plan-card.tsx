@@ -1,10 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Crown, AlertTriangle, Clock } from "lucide-react"
-import type { User } from "@/lib/auth"
-
-type Subscription = NonNullable<User["subscription"]>
+import { Crown, AlertTriangle, Clock, Loader2 } from "lucide-react"
+import type { CurrentSubscription } from "@/lib/api/subscription"
 
 const STATUS_LABEL: Record<string, string> = {
   TRIAL: "Dùng thử",
@@ -22,7 +20,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   CANCELLED: "outline",
 }
 
-function getDaysLeft(dateStr: string | undefined): number {
+function getDaysLeft(dateStr: string | null | undefined): number {
   if (!dateStr) return 0
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000))
 }
@@ -37,10 +35,27 @@ function getProgress(startDate: string, endDate: string): number {
 }
 
 interface CurrentPlanCardProps {
-  subscription: Subscription | undefined
+  subscription: CurrentSubscription | null
+  isLoading: boolean
 }
 
-export function CurrentPlanCard({ subscription }: CurrentPlanCardProps) {
+export function CurrentPlanCard({ subscription, isLoading }: CurrentPlanCardProps) {
+  // "Chưa có gói" and "chưa tải xong" look identical once rendered, and telling a paying
+  // shop it has no plan while the request is still in flight is the worse of the two.
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Gói hiện tại</CardTitle>
+          <CardDescription>Thông tin gói đăng ký của bạn.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center py-8">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (!subscription) {
     return (
       <Card>
@@ -124,7 +139,9 @@ export function CurrentPlanCard({ subscription }: CurrentPlanCardProps) {
             ].map(({ label, value }) => (
               <div key={label} className="rounded-lg border bg-muted/40 px-3 py-2 text-center">
                 <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-sm font-semibold">{value === -1 ? "∞" : value}</p>
+                <p className="text-sm font-semibold">
+                  {value == null ? "—" : value === -1 ? "∞" : value}
+                </p>
               </div>
             ))}
           </div>

@@ -41,6 +41,7 @@ import { workingScheduleApi } from "@/lib/api/schedule";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useLeaveRequests } from "./leave-requests-provider";
+import { EmptyOptionsNotice, EmptyOptionsLink } from "@/components/empty-options-notice";
 
 const emergencyLeaveBaseSchema = z.object({
   userId: z.string().min(1, "Vui lòng chọn nhân viên"),
@@ -276,26 +277,31 @@ export function LeaveRequestsEmergencyDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nhân viên</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="cursor-pointer">
-                        <SelectValue placeholder="Chọn nhân viên" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {staffOptions.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Không có nhân viên
-                        </SelectItem>
-                      ) : (
-                        staffOptions.map((item) => (
+                  {staffOptions.length === 0 ? (
+                    <EmptyOptionsNotice>
+                      Chưa có nhân viên nào để tạo đơn nghỉ phép. Hãy thêm nhân
+                      viên ở{" "}
+                      <EmptyOptionsLink href="/staffs">
+                        Nhân viên › Danh sách
+                      </EmptyOptionsLink>
+                      .
+                    </EmptyOptionsNotice>
+                  ) : (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="cursor-pointer">
+                          <SelectValue placeholder="Chọn nhân viên" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {staffOptions.map((item) => (
                           <SelectItem key={item.value} value={item.value}>
                             {item.label}
                           </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

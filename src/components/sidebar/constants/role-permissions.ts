@@ -160,10 +160,20 @@ export function canManageRoles(role?: string | null): boolean {
   return role === "TENANT_OWNER" || role === "ADMIN";
 }
 
+/**
+ * Whether this account may set somebody's role and workplace on the staff form.
+ *
+ * It has to follow the form's mode, because the backend gates the two writes separately:
+ * `POST /users` needs `users:create`, `PATCH /users/:id` needs `users:update`. Asking only
+ * for `update` locked the role dropdown for a manager who may hire but not edit - and
+ * `POST /users` **requires** a `roleId`, so that account could open the form and never
+ * submit it.
+ */
 export function canEditStaffRoleAndWorkplace(
   role: string | undefined | null,
+  isEdit = true,
 ): boolean {
-  return canUpdateStaff(role);
+  return isEdit ? canUpdateStaff(role) : canCreateStaff(role);
 }
 
 
@@ -255,11 +265,6 @@ export function canUseAIChat(role?: string | null): boolean {
  */
 export function canEditAccountProfile(role?: string | null): boolean {
   return holdsEverything(role);
-}
-
-// Exchange (stock movement)
-export function canAccessImports(branchId?: string | null): boolean {
-  return !branchId;
 }
 
 // Promotions

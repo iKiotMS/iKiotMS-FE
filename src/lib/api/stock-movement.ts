@@ -396,66 +396,6 @@ async function fetchAllProductItemOptions(): Promise<
   return all;
 }
 
-/** Item đã gắn NCC + giá (GET /products?supplierId= + GET /products/:id). */
-async function fetchSupplierProductItemOptions(
-  supplierId: string,
-): Promise<StockMovementProductItemOption[]> {
-  const options: StockMovementProductItemOption[] = [];
-  let page = 1;
-  let totalPages = 1;
-  const productIds: string[] = [];
-
-  do {
-    const response = await client.get("/products", {
-      params: {
-        supplierId,
-        page,
-        limit: 100,
-        status: "ACTIVE",
-      },
-    });
-    const rows = asArray<{ id?: string }>(response.data?.data);
-    for (const p of rows) {
-      if (p.id) productIds.push(p.id);
-    }
-    totalPages = Number(response.data?.pagination?.totalPages ?? 1);
-    page += 1;
-  } while (page <= totalPages);
-
-  const chunkSize = 8;
-  for (let i = 0; i < productIds.length; i += chunkSize) {
-    const chunk = productIds.slice(i, i + chunkSize);
-    const details = await Promise.all(
-      chunk.map((id) =>
-        client
-          .get(`/products/${id}`)
-          .then((res) => res.data?.data as ApiProduct | undefined)
-          .catch(() => null),
-      ),
-    );
-    for (const detail of details) {
-      if (!detail) continue;
-      for (const item of asArray<ApiProductItem>(detail.items)) {
-        const ids = resolveSupplierIds(item.suppliers);
-        if (!ids.includes(supplierId)) continue;
-        options.push({
-          id: item.id,
-          productId: detail.id,
-          name: item.productName ?? item.name ?? detail.name ?? item.id,
-          sku: item.sku ?? "",
-          costPrice: item.costPrice ?? item.retailPrice ?? 0,
-          retailPrice: item.retailPrice,
-          imageUrl: resolveProductImageUrl(item, detail),
-          productDetails: mapProductDetails(item.productDetails),
-          supplierIds: ids,
-        });
-      }
-    }
-  }
-
-  return options;
-}
-
 /** Giá gợi ý khi chọn hàng (ưu tiên costPrice, ≤ retailPrice). */
 export function resolveItemImportPrice(
   item?: Pick<StockMovementProductItemOption, "costPrice" | "retailPrice">,
@@ -800,7 +740,6 @@ export const stockMovementApi = {
 
   getSupplierOptions: fetchSupplierOptions,
   getLocationOptions: fetchLocationOptions,
-  getSupplierProductItems: fetchSupplierProductItemOptions,
   searchProductItems: async (q: string) => {
     const res = await fetchProductSearch({
       q,
@@ -820,9 +759,13 @@ export const stockMovementApi = {
       getProductLookup(),
       fetchInventoryAtLocation(locationId, locationType),
     ]);
+    // "Has stock here", not "has a row here". A row appears the first time a movement
+    // delivers goods and stays afterwards, so its presence only says the location once had
+    // some - and the adjustment picker uses this flag to keep a branch manager to the goods
+    // actually sitting in their branch right now.
     return [...lookup.values()].map((item) => ({
       ...item,
-      atLocation: inventoryMap.has(item.id),
+      atLocation: (inventoryMap.get(item.id) ?? 0) > 0,
       stock: inventoryMap.get(item.id),
     }));
   },

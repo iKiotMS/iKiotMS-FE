@@ -83,21 +83,17 @@ export interface User {
     address?: string;
     gender?: "MALE" | "FEMALE" | "OTHER";
   };
-  subscription?: {
-    id: string;
-    planName: string;
-    planCode: "TRIAL" | "PLUS" | "PRO" | "PLUS_YEARLY" | "PRO_YEARLY";
-    status: "TRIAL" | "ACTIVE" | "EXPIRED" | "PAST_DUE" | "CANCELLED";
-    startDate: string;
-    endDate: string;
-    trialEndDate?: string;
-    autoRenew: boolean;
-    currentQuotaSnapshot?: {
-      maxBranches: number;
-      maxUsers: number;
-      maxProducts: number;
-    };
-  };
+  /**
+   * **Removed - `/auth/me` has never returned this.**
+   *
+   * The old Express backend joined the subscription onto the profile for TENANT_OWNERs;
+   * `AuthService.me` in the rewrite returns the user row and its role relation and nothing
+   * else, so the field sat here typed and permanently `undefined`, and the billing screen
+   * that read `user.subscription` drew an empty plan on every render - a `fetchMe()` after
+   * a payment brought back the same blank.
+   *
+   * The plan comes from `getCurrentSubscription()` in `lib/api/subscription.ts`.
+   */
 }
 
 /**

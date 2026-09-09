@@ -45,6 +45,7 @@ import type {
   StockMovementProductItemOption,
 } from '@/types/stock-movement'
 import { useAdjustments } from './adjustments-provider'
+import { EmptyOptionsNotice, EmptyOptionsLink } from '@/components/empty-options-notice'
 
 const adjustDetailSchema = z.object({
   productItemId: z.string().min(1, 'Vui lòng chọn hàng hóa'),
@@ -242,27 +243,43 @@ export function AdjustmentsCreateDialog({
                   <FormLabel>
                     Kho / Chi nhánh điều chỉnh <span className="text-destructive">*</span>
                   </FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={handleLocationChange}
-                    disabled={isLocationLocked || isOptionsLoading}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="cursor-pointer w-full">
-                        <SelectValue placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn kho / chi nhánh'} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {visibleLocations.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name}{' '}
-                          <span className="text-muted-foreground">
-                            ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {!isOptionsLoading && visibleLocations.length === 0 ? (
+                    <EmptyOptionsNotice>
+                      {locations.length === 0 ? (
+                        <>
+                          Cửa hàng chưa có kho hay chi nhánh nào. Hãy tạo ở{' '}
+                          <EmptyOptionsLink href="/settings">
+                            Cài đặt › Chi nhánh / Kho tổng
+                          </EmptyOptionsLink>{' '}
+                          trước khi tạo phiếu điều chỉnh.
+                        </>
+                      ) : (
+                        'Bạn chưa được phân công kho hay chi nhánh nào để điều chỉnh tồn.'
+                      )}
+                    </EmptyOptionsNotice>
+                  ) : (
+                    <Select
+                      value={field.value}
+                      onValueChange={handleLocationChange}
+                      disabled={isLocationLocked || isOptionsLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="cursor-pointer w-full">
+                          <SelectValue placeholder={isOptionsLoading ? 'Đang tải...' : 'Chọn kho / chi nhánh'} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {visibleLocations.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.name}{' '}
+                            <span className="text-muted-foreground">
+                              ({l.type === 'warehouse' ? 'Kho' : 'Chi nhánh'})
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

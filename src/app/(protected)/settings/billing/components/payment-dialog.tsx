@@ -14,22 +14,27 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { type InitiateUpgradeResult } from "@/lib/api/subscription"
-import { useAuthStore } from "@/store/auth-store"
 import { getSocket } from "@/lib/socket"
 
 interface PaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   invoice: InitiateUpgradeResult | null
+  /** Reloads the billing screen. Called once the activation event lands. */
+  onActivated: () => void | Promise<void>
 }
 
 type PaymentState = "pending" | "paid" | "expired"
 
-export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProps) {
+export function PaymentDialog({
+  open,
+  onOpenChange,
+  invoice,
+  onActivated,
+}: PaymentDialogProps) {
   const [paymentState, setPaymentState] = useState<PaymentState>("pending")
   const [secondsLeft, setSecondsLeft] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const fetchMe = useAuthStore((state) => state.fetchMe)
 
   useEffect(() => {
     if (!open || !invoice) {
@@ -59,7 +64,10 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
     const handleActivated = async () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
       setPaymentState("paid")
-      await fetchMe()
+      // Was `fetchMe()`, which reloaded a profile that has never carried the subscription -
+      // the dialog said "thành công" while the plan card behind it still showed the old
+      // plan until the page was reloaded by hand.
+      await onActivated()
       toast.success(`Nâng cấp lên gói ${invoice.plan.planName} thành công!`)
     }
 
@@ -69,7 +77,7 @@ export function PaymentDialog({ open, onOpenChange, invoice }: PaymentDialogProp
       if (intervalRef.current) clearInterval(intervalRef.current)
       socket.off("subscription:activated", handleActivated)
     }
-  }, [open, invoice])
+  }, [open, invoice, onActivated])
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60)

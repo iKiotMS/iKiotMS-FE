@@ -1,10 +1,5 @@
 import type { StockMovementProductItemOption } from "@/types/stock-movement";
 
-/** TO: tìm toàn catalog; WH/role khác: chỉ trong list NCC / nguồn. */
-export function canSearchImportCatalog(role?: string | null): boolean {
-  return role === "TENANT_OWNER";
-}
-
 /** Lọc list SP theo tên / SKU (ô tìm khi không gọi API catalog). */
 export function filterProductItemsByQuery(
   items: StockMovementProductItemOption[],

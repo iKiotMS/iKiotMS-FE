@@ -63,8 +63,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     Promise.allSettled([
-      brandApi.getList({ limit: 200 }),
-      categoryApi.getList({ limit: 200 }),
+      brandApi.getList({ limit: 100 }),
+      categoryApi.getList({ limit: 100 }),
     ]).then(([brandRes, categoryRes]) => {
       setBrands(brandRes.status === 'fulfilled' ? brandRes.value.data : [])
       setCategories(categoryRes.status === 'fulfilled' ? categoryRes.value.data : [])
@@ -109,7 +109,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     if (suppliersLoadedRef.current) return
     suppliersLoadedRef.current = true
     supplierApi
-      .getList({ limit: 200 })
+      .getList({ limit: 100 })
       .then((res) => setSuppliers(res.data))
       .catch(() => setSuppliers([]))
   }

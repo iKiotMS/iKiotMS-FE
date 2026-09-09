@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Loader2 } from "lucide-react"
-import { listInvoices, type Invoice } from "@/lib/api/subscription"
+import { type Invoice } from "@/lib/api/subscription"
 
 const STATUS_LABEL: Record<string, string> = {
   PAID: "Đã thanh toán",
@@ -21,17 +20,20 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   REFUNDED: "outline",
 }
 
-export function BillingHistoryCard() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+interface BillingHistoryCardProps {
+  invoices: Invoice[]
+  isLoading: boolean
+}
 
-  useEffect(() => {
-    listInvoices()
-      .then(setInvoices)
-      .catch(() => setInvoices([]))
-      .finally(() => setIsLoading(false))
-  }, [])
-
+/**
+ * Fetched by `useBilling` rather than here: the invoice that was just paid flips
+ * PENDING -> PAID at the same instant the plan activates, so both halves of the screen
+ * have to be reloadable from the one call the payment dialog makes.
+ */
+export function BillingHistoryCard({
+  invoices,
+  isLoading,
+}: BillingHistoryCardProps) {
   return (
     <Card>
       <CardHeader>

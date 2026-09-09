@@ -53,8 +53,6 @@ export function MovementDetailsTable({
   totalValue,
   totalQty,
   openingTotalQty,
-  /** IMPORT: catalog = TO tìm all; list = WH chỉ trong SP NCC (openingProducts). */
-  importSearchScope = "catalog",
 }: {
   mode: Mode;
   detail: StockMovement;
@@ -65,7 +63,7 @@ export function MovementDetailsTable({
   showReceivedColumn: boolean;
   openingDetails: OpeningDetailRow[];
   openingProducts: StockMovementProductItemOption[];
-  /** Catalog tenant - enrich hiển thị (IMPORT); không dùng làm list dropdown NCC. */
+  /** Catalog tenant - vừa là list dropdown vừa để enrich hiển thị (IMPORT). */
   catalogProducts?: StockMovementProductItemOption[];
   openingRowErrors: OpeningRowFieldErrors[];
   updateOpeningRow: (idx: number, patch: Partial<OpeningDetailRow>) => void;
@@ -77,7 +75,6 @@ export function MovementDetailsTable({
   totalValue: number;
   totalQty: number;
   openingTotalQty: number;
-  importSearchScope?: "catalog" | "list";
 }) {
   const getQty = (id: string, original: number) =>
     receivedQtys[id] ?? original;
@@ -102,14 +99,12 @@ export function MovementDetailsTable({
           className="mb-3"
           usedIds={usedIds}
           onPick={pickOpeningProduct}
-          searchScope={mode === "import" ? importSearchScope : "list"}
+          searchScope={mode === "import" ? "catalog" : "list"}
           poolProducts={openingProducts}
           metaMode={mode === "import" ? "price" : "stock"}
           placeholder={
             mode === "import"
-              ? importSearchScope === "list"
-                ? "Tìm trong hàng của nhà cung cấp..."
-                : "Tìm hàng theo tên, mã, SKU..."
+              ? "Tìm hàng theo tên, mã, SKU..."
               : "Tìm hàng tại nơi gửi (có tồn)..."
           }
         />
@@ -205,11 +200,7 @@ export function MovementDetailsTable({
                               : undefined
                           }
                           metaMode={mode === "import" ? "price" : "stock"}
-                          placeholder={
-                            mode === "import" && openingProducts.length === 0
-                              ? "Chọn NCC có hàng hoặc dùng ô tìm"
-                              : "Chọn mặt hàng"
-                          }
+                          placeholder="Chọn mặt hàng"
                           onValueChange={(value) => {
                             const product = productById.get(value);
                             if (product) ensureOpeningProduct?.(product);

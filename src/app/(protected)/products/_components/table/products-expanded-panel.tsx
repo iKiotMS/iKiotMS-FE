@@ -44,13 +44,7 @@ export function ProductsExpandedPanel({
   isExpanded,
   isLastRow,
 }: ProductsExpandedPanelProps) {
-  const {
-    setOpen,
-    setCurrentRow,
-    branchOptions,
-    warehouseOptions,
-    ensureLocationOptionsLoaded,
-  } = useProducts();
+  const { setOpen, setCurrentRow } = useProducts();
   const locationKey = useAuthStore((s) => s.locationKey);
   const role = getCachedUser()?.role;
   const canEdit = canUpdateProduct(role);
@@ -97,14 +91,6 @@ export function ProductsExpandedPanel({
       cancelled = true;
     };
   }, [isExpanded, product.id, locationKey]);
-
-  // Branch/warehouse options are only needed by the "Thêm phiên bản" (create item)
-  // dialog, so fetch them lazily on first open instead of on every page mount.
-  useEffect(() => {
-    if (!addOpen) return;
-    ensureLocationOptionsLoaded();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addOpen]);
 
   function handleItemAdded(newItem: ProductItem) {
     setDetail((prev) => {
@@ -406,8 +392,6 @@ export function ProductsExpandedPanel({
         open={addOpen}
         onOpenChange={setAddOpen}
         onSuccess={handleItemAdded}
-        branchOptions={branchOptions}
-        warehouseOptions={warehouseOptions}
       />
 
       {editingItem && (

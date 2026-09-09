@@ -28,12 +28,6 @@ export function useProductsMutations() {
   async function handleAdd(data: ProductFormValues): Promise<boolean> {
     setIsLoading(true)
     try {
-      const validInitialStock = (data.initialStock ?? [])
-        .filter((s) => s.locationId)
-        .map((s) => ({
-          locationId: s.locationId,
-          locationType: s.locationType,
-        }))
       const itemProductName = data.useParentNameForItem
         ? data.name
         : (data.itemProductName?.trim() || data.name)
@@ -56,11 +50,14 @@ export function useProductsMutations() {
             description: data.description,
             images: data.itemImages?.length ? data.itemImages : data.images,
             productDetails: data.productDetails?.filter((d) => d.name.trim() && d.value.trim()),
-            initialStock: validInitialStock,
           },
         ],
       })
-      setProducts((prev) => [{ ...product, totalStock: 0 }, ...prev])
+      // Hàng vừa tạo chưa có ở đâu cả - chưa có phiếu nhập nào - nên cả hai con số đều 0.
+      setProducts((prev) => [
+        { ...product, totalStock: 0, totalStockAllLocations: 0 },
+        ...prev,
+      ])
       toast.success('Thêm hàng hóa thành công')
       return true
     } catch {

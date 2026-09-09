@@ -45,7 +45,12 @@ export interface ProductItem {
   images?: ProductImage[];
   productDetails?: ProductDetail[];
   suppliers?: ProductItemSupplier[];
+  // Tồn tại địa điểm đang xem (tổng của stockDetails). Khi không lọc địa điểm thì bằng
+  // stockAllLocations.
   stock?: number;
+  // Tồn của biến thể này ở TẤT CẢ chi nhánh/kho, không phụ thuộc bộ lọc địa điểm. BE luôn
+  // trả về số - 0 nghĩa là cả chuỗi chưa có, không phải "chưa nạp".
+  stockAllLocations?: number;
   stockDetails?: StockDetail[];
   createdAt?: string;
   updatedAt?: string;
@@ -61,7 +66,12 @@ export interface Product {
   categoryName?: string;
   images?: ProductImage[];
   items?: ProductItem[];
+  // Tồn tại địa điểm đang xem. Khi danh sách không lọc địa điểm thì bằng
+  // totalStockAllLocations.
   totalStock?: number;
+  // Tồn toàn chuỗi (mọi chi nhánh + kho). Dùng để trả lời "cửa hàng có mặt hàng này không"
+  // khi chi nhánh đang xem chưa nhập về - lúc đó totalStock là 0 còn số này thì không.
+  totalStockAllLocations?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -113,12 +123,15 @@ export interface ProductItemListEntry {
   productName: string;
   productCode: string;
   sku: string;
+  // Chỉ có khi request kèm `branchIds`; 0 = chi nhánh chưa có hàng, không phải không bán.
+  stock?: number;
 }
 
 export interface ProductItemListParams {
   limit?: number;
   search?: string;
-  // Comma-separated branch IDs - scopes results to items stocked at one of these branches.
+  // Comma-separated branch IDs. Không lọc danh sách - chỉ gắn thêm `stock` của (các) chi
+  // nhánh đó vào từng biến thể, 0 khi chi nhánh chưa từng nhập mặt hàng.
   branchIds?: string;
 }
 
